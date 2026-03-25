@@ -1,0 +1,107 @@
+---
+title: Auth
+description: JWT management, Party ID resolution, and session management.
+icon: Shield
+---
+
+## JwtManager
+
+Handles token generation and auto-refresh. Accessed via `nexus.auth.jwt`.
+
+```ts
+const token = await nexus.auth.jwt.getToken();
+// Returns current token or silently refreshes (30s before expiry)
+```
+
+### Auth modes
+
+| Type | Use case | Token source |
+|------|----------|-------------|
+| `sandbox` | Local development | HMAC256 generated from `secret` |
+| `jwt` | Staging / production | Pre-issued bearer token |
+| `oidc` | Production | `client_credentials` flow |
+
+### Sandbox token structure
+
+Canton Sandbox tokens are HMAC256-signed JWTs with this payload:
+
+```json
+{
+  "sub": "alice",
+  "scope": "daml_ledger_api",
+  "actAs": ["Alice::122059a10c..."],
+  "readAs": ["Alice::122059a10c..."],
+  "exp": 1234567890
+}
+```
+
+---
+
+## PartyIdResolver
+
+Maps a `userId` to a Canton `partyId` via `/v2/users/{userId}/rights`.
+Results are cached with a 5-minute TTL.
+
+```ts
+const partyId = await nexus.auth.partyId.resolvePartyId('alice');
+// Returns: "Alice::122059a10c67ef1bb38e4e7ff3fd9c827e2e6..."
+```
+
+### How it works
+
+1. Calls `/v2/users/{userId}` to get the user record
+2. Extracts `actAs` rights from the response
+3. Returns the first `actAs` party ID
+4. Caches result for 5 minutes
+
+---
+
+## SessionManager
+
+Creates and validates AES-GCM encrypted HttpOnly session cookies.
+Used in Next.js Server Actions and API routes.
+
+```ts
+const sessionMgr = new SessionManager({
+  encryptionKey: process.env.SESSION_KEY, // 32-byte hex string
+  secure: true,                            // Secure flag (auto in production)
+});
+```
+
+### Create a session
+
+```ts
+// In a Server Action after successful auth:
+const cookie = await sessionMgr.createSessionCookie({
+  token: jwtToken,
+  userId: 'alice',
+  partyId: 'Alice::122059a10c...',
+});
+
+// Set via Next.js cookies():
+(await cookies()).set('nexus_session', cookieValue, {
+  httpOnly: true,
+  sameSite: 'lax',
+});
+```
+
+### Read a session
+
+```ts
+// In a Server Component or Server Action:
+const session = await sessionMgr.getSession(request.headers.get('cookie'));
+
+if (!session) {
+  redirect('/login');
+}
+// session.token, session.userId, session.partyId
+```
+
+### Generate an encryption key
+
+```ts
+import { generateEncryptionKey } from '@nexus-framework/core';
+
+const key = generateEncryptionKey();
+// e.g. "a3f8c2d1..." — store in SESSION_ENCRYPTION_KEY env var
+```

@@ -1,0 +1,110 @@
+---
+title: Commands
+description: Submit create and exercise commands to the Canton ledger.
+icon: Send
+---
+
+Commands are accessed via `nexus.ledger.commands`.
+All methods call `/v2/commands/submit-and-wait` and return a `SubmitResult`.
+
+## createContract
+
+```ts
+const result = await nexus.ledger.commands.createContract(
+  templateId,     // string | TemplateId
+  createArguments,// Record<string, unknown>
+  actAs,          // string[]
+  options?,       // { readAs?, workflowId? }
+);
+```
+
+### Example
+
+```ts
+const result = await nexus.ledger.commands.createContract(
+  'my-package:Iou:Iou',
+  { owner: 'Alice::abc', amount: '100', currency: 'USD' },
+  ['Alice::abc'],
+);
+
+console.log(result.transactionId); // "txn-..."
+console.log(result.commandId);     // auto-generated UUID
+```
+
+## exerciseChoice
+
+```ts
+const result = await nexus.ledger.commands.exerciseChoice(
+  templateId,     // string | TemplateId
+  contractId,     // string
+  choice,         // string
+  choiceArgument, // Record<string, unknown>
+  actAs,          // string[]
+  options?,       // { readAs?, workflowId? }
+);
+```
+
+### Example — Archive
+
+```ts
+await nexus.ledger.commands.exerciseChoice(
+  'my-package:Iou:Iou',
+  'contract-id-abc123',
+  'Archive',
+  {},
+  ['Alice::abc'],
+);
+```
+
+### Example — Transfer
+
+```ts
+await nexus.ledger.commands.exerciseChoice(
+  'my-package:Iou:Iou',
+  'contract-id-abc123',
+  'Transfer',
+  { newOwner: 'Bob::xyz' },
+  ['Alice::abc'],
+);
+```
+
+## submitBatch
+
+Submit multiple commands in a single transaction:
+
+```ts
+const result = await nexus.ledger.commands.submitBatch(
+  [
+    { type: 'create', templateId: '...', createArguments: { ... } },
+    { type: 'exercise', templateId: '...', contractId: '...', choice: '...', choiceArgument: {} },
+  ],
+  ['Alice::abc'],
+);
+```
+
+## SubmitResult
+
+```ts
+interface SubmitResult {
+  transactionId: string;
+  commandId: string;
+  offset: string;
+  completedAt: string;
+}
+```
+
+## Error handling
+
+All command methods throw `NexusLedgerError` on non-2xx responses:
+
+```ts
+import { NexusLedgerError } from '@nexus-framework/core';
+
+try {
+  await nexus.ledger.commands.createContract(...);
+} catch (err) {
+  if (err instanceof NexusLedgerError) {
+    console.error(err.message, err.statusCode);
+  }
+}
+```

@@ -15,5 +15,8 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "ci": "biome ci ."
+  },
+  "dependencies": {
+    "300": "^0.0.1"
   }
 }

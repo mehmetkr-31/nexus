@@ -1,0 +1,89 @@
+---
+title: Query Keys
+description: TanStack Query key factory and cache invalidation utilities.
+icon: Key
+---
+
+`nexusKeys` is the hierarchical query key factory used by all Nexus hooks.
+Use it for precise cache invalidation after mutations.
+
+## Key hierarchy
+
+```
+nexusKeys.all()                                  → ['nexus']
+nexusKeys.contracts()                            → ['nexus', 'contracts']
+nexusKeys.contractsByTemplate(templateId)        → ['nexus', 'contracts', templateId]
+nexusKeys.contractsQuery(templateId, filters)    → ['nexus', 'contracts', templateId, filters]
+nexusKeys.ledgerEnd()                            → ['nexus', 'ledger-end']
+nexusKeys.synchronizers()                        → ['nexus', 'synchronizers']
+nexusKeys.partyId(userId)                        → ['nexus', 'party-id', userId]
+```
+
+## queryOptions factories
+
+Use these with `useQuery`, `useSuspenseQuery`, or `queryClient.fetchQuery`:
+
+```ts
+import {
+  contractQueryOptions,
+  ledgerEndQueryOptions,
+  partyIdQueryOptions,
+} from '@nexus-framework/react';
+
+// Fetch contracts
+const opts = contractQueryOptions({
+  client,
+  templateId: 'my-package:Iou:Iou',
+  parties: ['Alice::abc'],
+  staleTime: 10_000,
+});
+
+const { data } = useQuery(opts);
+```
+
+## Cache invalidation
+
+### Invalidate a specific template
+
+```ts
+import { invalidateContractQueries } from '@nexus-framework/react';
+
+await invalidateContractQueries(queryClient, ['my-package:Iou:Iou']);
+```
+
+### Invalidate all Nexus queries
+
+```ts
+import { invalidateAllNexusQueries } from '@nexus-framework/react';
+
+await invalidateAllNexusQueries(queryClient);
+```
+
+### Manual invalidation
+
+```ts
+// Invalidate all contracts for a template
+await queryClient.invalidateQueries({
+  queryKey: nexusKeys.contractsByTemplate('my-package:Iou:Iou'),
+});
+
+// Invalidate all Nexus data
+await queryClient.invalidateQueries({
+  queryKey: nexusKeys.all(),
+});
+```
+
+## Automatic invalidation in hooks
+
+`useCreateContract` and `useExerciseChoice` automatically call `invalidateContractQueries`
+after a successful mutation. Configure which templates to invalidate:
+
+```tsx
+// Invalidate both Iou and IouTransfer caches after exercising Transfer
+const { mutate } = useExerciseChoice({
+  invalidateTemplates: [
+    'my-package:Iou:Iou',
+    'my-package:Iou:IouTransfer',
+  ],
+});
+```

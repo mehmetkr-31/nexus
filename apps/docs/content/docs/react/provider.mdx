@@ -1,0 +1,97 @@
+---
+title: NexusProvider
+description: Context provider that wraps your app with the Nexus client and TanStack QueryClientProvider.
+icon: Layers
+---
+
+`NexusProvider` is the root wrapper for any app using `@nexus-framework/react`.
+It combines both the Nexus client context and TanStack `QueryClientProvider`.
+
+```tsx
+import { NexusProvider } from '@nexus-framework/react';
+
+<NexusProvider config={{ ledgerApiUrl: '...', auth: { ... } }}>
+  <App />
+</NexusProvider>
+```
+
+## Props
+
+```ts
+interface NexusProviderProps {
+  /** Canton config — used to create the NexusClient internally */
+  config: NexusConfig;
+  children: ReactNode;
+  /** Pre-built client (e.g., for tests) — overrides config */
+  client?: NexusClient;
+  /** Custom QueryClient — a Canton-tuned one is created by default */
+  queryClient?: QueryClient;
+}
+```
+
+## Default QueryClient settings
+
+When no `queryClient` is provided, Nexus creates one with Canton-friendly defaults:
+
+```ts
+{
+  queries: {
+    staleTime: 5_000,   // Canton finality ~3–10s — stale after 5s
+    retry: 2,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 10_000),
+  },
+  mutations: {
+    retry: 0,
+  },
+}
+```
+
+## Next.js App Router setup
+
+Since `NexusProvider` uses React hooks, it must be in a **Client Component**:
+
+```tsx
+// components/NexusClientProvider.tsx
+'use client';
+
+import { NexusProvider } from '@nexus-framework/react';
+import type { NexusConfig } from '@nexus-framework/react';
+
+const config: NexusConfig = {
+  ledgerApiUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? 'http://localhost:7575',
+  auth: {
+    type: 'sandbox',
+    secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? 'secret',
+    userId: process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? 'alice',
+    partyId: process.env.NEXT_PUBLIC_SANDBOX_PARTY_ID ?? 'Alice::...',
+  },
+};
+
+export function NexusClientProvider({ children }: { children: React.ReactNode }) {
+  return <NexusProvider config={config}>{children}</NexusProvider>;
+}
+```
+
+Then use in `app/layout.tsx`:
+
+```tsx
+// app/layout.tsx (Server Component)
+import { NexusClientProvider } from '../components/NexusClientProvider';
+
+export default function Layout({ children }) {
+  return <NexusClientProvider>{children}</NexusClientProvider>;
+}
+```
+
+## useNexusClient
+
+Access the client directly in any component within the provider:
+
+```tsx
+import { useNexusClient } from '@nexus-framework/react';
+
+function MyComponent() {
+  const nexus = useNexusClient();
+  // nexus.ledger.contracts, nexus.ledger.commands, nexus.getToken(), ...
+}
+```

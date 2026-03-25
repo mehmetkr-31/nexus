@@ -1,0 +1,40 @@
+---
+title: Introduction
+description: Nexus Framework — a type-safe ORPC layer for Canton Ledger and modern React apps.
+icon: BookOpen
+---
+
+**Nexus Framework** bridges the Canton JSON Ledger API v2 with the modern React ecosystem (Next.js, TanStack Query) by eliminating the "Integration Tax" — the repetitive auth, type-mapping, and cache-management work every Canton dApp re-implements.
+
+## What's included
+
+<Cards>
+  <Card title="@nexus-framework/core" href="/docs/core/client" description="Canton HTTP client, JWT auth, Party ID resolver, Session manager" />
+  <Card title="@nexus-framework/react" href="/docs/react/provider" description="TanStack Query hooks, NexusProvider, Server Components, Server Actions" />
+</Cards>
+
+## Architecture
+
+```
+Your App (Next.js / React)
+       │
+       ▼
+@nexus-framework/react        ← useContracts, useCreateContract, withLedgerAction
+       │
+       ▼
+@nexus-framework/core         ← CantonClient, JwtManager, CommandSubmitter
+       │
+       ▼
+Canton JSON Ledger API v2     ← http://localhost:7575
+```
+
+## Key features
+
+| Feature | Description |
+|---------|-------------|
+| **Type-safe HTTP client** | Zod-validated Canton API responses, no `any` |
+| **Zero-config auth** | Sandbox (HMAC256), JWT passthrough, OIDC client_credentials |
+| **TanStack Query integration** | `queryOptions` factories, smart cache invalidation by template |
+| **SSR prefetch** | `prefetchContracts` + `HydrationBoundary` for Next.js App Router |
+| **Server Actions** | `withLedgerAction` wraps any ledger op with `LedgerActionResult` |
+| **Session cookies** | AES-GCM encrypted HttpOnly cookies for Next.js SSR |

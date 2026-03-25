@@ -1,0 +1,101 @@
+---
+title: Quick Start
+description: Connect to Canton Sandbox and query your first contract in under 5 minutes.
+icon: Zap
+---
+
+## 1. Create a client
+
+```ts
+import { createNexusClient } from '@nexus-framework/core';
+
+const nexus = createNexusClient({
+  ledgerApiUrl: 'http://localhost:7575',
+  auth: {
+    type: 'sandbox',
+    secret: 'secret',      // Canton Sandbox default
+    userId: 'alice',
+    partyId: 'Alice::122059a10c...',
+  },
+});
+```
+
+## 2. Query active contracts
+
+```ts
+const { contracts } = await nexus.ledger.contracts.fetchActiveContracts({
+  templateId: 'my-package:Iou:Iou',
+  parties: ['Alice::122059a10c...'],
+});
+
+contracts.forEach(c => console.log(c.contractId, c.payload));
+```
+
+## 3. Create a contract
+
+```ts
+const result = await nexus.ledger.commands.createContract(
+  'my-package:Iou:Iou',
+  { owner: 'Alice::122059a10c...', amount: '100', currency: 'USD' },
+  ['Alice::122059a10c...'],
+);
+
+console.log(result.transactionId);
+```
+
+## 4. Use with React (Next.js)
+
+Wrap your app with `NexusProvider`:
+
+```tsx
+// app/layout.tsx
+import { NexusProvider } from '@nexus-framework/react';
+
+export default function Layout({ children }) {
+  return (
+    <NexusProvider config={{
+      ledgerApiUrl: 'http://localhost:7575',
+      auth: { type: 'sandbox', secret: 'secret', userId: 'alice', partyId: 'Alice::...' },
+    }}>
+      {children}
+    </NexusProvider>
+  );
+}
+```
+
+Then use hooks in client components:
+
+```tsx
+'use client';
+import { useContracts, useCreateContract } from '@nexus-framework/react';
+
+export function IouList() {
+  const { data, isLoading } = useContracts({ templateId: 'my-package:Iou:Iou' });
+  const { mutate: create, isPending } = useCreateContract();
+
+  if (isLoading) return <p>Loading…</p>;
+
+  return (
+    <>
+      {data?.contracts.map(c => <div key={c.contractId}>{c.payload.amount}</div>)}
+      <button disabled={isPending} onClick={() =>
+        create({
+          templateId: 'my-package:Iou:Iou',
+          createArguments: { owner: 'Alice::...', amount: '50', currency: 'EUR' },
+          actAs: ['Alice::...'],
+        })
+      }>
+        Create Iou
+      </button>
+    </>
+  );
+}
+```
+
+## Next steps
+
+<Cards>
+  <Card title="Core API" href="/docs/core/client" description="Deep dive into createNexusClient and all sub-modules" />
+  <Card title="React Hooks" href="/docs/react/hooks" description="useContracts, useCreateContract, useExerciseChoice and more" />
+  <Card title="Server Components" href="/docs/react/server" description="SSR prefetch and Server Actions for Next.js App Router" />
+</Cards>

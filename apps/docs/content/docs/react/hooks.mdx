@@ -1,0 +1,143 @@
+---
+title: Hooks
+description: React hooks for querying contracts and submitting ledger commands.
+icon: Webhook
+---
+
+All hooks must be used inside a `<NexusProvider>`.
+
+## useContracts
+
+Fetches active contracts with TanStack Query.
+
+```tsx
+import { useContracts } from '@nexus-framework/react';
+
+const { data, isLoading, error } = useContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+  parties: ['Alice::abc'],      // optional
+  filter: { currency: 'USD' }, // optional
+  fetchAll: false,              // default — first page only
+  staleTime: 5_000,             // override query staleTime
+});
+
+// data?.contracts: ActiveContract<IouPayload>[]
+// data?.nextPageToken?: string
+```
+
+### useContractsSuspense
+
+Suspense variant — throws a promise while loading. Wrap in `<Suspense>`.
+
+```tsx
+const { data } = useContractsSuspense<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+});
+```
+
+---
+
+## useCreateContract
+
+Mutation hook for creating a new Daml contract.
+Automatically invalidates the matching template cache on success.
+
+```tsx
+import { useCreateContract } from '@nexus-framework/react';
+
+const { mutate, isPending } = useCreateContract({
+  onSuccess: (result) => console.log('txn:', result.transactionId),
+  onError: (err) => console.error(err),
+});
+
+mutate({
+  templateId: 'my-package:Iou:Iou',
+  createArguments: { owner: 'Alice::abc', amount: '100', currency: 'USD' },
+  actAs: ['Alice::abc'],
+});
+```
+
+### CreateContractVariables
+
+```ts
+interface CreateContractVariables<T = Record<string, unknown>> {
+  templateId: string | TemplateId;
+  createArguments: T;
+  actAs: string[];
+  readAs?: string[];
+  workflowId?: string;
+}
+```
+
+---
+
+## useExerciseChoice
+
+Mutation hook for exercising a choice on an existing contract.
+
+```tsx
+import { useExerciseChoice } from '@nexus-framework/react';
+
+const { mutate } = useExerciseChoice({
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+
+mutate({
+  templateId: 'my-package:Iou:Iou',
+  contractId: 'abc123',
+  choice: 'Transfer',
+  choiceArgument: { newOwner: 'Bob::xyz' },
+  actAs: ['Alice::abc'],
+});
+```
+
+---
+
+## useLedgerMutation
+
+Generic hook for custom multi-command batches.
+
+```tsx
+import { useLedgerMutation } from '@nexus-framework/react';
+
+const { mutate } = useLedgerMutation({
+  mutationFn: async (nexus, vars: { amount: string }) =>
+    nexus.ledger.commands.createContract(
+      'my-package:Iou:Iou',
+      { amount: vars.amount, ... },
+      ['Alice::abc'],
+    ),
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+```
+
+---
+
+## useLedgerEnd
+
+```tsx
+import { useLedgerEnd } from '@nexus-framework/react';
+
+const { data } = useLedgerEnd();
+// data.offset — current ledger offset
+```
+
+## useSynchronizers
+
+```tsx
+import { useSynchronizers } from '@nexus-framework/react';
+
+const { data } = useSynchronizers();
+// data.synchronizers: SynchronizerInfo[]
+```
+
+## usePartyId
+
+Resolves a userId to a Canton Party ID.
+
+```tsx
+import { usePartyId } from '@nexus-framework/react';
+
+const { data: partyId } = usePartyId('alice');
+// partyId → "Alice::122059a10c..."
+```

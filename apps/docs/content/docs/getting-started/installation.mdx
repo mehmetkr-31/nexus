@@ -1,0 +1,57 @@
+---
+title: Installation
+description: Add Nexus Framework to your project.
+icon: Package
+---
+
+## Requirements
+
+- **Bun** ≥ 1.1 (or Node.js ≥ 20)
+- **TypeScript** ≥ 5 with `strict: true`
+- **React** ≥ 18 (19 recommended)
+- Canton JSON Ledger API v2 endpoint (local sandbox or production)
+
+## Install packages
+
+```bash
+# Core only (no React)
+bun add @nexus-framework/core
+
+# Core + React hooks
+bun add @nexus-framework/core @nexus-framework/react @tanstack/react-query
+```
+
+## Canton Sandbox (local development)
+
+Start a Canton Sandbox with Docker:
+
+```bash
+docker run -p 7575:7575 digitalasset/canton-sandbox:latest
+# JSON Ledger API → http://localhost:7575
+# OpenAPI schema  → http://localhost:7575/docs/openapi
+```
+
+Sandbox accepts **HMAC256 tokens** — no RS256 key management needed in development.
+
+## TypeScript config
+
+Nexus Framework is written with `allowImportingTsExtensions` (Bun bundler mode).
+Make sure your `tsconfig.json` includes:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "bundler",
+    "module": "Preserve"
+  }
+}
+```
+
+For Next.js projects, `transpilePackages` is required in `next.config.ts`:
+
+```ts
+const nextConfig = {
+  transpilePackages: ['@nexus-framework/core', '@nexus-framework/react'],
+};
+```

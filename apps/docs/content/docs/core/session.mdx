@@ -1,0 +1,101 @@
+---
+title: Session Management
+description: AES-GCM encrypted HttpOnly cookies for Next.js SSR authentication.
+icon: Lock
+---
+
+`SessionManager` provides secure session cookies for Next.js App Router.
+Sessions are serialized as AES-GCM encrypted JSON stored in an HttpOnly cookie.
+
+## Setup
+
+```ts
+import { SessionManager, generateEncryptionKey } from '@nexus-framework/core';
+
+// Generate a key once and store in env:
+// SESSION_ENCRYPTION_KEY=a3f8c2d1...
+
+const sessionMgr = new SessionManager({
+  encryptionKey: process.env.SESSION_ENCRYPTION_KEY, // 32-byte hex
+  cookieName: 'nexus_session',   // default
+  ttlMs: 60 * 60 * 1000,         // 1 hour default
+  secure: true,                   // auto-enabled in production
+});
+```
+
+## NexusSession
+
+```ts
+interface NexusSession {
+  token: string;    // JWT bearer token
+  userId: string;
+  partyId: string;
+  expiresAt: number;  // Unix ms
+}
+```
+
+## API
+
+### createSessionCookie
+
+Returns a `Set-Cookie` header value string.
+
+```ts
+const cookieString = await sessionMgr.createSessionCookie({
+  token,
+  userId: 'alice',
+  partyId: 'Alice::abc',
+});
+```
+
+### getSession
+
+Parses and validates a session from a `Cookie` header string.
+Returns `null` if missing or expired.
+
+```ts
+const session = await sessionMgr.getSession(req.headers.get('cookie'));
+```
+
+### destroySessionCookie
+
+Returns a `Set-Cookie` header that clears the session.
+
+```ts
+const clearCookie = sessionMgr.destroySessionCookie();
+```
+
+## Next.js pattern
+
+```ts
+// app/login/actions.ts
+'use server';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+
+export async function loginAction(formData: FormData) {
+  // ... validate credentials, get token
+
+  const cookieStr = await sessionMgr.createSessionCookie({ token, userId, partyId });
+  const [name, ...rest] = cookieStr.split('=');
+  const value = rest.join('=').split(';')[0] ?? '';
+
+  (await cookies()).set(name, value, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60,
+  });
+
+  redirect('/dashboard');
+}
+```
+
+## Security
+
+- **AES-256-GCM** encryption with random IV per session
+- **HttpOnly** prevents JavaScript access
+- **SameSite=Lax** CSRF protection
+- **Secure** flag enforced in production
+- No encryption key → base64 fallback (dev only, not recommended for production)

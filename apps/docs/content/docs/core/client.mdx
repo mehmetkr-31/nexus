@@ -1,0 +1,92 @@
+---
+title: createNexusClient
+description: The main factory function for creating a fully configured Nexus client.
+icon: Settings
+---
+
+`createNexusClient` is the entry point for all Canton Ledger interactions.
+
+```ts
+import { createNexusClient } from '@nexus-framework/core';
+
+const nexus = createNexusClient(config: NexusConfig): NexusClient
+```
+
+## NexusConfig
+
+```ts
+interface NexusConfig {
+  /** Canton JSON Ledger API base URL */
+  ledgerApiUrl: string;
+  auth: AuthConfig;           // see Auth page
+  /** Request timeout in ms. Default: 30000 */
+  timeoutMs?: number;
+}
+```
+
+## NexusClient
+
+The returned object exposes three namespaces:
+
+```ts
+interface NexusClient {
+  /** Raw Canton HTTP client — for custom requests */
+  http: CantonClient;
+
+  auth: {
+    jwt: JwtManager;          // token generation & refresh
+    partyId: PartyIdResolver; // userId → Canton Party ID
+    session: SessionManager;  // HttpOnly cookie sessions
+  };
+
+  ledger: {
+    contracts: ContractQuery;     // fetch active contracts
+    commands: CommandSubmitter;   // create / exercise
+    identity: LedgerIdentity;     // ledger end, synchronizers
+  };
+
+  getToken(): Promise<string>;
+}
+```
+
+## Examples
+
+### Sandbox (development)
+
+```ts
+const nexus = createNexusClient({
+  ledgerApiUrl: 'http://localhost:7575',
+  auth: {
+    type: 'sandbox',
+    secret: 'secret',
+    userId: 'alice',
+    partyId: 'Alice::122059a10c...',
+  },
+});
+```
+
+### Static JWT
+
+```ts
+const nexus = createNexusClient({
+  ledgerApiUrl: 'https://ledger.example.com',
+  auth: {
+    type: 'jwt',
+    token: process.env.CANTON_TOKEN,
+  },
+});
+```
+
+### OIDC (production)
+
+```ts
+const nexus = createNexusClient({
+  ledgerApiUrl: 'https://ledger.example.com',
+  auth: {
+    type: 'oidc',
+    tokenEndpoint: 'https://auth.example.com/token',
+    clientId: 'my-app',
+    clientSecret: process.env.OIDC_SECRET,
+  },
+});
+```
