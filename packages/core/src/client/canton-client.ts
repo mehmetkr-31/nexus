@@ -19,7 +19,7 @@ const templateIdSchema = z.object({
 const activeContractSchema = z.object({
   contractId: z.string(),
   templateId: templateIdSchema,
-  payload: z.record(z.unknown()),
+  payload: z.record(z.string(), z.unknown()),
   createdAt: z.string(),
   signatories: z.array(z.string()),
   observers: z.array(z.string()),
