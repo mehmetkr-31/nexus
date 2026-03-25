@@ -3,7 +3,8 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"@nexus-framework/core": ["./src/index.ts"]
+			"@nexus-framework/core": ["../core/src/index.ts"],
+			"@nexus-framework/react": ["./src/index.ts"]
 		}
 	},
 	"include": ["src/**/*"],

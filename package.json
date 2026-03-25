@@ -3,12 +3,17 @@
   "type": "module",
   "workspaces": ["packages/*", "apps/*"],
   "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
     "@types/bun": "latest",
     "typescript": "^5"
   },
   "scripts": {
-    "build": "bun run --filter '*' build",
-    "test": "bun run --filter '*' test",
-    "dev": "bun run --filter '*' dev"
+    "test": "bun test --cwd packages/core && bun test --cwd packages/react",
+    "typecheck": "bunx tsc --noEmit -p packages/core/tsconfig.json && bunx tsc --noEmit -p packages/react/tsconfig.json",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "ci": "biome ci ."
   }
 }
