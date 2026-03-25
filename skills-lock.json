@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "canton-network-repos": {
+      "source": "0xbigboss/claude-code",
+      "sourceType": "github",
+      "computedHash": "ceeecccfdc92678bcc39889bee5774fc2c1f11b9157a23af2f76e092af7b7964"
+    }
+  }
+}
