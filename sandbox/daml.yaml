@@ -1,0 +1,10 @@
+sdk-version: 3.4.11
+name: nexus-sandbox
+source: daml
+version: 0.0.1
+dependencies:
+  - daml-prim
+  - daml-stdlib
+sandbox-options:
+  - --json-api-port=7575
+  - --port=6865

@@ -1,3 +1,5 @@
+"use client";
+
 import { createNexusClient, type NexusClient, type NexusConfig } from "@nexus-framework/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createContext, type ReactNode, useContext, useMemo } from "react";

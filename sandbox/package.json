@@ -1,0 +1,7 @@
+{
+	"name": "canton-sandbox",
+	"private": true,
+	"scripts": {
+		"dev": "~/.daml/bin/daml sandbox --json-api-port 7575"
+	}
+}

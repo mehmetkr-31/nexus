@@ -1,0 +1,8 @@
+module Main where
+
+-- Minimal placeholder so the sandbox compiles
+template Placeholder
+  with
+    owner: Party
+  where
+    signatory owner
