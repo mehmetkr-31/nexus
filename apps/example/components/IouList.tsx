@@ -1,9 +1,9 @@
 "use client";
 
 import type { ActiveContract } from "@nexus-framework/react";
-import { useContracts, useNexusClient } from "@nexus-framework/react";
 import { useTransition } from "react";
 import { archiveIouAction } from "../app/contracts/actions";
+import { nexus } from "../lib/nexus-client";
 
 interface IouPayload {
 	owner: string;
@@ -14,8 +14,7 @@ interface IouPayload {
 const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
 
 export function IouList() {
-	useNexusClient(); // ensure we're inside a NexusProvider
-	const { data, isLoading, error } = useContracts<IouPayload>({
+	const { data, isLoading, error } = nexus.useContracts<IouPayload>({
 		templateId: IOU_TEMPLATE_ID,
 	});
 

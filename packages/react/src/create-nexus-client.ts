@@ -1,14 +1,10 @@
 "use client";
 
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
-import { type QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
-import {
-	createDefaultQueryClient,
-	NexusContext,
-} from "./context/nexus-provider.tsx";
+import { createDefaultQueryClient } from "./context/nexus-provider.tsx";
 import type { NexusClientPlugin, TanstackQueryActions } from "./plugins/tanstack-query.ts";
-import { QueryClientProvider } from "@tanstack/react-query";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +24,8 @@ export interface NexusProviderComponentProps {
 export interface NexusClientInstance extends NexusClient, TanstackQueryActions {
 	/**
 	 * A React provider component pre-configured for this client.
-	 * Wrap your component tree with this to enable all Nexus hooks.
+	 * Only wraps `QueryClientProvider` — no NexusContext needed since
+	 * hooks close over the client instance directly.
 	 *
 	 * @example
 	 * ```tsx
@@ -48,8 +45,11 @@ export interface NexusClientInstance extends NexusClient, TanstackQueryActions {
 
 /**
  * Create a Nexus client with React hooks via the plugin-based API.
- * Returns a `NexusClientInstance` with a bound `NexusProvider` and all
- * hooks added by the provided client plugins (e.g. `tanstackQueryPlugin()`).
+ *
+ * Hooks produced by client plugins (e.g. `tanstackQueryPlugin()`) close
+ * over the `NexusClient` instance directly — no React Context is injected.
+ * Only a `QueryClientProvider` is needed in the component tree (provided
+ * automatically by `nexus.NexusProvider`).
  *
  * @example
  * ```ts
@@ -63,12 +63,10 @@ export interface NexusClientInstance extends NexusClient, TanstackQueryActions {
  *   ],
  * });
  *
- * // In your app root:
- * export function App() {
- *   return <nexus.NexusProvider><MyPage /></nexus.NexusProvider>;
- * }
+ * // Wrap app root:
+ * <nexus.NexusProvider><App /></nexus.NexusProvider>
  *
- * // In a component:
+ * // In a component — no import from context needed:
  * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
@@ -77,7 +75,6 @@ export function createNexusClient(options: {
 	timeoutMs?: number;
 	plugins: AnyPlugin[];
 }): NexusClientInstance {
-	// Separate server plugins (have auth/init) from client plugins (have getActions)
 	const serverPlugins = options.plugins.filter(
 		(p): p is NexusPlugin => "auth" in p || "init" in p,
 	);
@@ -85,27 +82,22 @@ export function createNexusClient(options: {
 		(p): p is NexusClientPlugin => "getActions" in p,
 	);
 
-	// Create the core Canton client
 	const coreClient = createNexus({
 		ledgerApiUrl: options.baseUrl,
 		timeoutMs: options.timeoutMs,
 		plugins: serverPlugins,
 	});
 
-	// Collect actions from all client plugins
+	// Actions close over coreClient — no context involved
 	const actions = Object.assign(
 		{},
-		...clientPlugins.map((p) => (p.getActions ? p.getActions(() => coreClient) : {})),
+		...clientPlugins.map((p) => (p.getActions ? p.getActions(coreClient) : {})),
 	) as TanstackQueryActions;
 
-	// A bound NexusProvider that sets up context and QueryClient for this client
+	// Only QueryClientProvider — NexusContext not needed
 	function BoundNexusProvider({ children, queryClient }: NexusProviderComponentProps): ReactNode {
 		const qc = queryClient ?? createDefaultQueryClient();
-		return createElement(
-			NexusContext.Provider,
-			{ value: coreClient },
-			createElement(QueryClientProvider, { client: qc }, children),
-		);
+		return createElement(QueryClientProvider, { client: qc }, children);
 	}
 
 	return {

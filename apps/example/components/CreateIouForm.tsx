@@ -1,6 +1,5 @@
 "use client";
 
-import { useNexusClient } from "@nexus-framework/react";
 import { useState, useTransition } from "react";
 import { createIouAction } from "../app/contracts/actions";
 
@@ -9,13 +8,9 @@ interface Props {
 }
 
 export function CreateIouForm({ defaultPartyId }: Props) {
-	const client = useNexusClient();
 	const [isPending, startTransition] = useTransition();
 	const [error, setError] = useState<string | null>(null);
 	const [success, setSuccess] = useState(false);
-
-	// Silence the unused variable — client is available for direct mutations
-	void client;
 
 	const handleSubmit = (formData: FormData) => {
 		setError(null);
