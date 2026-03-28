@@ -1,6 +1,6 @@
 "use server";
 
-import { createNexusClient } from "@nexus-framework/core";
+import { createNexus, sandboxAuth } from "@nexus-framework/core";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { CANTON_API_URL, sessionManager } from "../../lib/nexus";
@@ -17,9 +17,9 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
 	}
 
 	// Generate a sandbox JWT to verify credentials work
-	const client = createNexusClient({
+	const client = createNexus({
 		ledgerApiUrl: CANTON_API_URL,
-		auth: { type: "sandbox", secret, userId, partyId },
+		plugins: [sandboxAuth({ secret, userId, partyId })],
 	});
 
 	let token: string;

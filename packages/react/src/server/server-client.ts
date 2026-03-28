@@ -1,8 +1,8 @@
 import {
-	createNexusClient,
+	createNexus,
+	jwtAuth,
 	NexusAuthError,
 	type NexusClient,
-	type NexusConfig,
 	type NexusSession,
 	SessionManager,
 } from "@nexus-framework/core";
@@ -70,12 +70,8 @@ export function createServerNexusClientFromSession(
 	session: NexusSession,
 	ledgerApiUrl: string,
 ): NexusClient {
-	const nexusConfig: NexusConfig = {
+	return createNexus({
 		ledgerApiUrl,
-		auth: {
-			type: "jwt",
-			token: session.token,
-		},
-	};
-	return createNexusClient(nexusConfig);
+		plugins: [jwtAuth({ token: session.token })],
+	});
 }

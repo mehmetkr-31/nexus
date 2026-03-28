@@ -6,39 +6,57 @@ import { CommandSubmitter } from "./ledger/command-submitter.ts";
 import { ContractQuery } from "./ledger/contract-query.ts";
 import { LedgerIdentity } from "./ledger/ledger-identity.ts";
 import type { NexusConfig } from "./types/index.ts";
+import type { NexusPlugin } from "./types/plugin.ts";
 
-// ─── Public API surface ───────────────────────────────────────────────────────
+// ─── Public API ───────────────────────────────────────────────────────────────
 
+// Auth plugins
+export { sandboxAuth } from "./auth/plugins/sandbox-auth.ts";
+export type { SandboxAuthOptions } from "./auth/plugins/sandbox-auth.ts";
+export { jwtAuth } from "./auth/plugins/jwt-auth.ts";
+export type { JwtAuthOptions } from "./auth/plugins/jwt-auth.ts";
+export { oidcAuth } from "./auth/plugins/oidc-auth.ts";
+export type { OidcAuthOptions } from "./auth/plugins/oidc-auth.ts";
+
+// Core internals (advanced use)
 export { JwtManager } from "./auth/jwt-manager.ts";
 export { formatParty, PartyIdResolver } from "./auth/party-id-resolver.ts";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
-
 export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
 export { LedgerIdentity } from "./ledger/ledger-identity.ts";
+
+// Plugin types
+export type { NexusPlugin } from "./types/plugin.ts";
+
+// Domain types
 export type {
 	ActiveContract,
 	ActiveContractsResponse,
-	AuthConfig,
 	CantonParty,
 	CantonUser,
 	Command,
 	ContractId,
 	CreateCommand,
 	ExerciseCommand,
-	JwtAuthConfig,
 	LedgerEnd,
-	NexusConfig,
 	NexusSession,
-	OidcAuthConfig,
-	SandboxAuthConfig,
 	SubmitRequest,
 	SubmitResult,
 	SynchronizerInfo,
 	TemplateId,
 } from "./types/index.ts";
 export { NexusAuthError, NexusError, NexusLedgerError } from "./types/index.ts";
+
+// Legacy auth config types (for createNexusClient compat shim)
+export type {
+	AuthConfig,
+	JwtAuthConfig,
+	NexusConfig,
+	OidcAuthConfig,
+	SandboxAuthConfig,
+} from "./types/index.ts";
 
 // ─── NexusClient ──────────────────────────────────────────────────────────────
 
@@ -47,7 +65,6 @@ export interface NexusClient {
 	readonly http: CantonClient;
 	/** Auth primitives */
 	readonly auth: {
-		readonly jwt: JwtManager;
 		readonly partyId: PartyIdResolver;
 		readonly session: SessionManager;
 	};
@@ -61,38 +78,55 @@ export interface NexusClient {
 	getToken(): Promise<string>;
 }
 
-// ─── Factory ──────────────────────────────────────────────────────────────────
+// ─── createNexus (plugin-based factory) ───────────────────────────────────────
 
 /**
- * Create a fully configured Nexus client.
+ * Create a fully configured Nexus client using the plugin-based API.
  *
  * @example
  * ```ts
  * // Sandbox (development)
- * const nexus = createNexusClient({
+ * const nexus = createNexus({
  *   ledgerApiUrl: "http://localhost:7575",
- *   auth: { type: "sandbox", secret: "secret", userId: "alice", partyId: "Alice::..." },
+ *   plugins: [sandboxAuth({ userId: "alice", secret: "secret", partyId: "Alice::..." })],
  * });
  *
  * // Production JWT
- * const nexus = createNexusClient({
+ * const nexus = createNexus({
  *   ledgerApiUrl: "https://ledger.example.com",
- *   auth: { type: "jwt", token: process.env.CANTON_TOKEN! },
+ *   plugins: [jwtAuth({ token: process.env.CANTON_TOKEN! })],
+ * });
+ *
+ * // OIDC
+ * const nexus = createNexus({
+ *   ledgerApiUrl: "https://ledger.example.com",
+ *   plugins: [oidcAuth({ tokenEndpoint: "...", clientId: "...", clientSecret: "..." })],
  * });
  * ```
  */
-export function createNexusClient(config: NexusConfig): NexusClient {
-	const jwt = new JwtManager(config.auth);
-	const getToken = () => jwt.getToken();
+export function createNexus(options: {
+	ledgerApiUrl: string;
+	timeoutMs?: number;
+	plugins: NexusPlugin[];
+}): NexusClient {
+	const authPlugin = options.plugins.find((p) => p.auth);
+	if (!authPlugin?.auth) {
+		throw new Error(
+			"createNexus: at least one plugin must provide authentication. " +
+				"Use sandboxAuth(), jwtAuth(), or oidcAuth().",
+		);
+	}
+
+	const getToken = () => authPlugin.auth!.getToken();
 
 	const http = new CantonClient({
-		baseUrl: config.ledgerApiUrl,
+		baseUrl: options.ledgerApiUrl,
 		getToken,
-		timeoutMs: config.timeoutMs,
+		timeoutMs: options.timeoutMs,
 	});
 
 	const partyId = new PartyIdResolver({
-		baseUrl: config.ledgerApiUrl,
+		baseUrl: options.ledgerApiUrl,
 		getToken,
 	});
 
@@ -104,8 +138,31 @@ export function createNexusClient(config: NexusConfig): NexusClient {
 
 	return {
 		http,
-		auth: { jwt, partyId, session },
+		auth: { partyId, session },
 		ledger: { contracts, commands, identity },
 		getToken,
 	};
+}
+
+// ─── createNexusClient (legacy compat shim) ────────────────────────────────────
+
+/**
+ * @deprecated Use `createNexus()` with auth plugins instead.
+ *
+ * @example
+ * ```ts
+ * // Before:
+ * createNexusClient({ ledgerApiUrl, auth: { type: "sandbox", ... } })
+ *
+ * // After:
+ * createNexus({ ledgerApiUrl, plugins: [sandboxAuth({ ... })] })
+ * ```
+ */
+export function createNexusClient(config: NexusConfig): NexusClient {
+	const jwt = new JwtManager(config.auth);
+	return createNexus({
+		ledgerApiUrl: config.ledgerApiUrl,
+		timeoutMs: config.timeoutMs,
+		plugins: [{ id: "legacy-jwt-manager", auth: { getToken: () => jwt.getToken() } }],
+	});
 }

@@ -1,4 +1,4 @@
-import { createNexusClient, SessionManager } from "@nexus-framework/core";
+import { createNexus, sandboxAuth, SessionManager } from "@nexus-framework/core";
 import { createServerNexusClient } from "@nexus-framework/react/server";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -28,18 +28,20 @@ export const sessionManager = new SessionManager({
 /**
  * Build a NexusClient for use in Server Components / Server Actions.
  * Reads the auth token from the session cookie.
+ * Falls back to sandbox credentials when no session cookie is present (demo mode).
  */
 export async function getServerClient(cookieHeader: string | null) {
 	// If no session cookie, fall back to sandbox credentials (demo mode)
 	if (!cookieHeader) {
-		return createNexusClient({
+		return createNexus({
 			ledgerApiUrl: CANTON_API_URL,
-			auth: {
-				type: "sandbox",
-				secret: SANDBOX_SECRET,
-				userId: SANDBOX_USER_ID,
-				partyId: SANDBOX_PARTY_ID,
-			},
+			plugins: [
+				sandboxAuth({
+					secret: SANDBOX_SECRET,
+					userId: SANDBOX_USER_ID,
+					partyId: SANDBOX_PARTY_ID,
+				}),
+			],
 		});
 	}
 
@@ -57,14 +59,15 @@ export async function getServerClient(cookieHeader: string | null) {
 		});
 	} catch {
 		// Session invalid/expired — fall back to sandbox mode
-		return createNexusClient({
+		return createNexus({
 			ledgerApiUrl: CANTON_API_URL,
-			auth: {
-				type: "sandbox",
-				secret: SANDBOX_SECRET,
-				userId: SANDBOX_USER_ID,
-				partyId: SANDBOX_PARTY_ID,
-			},
+			plugins: [
+				sandboxAuth({
+					secret: SANDBOX_SECRET,
+					userId: SANDBOX_USER_ID,
+					partyId: SANDBOX_PARTY_ID,
+				}),
+			],
 		});
 	}
 }
