@@ -6,17 +6,20 @@ icon: Zap
 
 ## 1. Create a client
 
-```ts
-import { createNexusClient } from '@nexus-framework/core';
+`createNexus` takes a `plugins` array. At minimum you need one auth plugin.
 
-const nexus = createNexusClient({
+```ts title="lib/nexus.ts"
+import { createNexus, sandboxAuth } from '@nexus-framework/core';
+
+export const nexus = createNexus({
   ledgerApiUrl: 'http://localhost:7575',
-  auth: {
-    type: 'sandbox',
-    secret: 'secret',      // Canton Sandbox default
-    userId: 'alice',
-    partyId: 'Alice::122059a10c...',
-  },
+  plugins: [
+    sandboxAuth({
+      secret: 'secret',            // Canton Sandbox default
+      userId: 'alice',
+      partyId: 'Alice::122059a10c...',
+    }),
+  ],
 });
 ```
 
@@ -25,77 +28,80 @@ const nexus = createNexusClient({
 ```ts
 const { contracts } = await nexus.ledger.contracts.fetchActiveContracts({
   templateId: 'my-package:Iou:Iou',
-  parties: ['Alice::122059a10c...'],
 });
 
-contracts.forEach(c => console.log(c.contractId, c.payload));
-```
-
-## 3. Create a contract
-
-```ts
-const result = await nexus.ledger.commands.createContract(
-  'my-package:Iou:Iou',
-  { owner: 'Alice::122059a10c...', amount: '100', currency: 'USD' },
-  ['Alice::122059a10c...'],
-);
-
-console.log(result.transactionId);
-```
-
-## 4. Use with React (Next.js)
-
-Wrap your app with `NexusProvider`:
-
-```tsx
-// app/layout.tsx
-import { NexusProvider } from '@nexus-framework/react';
-
-export default function Layout({ children }) {
-  return (
-    <NexusProvider config={{
-      ledgerApiUrl: 'http://localhost:7575',
-      auth: { type: 'sandbox', secret: 'secret', userId: 'alice', partyId: 'Alice::...' },
-    }}>
-      {children}
-    </NexusProvider>
-  );
+for (const c of contracts) {
+  console.log(c.contractId, c.payload);
 }
 ```
 
-Then use hooks in client components:
+## 3. Create and exercise
 
-```tsx
-'use client';
-import { useContracts, useCreateContract } from '@nexus-framework/react';
+```ts
+// Create
+const { transactionId } = await nexus.ledger.commands.createContract(
+  'my-package:Iou:Iou',
+  { owner: 'Alice::...', amount: '100', currency: 'USD' },
+  ['Alice::...'],
+);
+
+// Exercise and get the Daml return value
+const result = await nexus.ledger.commands.exerciseAndGetResult<
+  Record<string, unknown>,
+  { newContractId: string }
+>('my-package:Iou:Iou', contractId, 'Transfer', { newOwner: 'Bob::...' }, ['Alice::...']);
+
+console.log(result.result.newContractId);
+```
+
+## 4. Use with React
+
+Create a `nexus` client with the React plugins, then use it in components:
+
+```ts title="lib/nexus-client.ts"
+"use client";
+
+import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+
+export const nexus = createNexusClient({
+  baseUrl: 'http://localhost:7575',
+  plugins: [
+    sandboxAuth({ secret: 'secret', userId: 'alice', partyId: 'Alice::...' }),
+    tanstackQueryPlugin(),
+  ],
+});
+```
+
+```tsx title="components/IouList.tsx"
+"use client";
+import { nexus } from '@/lib/nexus-client';
 
 export function IouList() {
-  const { data, isLoading } = useContracts({ templateId: 'my-package:Iou:Iou' });
-  const { mutate: create, isPending } = useCreateContract();
+  const { data, isLoading } = nexus.useContracts({ templateId: 'my-package:Iou:Iou' });
+  const { mutate, isPending } = nexus.useCreateContract();
 
   if (isLoading) return <p>Loading…</p>;
 
   return (
-    <>
-      {data?.contracts.map(c => <div key={c.contractId}>{c.payload.amount}</div>)}
-      <button disabled={isPending} onClick={() =>
-        create({
-          templateId: 'my-package:Iou:Iou',
-          createArguments: { owner: 'Alice::...', amount: '50', currency: 'EUR' },
-          actAs: ['Alice::...'],
-        })
-      }>
-        Create Iou
-      </button>
-    </>
+    <ul>
+      {data?.contracts.map(c => <li key={c.contractId}>{c.payload.amount}</li>)}
+    </ul>
   );
+}
+```
+
+```tsx title="app/layout.tsx"
+import { nexus } from '@/lib/nexus-client';
+
+export default function Layout({ children }) {
+  return <nexus.NexusProvider>{children}</nexus.NexusProvider>;
 }
 ```
 
 ## Next steps
 
 <Cards>
-  <Card title="Core API" href="/docs/core/client" description="Deep dive into createNexusClient and all sub-modules" />
-  <Card title="React Hooks" href="/docs/react/hooks" description="useContracts, useCreateContract, useExerciseChoice and more" />
-  <Card title="Server Components" href="/docs/react/server" description="SSR prefetch and Server Actions for Next.js App Router" />
+  <Card title="Authentication" href="/docs/authentication/sandbox" description="sandboxAuth, jwtAuth, oidcAuth plugins" />
+  <Card title="Contract Queries" href="/docs/contracts/querying" description="Fetch, paginate, filter contracts" />
+  <Card title="React Hooks" href="/docs/react/tanstack-query" description="useContracts, useInterface, useStreamContracts and more" />
 </Cards>

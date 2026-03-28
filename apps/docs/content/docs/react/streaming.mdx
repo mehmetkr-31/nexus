@@ -1,0 +1,153 @@
+---
+title: Streaming Plugin
+description: Real-time WebSocket ACS streaming with useStreamContracts.
+icon: Radio
+---
+
+`streamingPlugin()` adds real-time WebSocket hooks to your `nexus` client. Contracts are maintained as a live in-memory set — creates are added, archives are removed — automatically.
+
+## Setup
+
+```ts title="lib/nexus-client.ts"
+"use client";
+
+import {
+  createNexusClient,
+  sandboxAuth,
+  tanstackQueryPlugin,
+  streamingPlugin,
+} from '@nexus-framework/react';
+
+export const nexus = createNexusClient({
+  baseUrl: 'http://localhost:7575',
+  plugins: [
+    sandboxAuth({ ... }),
+    tanstackQueryPlugin(),
+    streamingPlugin(),          // adds nexus.useStreamContracts
+  ],
+});
+```
+
+## useStreamContracts
+
+```tsx
+"use client";
+import { nexus } from '@/lib/nexus-client';
+
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
+}
+
+export function LiveIouList() {
+  const { contracts, isLive, error, close } = nexus.useStreamContracts<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+    parties: ['Alice::122059a10c...'],
+  });
+
+  if (error) return <p>Stream error: {error.message}</p>;
+
+  return (
+    <div>
+      {!isLive && <p>Connecting…</p>}
+      {isLive && <p>Live — {contracts.length} contracts</p>}
+      <ul>
+        {contracts.map(c => (
+          <li key={c.contractId}>
+            {c.payload.amount} {c.payload.currency}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Return value
+
+```ts
+interface StreamContractsState<T> {
+  /** Live set of active contracts (creates added, archives removed) */
+  contracts: ActiveContract<T>[];
+  /** True once the initial ACS snapshot is fully delivered */
+  isLive: boolean;
+  /** Non-null if the WebSocket encountered an error */
+  error: Error | null;
+  /** Call this to manually close the stream */
+  close: () => void;
+}
+```
+
+## Options
+
+```ts
+interface UseStreamContractsOptions<T> {
+  templateId: string;
+  /**
+   * Party IDs to stream as.
+   * Pass a stable reference (module constant or useMemo) to avoid reconnecting
+   * on every render.
+   */
+  parties?: string[];
+  /** Called when the initial ACS snapshot is complete */
+  onLive?: () => void;
+  /** Called if the WebSocket encounters an error */
+  onError?: (error: Error) => void;
+  /** Set to false to pause the stream. Default: true */
+  enabled?: boolean;
+}
+```
+
+## Lifecycle
+
+1. **Open** — WebSocket connects to `ws://…/v2/state/active-contracts/stream`
+2. **Auth** — Uses `jwt.token.<TOKEN>` subprotocol (Canton standard)
+3. **Subscribe** — Sends `{ templateIds: [...], parties: [...] }`
+4. **Snapshot** — Receives existing active contracts (`onCreate` fired for each)
+5. **Live** — `isLive = true`, `onLive` callback fires
+6. **Updates** — `onCreate`/`onArchive` fire as contracts change
+7. **Cleanup** — Connection closed when component unmounts
+
+## Conditional streaming
+
+```tsx
+const { data: session } = useSession();
+
+const { contracts, isLive } = nexus.useStreamContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+  parties: session ? [session.partyId] : undefined,
+  enabled: !!session,   // don't stream until authenticated
+});
+```
+
+## Stable parties reference
+
+Since `parties` is in the `useEffect` dependency array, passing a new array on every render causes reconnections. Pass a stable reference:
+
+```tsx
+// ✓ Stable — module-level constant
+const PARTIES = ['Alice::122059a10c...'];
+nexus.useStreamContracts({ templateId: '...', parties: PARTIES });
+
+// ✓ Stable — useMemo
+const parties = useMemo(() => [partyId], [partyId]);
+nexus.useStreamContracts({ templateId: '...', parties });
+
+// ✗ Reconnects every render
+nexus.useStreamContracts({ templateId: '...', parties: ['Alice::...'] });
+```
+
+## vs. useContracts
+
+| | `useContracts` | `useStreamContracts` |
+|--|--|--|
+| Transport | HTTP polling | WebSocket |
+| Latency | `staleTime` dependent | Real-time |
+| Cache | TanStack Query | Local React state |
+| Offline | Automatic retry | Reconnect manually |
+| Use case | Standard CRUD | Live order books, chat, dashboards |
+
+<Callout>
+  `streamingPlugin` and `tanstackQueryPlugin` are independent — you can use both simultaneously. `useStreamContracts` does **not** write to the TanStack Query cache, so `useContracts` queries are unaffected.
+</Callout>

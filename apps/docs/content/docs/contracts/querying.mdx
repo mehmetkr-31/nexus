@@ -1,0 +1,120 @@
+---
+title: Querying Contracts
+description: Fetch active contracts from the Canton ledger with type-safe payloads.
+icon: FileSearch
+---
+
+## Active Contract Set (ACS)
+
+The Canton ledger maintains an **Active Contract Set** — the current live state of all contracts. Nexus wraps the `/v2/state/active-contracts` endpoint with full TypeScript generics.
+
+## fetchActiveContracts
+
+Fetches the first page of contracts matching a template ID.
+
+```ts
+const result = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+  parties: ['Alice::122059a10c...'], // optional
+});
+
+// result: ActiveContractsResponse<IouPayload>
+console.log(result.contracts);      // ActiveContract<IouPayload>[]
+console.log(result.nextPageToken);  // string | undefined
+```
+
+### Options
+
+```ts
+interface ContractQueryOptions<T> {
+  /** "packageId:Module:Entity" format */
+  templateId: string;
+  /** Party IDs to query as. Defaults to the auth party. */
+  parties?: string[];
+  /** Payload-level filter (Canton API filter object) */
+  filter?: Record<string, unknown>;
+  /** Page size. Default: Canton API default (~100) */
+  pageSize?: number;
+}
+```
+
+### ActiveContract shape
+
+```ts
+interface ActiveContract<T = Record<string, unknown>> {
+  contractId: string;
+  templateId: TemplateId;   // { packageId, moduleName, entityName }
+  payload: T;
+  createdAt: string;        // ISO 8601
+  signatories: string[];
+  observers: string[];
+}
+```
+
+## fetchAllActiveContracts
+
+Automatically follows pagination cursors and returns all contracts. Use with care on large datasets.
+
+```ts
+const contracts = await nexus.ledger.contracts.fetchAllActiveContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+  pageSize: 200,            // batches of 200
+});
+
+console.log(contracts.length); // total count across all pages
+```
+
+## fetchContractById
+
+Fetches a single contract by its contractId. Returns `undefined` if not found.
+
+```ts
+const contract = await nexus.ledger.contracts.fetchContractById<IouPayload>(
+  'my-package:Iou:Iou',
+  'contract-abc123',
+);
+
+if (contract) {
+  console.log(contract.payload.owner);
+}
+```
+
+<Callout>
+  The Canton JSON API v2 doesn't expose a direct `GET /contract/:id` endpoint. `fetchContractById` queries all contracts and filters client-side. For large datasets, use `fetchContractByKey` with a payload predicate instead.
+</Callout>
+
+## Template ID formats
+
+Both string and object forms are accepted:
+
+```ts
+// String form (recommended for brevity)
+templateId: 'packageId:ModuleName:EntityName'
+
+// Object form
+templateId: {
+  packageId: 'abc123...',
+  moduleName: 'Iou',
+  entityName: 'Iou',
+}
+```
+
+## Type parameters
+
+Define your contract payload as a TypeScript interface and pass it as a type argument:
+
+```ts
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
+}
+
+const { contracts } = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+});
+
+// contracts[0].payload is now typed as IouPayload
+contracts[0]?.payload.owner   // string ✓
+contracts[0]?.payload.amount  // string ✓
+```

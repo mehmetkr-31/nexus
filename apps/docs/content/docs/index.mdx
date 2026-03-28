@@ -1,16 +1,16 @@
 ---
 title: Introduction
-description: Nexus Framework — a type-safe ORPC layer for Canton Ledger and modern React apps.
+description: A modular, plugin-based SDK for building Canton Ledger dApps with React and Next.js.
 icon: BookOpen
 ---
 
-**Nexus Framework** bridges the Canton JSON Ledger API v2 with the modern React ecosystem (Next.js, TanStack Query) by eliminating the "Integration Tax" — the repetitive auth, type-mapping, and cache-management work every Canton dApp re-implements.
+**Nexus Framework** is a modular SDK that bridges the Canton JSON Ledger API v2 with the modern React ecosystem. Inspired by [better-auth](https://better-auth.com), every capability is a **plugin** — auth strategies, query hooks, and real-time streaming are all opt-in and composable.
 
-## What's included
+## Packages
 
 <Cards>
-  <Card title="@nexus-framework/core" href="/docs/core/client" description="Canton HTTP client, JWT auth, Party ID resolver, Session manager" />
-  <Card title="@nexus-framework/react" href="/docs/react/provider" description="TanStack Query hooks, NexusProvider, Server Components, Server Actions" />
+  <Card title="@nexus-framework/core" href="/docs/getting-started/quick-start" description="Canton HTTP client, plugin registry, auth plugins (sandbox, JWT, OIDC), contract queries, commands." />
+  <Card title="@nexus-framework/react" href="/docs/react/setup" description="createNexusClient, tanstackQueryPlugin, streamingPlugin, SSR prefetch, Server Actions." />
 </Cards>
 
 ## Architecture
@@ -19,22 +19,23 @@ icon: BookOpen
 Your App (Next.js / React)
        │
        ▼
-@nexus-framework/react        ← useContracts, useCreateContract, withLedgerAction
+createNexusClient({ plugins: [sandboxAuth(), tanstackQueryPlugin(), streamingPlugin()] })
        │
        ▼
-@nexus-framework/core         ← CantonClient, JwtManager, CommandSubmitter
+@nexus-framework/core   ← CantonClient, ContractQuery, CommandSubmitter
        │
        ▼
-Canton JSON Ledger API v2     ← http://localhost:7575
+Canton JSON Ledger API v2
 ```
 
-## Key features
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Type-safe HTTP client** | Zod-validated Canton API responses, no `any` |
-| **Zero-config auth** | Sandbox (HMAC256), JWT passthrough, OIDC client_credentials |
-| **TanStack Query integration** | `queryOptions` factories, smart cache invalidation by template |
+| **Plugin-based auth** | `sandboxAuth()`, `jwtAuth()`, `oidcAuth()` — swap without touching your app code |
+| **Contract queries** | Typed ACS queries, pagination, `fetchContractByKey`, Daml interface views |
+| **Choice return values** | `exerciseAndGetResult<TResult>()` — typed Daml return values |
+| **TanStack Query** | `tanstackQueryPlugin()` adds `useContracts`, `useInterface`, `useExerciseAndGetResult` and more |
+| **Real-time streaming** | `streamingPlugin()` adds `useStreamContracts` — live WebSocket ACS updates |
 | **SSR prefetch** | `prefetchContracts` + `HydrationBoundary` for Next.js App Router |
-| **Server Actions** | `withLedgerAction` wraps any ledger op with `LedgerActionResult` |
-| **Session cookies** | AES-GCM encrypted HttpOnly cookies for Next.js SSR |
+| **Type-safe** | Zod-validated API responses, full TypeScript inference |

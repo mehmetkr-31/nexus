@@ -1,0 +1,91 @@
+---
+title: Fetch by Key
+description: Find a contract by its Daml contract key using a payload predicate.
+icon: Fingerprint
+---
+
+`fetchContractByKey` finds the first contract whose payload satisfies a predicate function. This is the equivalent of Daml's `fetchByKey` operation on the client side.
+
+## Usage
+
+```ts
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
+}
+
+const contract = await nexus.ledger.contracts.fetchContractByKey<IouPayload>(
+  'my-package:Iou:Iou',
+  (payload) => payload.owner === 'Alice::122059a10c...' && payload.currency === 'USD',
+);
+
+if (contract) {
+  console.log(contract.contractId);
+  console.log(contract.payload.amount);
+} else {
+  console.log('No matching contract found');
+}
+```
+
+## Signature
+
+```ts
+fetchContractByKey<T>(
+  templateId: string,
+  keyPredicate: (payload: T) => boolean,
+  parties?: string[],
+): Promise<ActiveContract<T> | undefined>
+```
+
+| Parameter | Description |
+|-----------|-------------|
+| `templateId` | Daml template ID in `"packageId:Module:Entity"` format |
+| `keyPredicate` | Function that returns `true` for the desired contract |
+| `parties` | Party IDs to query as (optional) |
+
+## How it works
+
+`fetchContractByKey` calls `fetchAllActiveContracts` internally and applies the predicate using `Array.find`. It returns the **first** match.
+
+For templates with unique keys enforced by Daml, the predicate will match exactly one contract. For non-unique cases, use `fetchAllActiveContracts` with your own filter logic.
+
+## Common patterns
+
+### Single-field key
+
+```ts
+// Find IOU by owner
+const iou = await nexus.ledger.contracts.fetchContractByKey<IouPayload>(
+  'my-package:Iou:Iou',
+  (p) => p.owner === partyId,
+);
+```
+
+### Compound key
+
+```ts
+// Find by owner + currency combination
+const iou = await nexus.ledger.contracts.fetchContractByKey<IouPayload>(
+  'my-package:Iou:Iou',
+  (p) => p.owner === partyId && p.currency === 'USD',
+);
+```
+
+### With parties
+
+```ts
+const iou = await nexus.ledger.contracts.fetchContractByKey<IouPayload>(
+  'my-package:Iou:Iou',
+  (p) => p.owner === alicePartyId,
+  [alicePartyId, bobPartyId],  // query as both parties
+);
+```
+
+## Performance note
+
+`fetchContractByKey` fetches **all** contracts for the template before applying the predicate. If your template has thousands of active contracts, consider:
+
+- Adding a payload-level `filter` in `fetchAllActiveContracts` to reduce data transfer
+- Using `fetchActiveInterfaces` if your Daml model uses interfaces with view fields as keys
+- Streaming with `useStreamContracts` and maintaining a local map by key

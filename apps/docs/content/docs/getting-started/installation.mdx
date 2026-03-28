@@ -8,18 +8,23 @@ icon: Package
 
 - **Bun** ≥ 1.1 (or Node.js ≥ 20)
 - **TypeScript** ≥ 5 with `strict: true`
-- **React** ≥ 18 (19 recommended)
-- Canton JSON Ledger API v2 endpoint (local sandbox or production)
+- **React** ≥ 18 (19 recommended) — only for `@nexus-framework/react`
+- Canton JSON Ledger API v2 endpoint
 
-## Install packages
+## Install
 
-```bash
-# Core only (no React)
-bun add @nexus-framework/core
-
-# Core + React hooks
-bun add @nexus-framework/core @nexus-framework/react @tanstack/react-query
-```
+<Tabs items={["Core only", "Core + React"]}>
+  <Tab value="Core only">
+  ```bash
+  bun add @nexus-framework/core
+  ```
+  </Tab>
+  <Tab value="Core + React">
+  ```bash
+  bun add @nexus-framework/core @nexus-framework/react @tanstack/react-query
+  ```
+  </Tab>
+</Tabs>
 
 ## Canton Sandbox (local development)
 
@@ -31,14 +36,11 @@ docker run -p 7575:7575 digitalasset/canton-sandbox:latest
 # OpenAPI schema  → http://localhost:7575/docs/openapi
 ```
 
-Sandbox accepts **HMAC256 tokens** — no RS256 key management needed in development.
+Sandbox accepts **HMAC256 tokens** via `sandboxAuth()` — no RS256 key management needed in development.
 
 ## TypeScript config
 
-Nexus Framework is written with `allowImportingTsExtensions` (Bun bundler mode).
-Make sure your `tsconfig.json` includes:
-
-```json
+```json title="tsconfig.json"
 {
   "compilerOptions": {
     "strict": true,
@@ -48,9 +50,11 @@ Make sure your `tsconfig.json` includes:
 }
 ```
 
-For Next.js projects, `transpilePackages` is required in `next.config.ts`:
+## Next.js config
 
-```ts
+`transpilePackages` is required in `next.config.ts`:
+
+```ts title="next.config.ts"
 const nextConfig = {
   transpilePackages: ['@nexus-framework/core', '@nexus-framework/react'],
 };

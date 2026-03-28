@@ -1,0 +1,94 @@
+---
+title: OIDC Auth
+description: Client credentials flow for machine-to-machine authentication with Canton.
+icon: ShieldCheck
+---
+
+`oidcAuth` implements the OAuth 2.0 **client credentials** flow. It automatically fetches and caches tokens from your identity provider's token endpoint, refreshing before expiry.
+
+Use this for server-side services, background workers, or any environment where a human is not involved in authentication.
+
+## Setup
+
+```ts title="lib/nexus.ts"
+import { createNexus, oidcAuth } from '@nexus-framework/core';
+
+export const nexus = createNexus({
+  ledgerApiUrl: 'https://ledger.example.com',
+  plugins: [
+    oidcAuth({
+      tokenEndpoint: 'https://auth.example.com/oauth/token',
+      clientId: process.env.OIDC_CLIENT_ID!,
+      clientSecret: process.env.OIDC_CLIENT_SECRET!,
+    }),
+  ],
+});
+```
+
+## Options
+
+```ts
+interface OidcAuthOptions {
+  /** OAuth 2.0 token endpoint URL */
+  tokenEndpoint: string;
+  /** OAuth client ID */
+  clientId: string;
+  /** OAuth client secret (for confidential clients) */
+  clientSecret?: string;
+  /**
+   * Additional scopes to request beyond `daml_ledger_api`.
+   * Default: ["daml_ledger_api"]
+   */
+  scopes?: string[];
+}
+```
+
+## How it works
+
+On each `getToken()` call, `oidcAuth`:
+
+1. Checks if the cached token is still valid (with a 60-second buffer)
+2. If valid, returns the cached token immediately
+3. If expired or missing, makes a `POST` to `tokenEndpoint` with:
+
+```
+grant_type=client_credentials
+&client_id=<clientId>
+&client_secret=<clientSecret>
+&scope=daml_ledger_api
+```
+
+The returned `access_token` is cached along with its `expires_in` value.
+
+## With custom scopes
+
+```ts
+oidcAuth({
+  tokenEndpoint: 'https://auth.example.com/oauth/token',
+  clientId: 'my-service',
+  clientSecret: 'secret',
+  scopes: ['daml_ledger_api', 'openid'],
+})
+```
+
+## Azure AD example
+
+```ts
+oidcAuth({
+  tokenEndpoint: `https://login.microsoftonline.com/${process.env.TENANT_ID}/oauth2/v2.0/token`,
+  clientId: process.env.AZURE_CLIENT_ID!,
+  clientSecret: process.env.AZURE_CLIENT_SECRET!,
+  scopes: ['api://canton-ledger/.default'],
+})
+```
+
+## Auth0 example
+
+```ts
+oidcAuth({
+  tokenEndpoint: `https://${process.env.AUTH0_DOMAIN}/oauth/token`,
+  clientId: process.env.AUTH0_CLIENT_ID!,
+  clientSecret: process.env.AUTH0_CLIENT_SECRET!,
+  scopes: ['daml_ledger_api'],
+})
+```

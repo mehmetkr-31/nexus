@@ -4,38 +4,49 @@ description: TanStack Query key factory and cache invalidation utilities.
 icon: Key
 ---
 
-`nexusKeys` is the hierarchical query key factory used by all Nexus hooks.
-Use it for precise cache invalidation after mutations.
+`nexusKeys` is the hierarchical query key factory used by all Nexus hooks. Use it for precise cache invalidation after mutations.
 
 ## Key hierarchy
 
 ```
-nexusKeys.all()                                  → ['nexus']
-nexusKeys.contracts()                            → ['nexus', 'contracts']
-nexusKeys.contractsByTemplate(templateId)        → ['nexus', 'contracts', templateId]
-nexusKeys.contractsQuery(templateId, filters)    → ['nexus', 'contracts', templateId, filters]
-nexusKeys.ledgerEnd()                            → ['nexus', 'ledger-end']
-nexusKeys.synchronizers()                        → ['nexus', 'synchronizers']
-nexusKeys.partyId(userId)                        → ['nexus', 'party-id', userId]
+nexusKeys.all()                                    → ['nexus']
+nexusKeys.contracts()                              → ['nexus', 'contracts']
+nexusKeys.contractsByTemplate(templateId)          → ['nexus', 'contracts', templateId]
+nexusKeys.contractsQuery(templateId, filters)      → ['nexus', 'contracts', templateId, filters]
+nexusKeys.interfaces()                             → ['nexus', 'interfaces']
+nexusKeys.interfacesByType(interfaceId)            → ['nexus', 'interfaces', interfaceId]
+nexusKeys.interfaceQuery(interfaceId, filters)     → ['nexus', 'interfaces', interfaceId, filters]
+nexusKeys.ledgerEnd()                              → ['nexus', 'ledger-end']
+nexusKeys.synchronizers()                          → ['nexus', 'synchronizers']
+nexusKeys.partyId(userId)                          → ['nexus', 'party', userId]
 ```
 
 ## queryOptions factories
 
-Use these with `useQuery`, `useSuspenseQuery`, or `queryClient.fetchQuery`:
+Use these directly with `useQuery`, `useSuspenseQuery`, or `queryClient.prefetchQuery`:
 
 ```ts
 import {
   contractQueryOptions,
+  interfaceQueryOptions,
   ledgerEndQueryOptions,
   partyIdQueryOptions,
 } from '@nexus-framework/react';
 
-// Fetch contracts
+// Contracts
 const opts = contractQueryOptions({
   client,
   templateId: 'my-package:Iou:Iou',
   parties: ['Alice::abc'],
+  fetchAll: false,   // first page only (default)
   staleTime: 10_000,
+});
+
+// Interface view
+const iOpts = interfaceQueryOptions({
+  client,
+  interfaceId: 'my-package:Asset:IAsset',
+  fetchAll: true,
 });
 
 const { data } = useQuery(opts);
@@ -43,47 +54,63 @@ const { data } = useQuery(opts);
 
 ## Cache invalidation
 
-### Invalidate a specific template
+### By template
 
 ```ts
 import { invalidateContractQueries } from '@nexus-framework/react';
+import { useQueryClient } from '@tanstack/react-query';
 
+const queryClient = useQueryClient();
 await invalidateContractQueries(queryClient, ['my-package:Iou:Iou']);
 ```
 
-### Invalidate all Nexus queries
+### By interface
+
+```ts
+await queryClient.invalidateQueries({
+  queryKey: nexusKeys.interfacesByType('my-package:Asset:IAsset'),
+});
+```
+
+### All Nexus queries
 
 ```ts
 import { invalidateAllNexusQueries } from '@nexus-framework/react';
 
+// Use sparingly — invalidates everything under ['nexus']
 await invalidateAllNexusQueries(queryClient);
-```
-
-### Manual invalidation
-
-```ts
-// Invalidate all contracts for a template
-await queryClient.invalidateQueries({
-  queryKey: nexusKeys.contractsByTemplate('my-package:Iou:Iou'),
-});
-
-// Invalidate all Nexus data
-await queryClient.invalidateQueries({
-  queryKey: nexusKeys.all(),
-});
 ```
 
 ## Automatic invalidation in hooks
 
-`useCreateContract` and `useExerciseChoice` automatically call `invalidateContractQueries`
-after a successful mutation. Configure which templates to invalidate:
+`useCreateContract`, `useExerciseChoice`, and `useExerciseAndGetResult` automatically invalidate after success. You can override which templates are invalidated:
 
 ```tsx
-// Invalidate both Iou and IouTransfer caches after exercising Transfer
-const { mutate } = useExerciseChoice({
+// Invalidate both Iou and IouTransfer caches after Transfer
+const { mutate } = nexus.useExerciseAndGetResult({
   invalidateTemplates: [
     'my-package:Iou:Iou',
     'my-package:Iou:IouTransfer',
   ],
 });
+```
+
+## SSR prefetch
+
+```ts
+// app/page.tsx (Server Component)
+import { contractQueryOptions } from '@nexus-framework/react';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
+
+await queryClient.prefetchQuery(
+  contractQueryOptions({ client, templateId: 'my-package:Iou:Iou' })
+);
+
+return (
+  <HydrationBoundary state={dehydrate(queryClient)}>
+    <IouList />   {/* useContracts() hits cache instantly */}
+  </HydrationBoundary>
+);
 ```

@@ -1,0 +1,165 @@
+---
+title: Commands
+description: Create contracts, exercise choices, and get typed Daml return values.
+icon: Send
+---
+
+Commands submit ledger transactions. Nexus provides three submission methods on `nexus.ledger.commands`.
+
+## createContract
+
+Creates a new Daml contract on the ledger.
+
+```ts
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
+}
+
+const result = await nexus.ledger.commands.createContract<IouPayload>(
+  'my-package:Iou:Iou',
+  { owner: 'Alice::122059a10c...', amount: '100', currency: 'USD' },
+  ['Alice::122059a10c...'],          // actAs
+  {
+    readAs: ['Bank::abc...'],        // optional
+    workflowId: 'my-workflow',       // optional
+  },
+);
+
+console.log(result.transactionId);
+console.log(result.offset);
+```
+
+### SubmitResult
+
+```ts
+interface SubmitResult {
+  transactionId: string;
+  commandId: string;
+  offset: string;
+  completedAt: string;
+}
+```
+
+## exerciseChoice
+
+Exercises a choice on an existing contract. Returns `SubmitResult`.
+
+```ts
+const result = await nexus.ledger.commands.exerciseChoice(
+  'my-package:Iou:Iou',
+  contractId,
+  'Archive',
+  {},                               // choiceArgument
+  ['Alice::122059a10c...'],
+);
+```
+
+For choices with arguments:
+
+```ts
+const result = await nexus.ledger.commands.exerciseChoice(
+  'my-package:Iou:Iou',
+  contractId,
+  'Transfer',
+  { newOwner: 'Bob::xyz...' },
+  ['Alice::122059a10c...'],
+);
+```
+
+## exerciseAndGetResult
+
+Exercises a choice and returns the **Daml choice return value** — typed via generics.
+
+Use this when your Daml choice returns a value (e.g. a new contractId, a calculation result, etc.).
+
+```ts
+interface TransferResult {
+  newContractId: string;
+}
+
+const result = await nexus.ledger.commands.exerciseAndGetResult<
+  { newOwner: string },   // TArg — choice argument type
+  TransferResult          // TResult — Daml return value type
+>(
+  'my-package:Iou:Iou',
+  contractId,
+  'Transfer',
+  { newOwner: 'Bob::xyz...' },
+  ['Alice::122059a10c...'],
+);
+
+console.log(result.result.newContractId); // TransferResult ✓
+console.log(result.transactionId);
+console.log(result.offset);
+```
+
+### ExerciseResult shape
+
+```ts
+interface ExerciseResult<TResult> {
+  transactionId: string;
+  commandId: string;
+  offset: number;
+  completedAt: string;
+  /** The Daml choice return value */
+  result: TResult;
+}
+```
+
+### How it works
+
+`exerciseAndGetResult` calls `POST /v2/commands/submit-and-wait-for-transaction` (instead of the simpler `/v2/commands/submit-and-wait`). This endpoint returns the full transaction tree including the `exerciseResult` from the `ExercisedEvent`.
+
+## submitBatch
+
+Submits multiple commands atomically in a single transaction:
+
+```ts
+const result = await nexus.ledger.commands.submitBatch(
+  [
+    {
+      type: 'create',
+      templateId: 'my-package:Iou:Iou',
+      createArguments: { owner: 'Alice::...', amount: '50', currency: 'EUR' },
+    },
+    {
+      type: 'exercise',
+      templateId: 'my-package:Iou:Iou',
+      contractId: existingContractId,
+      choice: 'Archive',
+      choiceArgument: {},
+    },
+  ],
+  ['Alice::122059a10c...'],
+);
+```
+
+## Error handling
+
+All command methods throw `NexusLedgerError` on failure:
+
+```ts
+import { NexusLedgerError } from '@nexus-framework/core';
+
+try {
+  await nexus.ledger.commands.exerciseChoice(
+    'my-package:Iou:Iou',
+    contractId,
+    'Archive',
+    {},
+    ['Alice::...'],
+  );
+} catch (err) {
+  if (err instanceof NexusLedgerError) {
+    console.error(err.code);       // "LEDGER_ERROR"
+    console.error(err.statusCode); // HTTP status code (e.g. 409)
+    console.error(err.details);    // Canton error details
+  }
+}
+```
+
+## React hooks
+
+Use `nexus.useExerciseChoice()` and `nexus.useExerciseAndGetResult()` for mutations in components. See [TanStack Query Plugin](/docs/react/tanstack-query).

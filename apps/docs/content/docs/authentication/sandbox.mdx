@@ -1,0 +1,85 @@
+---
+title: Sandbox Auth
+description: HMAC256-signed JWT tokens for Canton Sandbox development environments.
+icon: FlaskConical
+---
+
+`sandboxAuth` generates signed JWT tokens accepted by Canton Sandbox. It's the fastest way to get started — no key management, no OAuth setup.
+
+<Callout type="warn">
+  Use `sandboxAuth` only in development. For production, use `jwtAuth` or `oidcAuth`.
+</Callout>
+
+## Setup
+
+```ts title="lib/nexus.ts"
+import { createNexus, sandboxAuth } from '@nexus-framework/core';
+
+export const nexus = createNexus({
+  ledgerApiUrl: 'http://localhost:7575',
+  plugins: [
+    sandboxAuth({
+      secret: 'secret',               // must match Canton Sandbox --auth-secret
+      userId: 'alice',
+      partyId: 'Alice::122059a10c...', // get from sandbox admin API
+    }),
+  ],
+});
+```
+
+## Options
+
+```ts
+interface SandboxAuthOptions {
+  /** HMAC256 secret — must match Canton's `--auth-secret` flag */
+  secret: string;
+  /** Canton userId (e.g. "alice") */
+  userId: string;
+  /** Canton partyId (e.g. "Alice::122059a10c67ef1bb38e4e7...") */
+  partyId: string;
+  /** Token expiry in seconds. Default: 86400 (24h) */
+  expiresInSec?: number;
+}
+```
+
+## How it works
+
+`sandboxAuth` generates a fresh HMAC256-signed JWT on each `getToken()` call. The token payload follows the Canton Sandbox JWT format:
+
+```json
+{
+  "sub": "alice",
+  "aud": "https://daml.com/ledger-api",
+  "scope": "daml_ledger_api",
+  "actAs": ["Alice::122059a10c..."],
+  "readAs": ["Alice::122059a10c..."],
+  "exp": 1735689600
+}
+```
+
+## React setup
+
+```ts title="lib/nexus-client.ts"
+"use client";
+
+import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+
+export const nexus = createNexusClient({
+  baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? 'http://localhost:7575',
+  plugins: [
+    sandboxAuth({
+      secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? 'secret',
+      userId: process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? 'alice',
+      partyId: process.env.NEXT_PUBLIC_SANDBOX_PARTY_ID ?? 'Alice::...',
+    }),
+    tanstackQueryPlugin(),
+  ],
+});
+```
+
+## Get your partyId
+
+```bash
+# Canton Sandbox admin API
+curl http://localhost:7575/v2/admin/parties | jq '.parties[].partyId'
+```

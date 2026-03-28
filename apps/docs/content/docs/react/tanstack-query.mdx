@@ -1,0 +1,202 @@
+---
+title: TanStack Query Plugin
+description: All query and mutation hooks added by tanstackQueryPlugin().
+icon: Webhook
+---
+
+`tanstackQueryPlugin()` adds TanStack Query-powered hooks to your `nexus` client. Add it to `createNexusClient` once — then use the hooks anywhere in your component tree.
+
+```ts title="lib/nexus-client.ts"
+import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+
+export const nexus = createNexusClient({
+  baseUrl: 'http://localhost:7575',
+  plugins: [sandboxAuth({ ... }), tanstackQueryPlugin()],
+});
+```
+
+---
+
+## Query Hooks
+
+### useContracts
+
+Fetches active contracts for a Daml template. Backed by TanStack Query with `stale-while-revalidate`.
+
+```tsx
+const { data, isLoading, error } = nexus.useContracts<IouPayload>({
+  templateId: 'my-package:Iou:Iou',
+  parties: ['Alice::...'],     // optional
+  enabled: isLoggedIn,         // optional, default: true
+  staleTime: 5_000,            // optional, ms
+});
+
+// data: ActiveContractsResponse<IouPayload> | undefined
+const contracts = data?.contracts ?? [];
+```
+
+### useContractsSuspense
+
+Suspense variant — never returns `isLoading`, throws Promise for React Suspense boundaries.
+
+```tsx
+import { Suspense } from 'react';
+
+function IouListContent() {
+  const { data } = nexus.useContractsSuspense<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+  });
+  // data is always defined here
+  return <ul>{data.contracts.map(c => <li key={c.contractId}>{c.payload.amount}</li>)}</ul>;
+}
+
+export function IouList() {
+  return <Suspense fallback={<p>Loading…</p>}><IouListContent /></Suspense>;
+}
+```
+
+### useInterface
+
+Queries contracts through a Daml interface, returning decoded interface views.
+
+```tsx
+interface IAssetView {
+  assetName: string;
+  amount: number;
+}
+
+const { data } = nexus.useInterface<IAssetView>({
+  interfaceId: 'my-package:Asset:IAsset',
+  parties: ['Alice::...'],
+});
+
+data?.contracts.map(c => c.interfaceView.assetName) // IAssetView ✓
+```
+
+### useInterfaceSuspense
+
+Suspense variant of `useInterface`.
+
+### usePartyId
+
+Resolves a Canton `userId` to a `partyId`. Result is cached for 5 minutes.
+
+```tsx
+const { data: partyId } = nexus.usePartyId('alice');
+```
+
+### useLedgerEnd
+
+Returns the current ledger offset. Refreshes every 2 seconds.
+
+```tsx
+const { data: ledgerEnd } = nexus.useLedgerEnd();
+console.log(ledgerEnd?.offset);
+```
+
+### useSynchronizers
+
+Lists connected Canton synchronizers. Refreshes every 30 seconds.
+
+```tsx
+const { data: synchronizers } = nexus.useSynchronizers();
+```
+
+---
+
+## Mutation Hooks
+
+### useCreateContract
+
+Creates a new Daml contract. Automatically invalidates the query cache for the created template.
+
+```tsx
+const { mutate, isPending, error } = nexus.useCreateContract({
+  invalidateTemplates: ['my-package:Iou:Iou'], // optional, defaults to created template
+  onSuccess: async (result) => {
+    console.log('Created:', result.transactionId);
+  },
+});
+
+// In a handler:
+mutate({
+  templateId: 'my-package:Iou:Iou',
+  createArguments: { owner: 'Alice::...', amount: '100', currency: 'USD' },
+  actAs: ['Alice::...'],
+});
+```
+
+### useExerciseChoice
+
+Exercises a Daml choice. Returns `SubmitResult`.
+
+```tsx
+const { mutate: archive, isPending } = nexus.useExerciseChoice({
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+
+archive({
+  templateId: 'my-package:Iou:Iou',
+  contractId: contract.contractId,
+  choice: 'Archive',
+  choiceArgument: {},
+  actAs: ['Alice::...'],
+});
+```
+
+### useExerciseAndGetResult
+
+Exercises a choice and returns the **typed Daml return value**. Use this when your Daml choice returns something (new contractId, calculation, etc.).
+
+```tsx
+interface TransferResult {
+  newContractId: string;
+}
+
+const { mutate: transfer, data } = nexus.useExerciseAndGetResult<
+  { newOwner: string },  // TArg
+  TransferResult         // TResult
+>({
+  onSuccess: (result) => {
+    console.log('New contract:', result.result.newContractId); // TransferResult ✓
+  },
+});
+
+transfer({
+  templateId: 'my-package:Iou:Iou',
+  contractId: contract.contractId,
+  choice: 'Transfer',
+  choiceArgument: { newOwner: 'Bob::...' },
+  actAs: ['Alice::...'],
+});
+```
+
+### useLedgerMutation
+
+Generic escape hatch for custom ledger operations:
+
+```tsx
+const { mutate } = nexus.useLedgerMutation({
+  mutationFn: async (client, vars: { contractId: string }) => {
+    // submit multiple commands, do complex logic, etc.
+    return client.ledger.commands.submitBatch([...], ['Alice::...']);
+  },
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+```
+
+---
+
+## Cache invalidation
+
+All mutation hooks automatically invalidate query caches after success. To manually invalidate:
+
+```ts
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateContractQueries } from '@nexus-framework/react';
+
+const queryClient = useQueryClient();
+await invalidateContractQueries(queryClient, ['my-package:Iou:Iou']);
+```
+
+See [Query Keys](/docs/react/query-keys) for the full cache key hierarchy.

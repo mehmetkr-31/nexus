@@ -1,0 +1,182 @@
+---
+title: Custom Plugins
+description: Build your own server and client plugins to extend Nexus Framework.
+icon: Puzzle
+---
+
+Nexus Framework's plugin system is designed to be extended. You can create plugins that add auth strategies, custom hooks, or any other capability.
+
+## Plugin interfaces
+
+### NexusPlugin (server/auth)
+
+```ts
+import type { NexusPlugin } from '@nexus-framework/core';
+
+interface NexusPlugin<TContext extends Record<string, unknown> = Record<string, unknown>> {
+  /** Unique plugin identifier */
+  id: string;
+
+  /**
+   * Called once during client setup. Can return context data
+   * that is merged into the client.
+   */
+  init?: (client: CantonClient) => Promise<TContext> | TContext;
+
+  /**
+   * If present, this plugin provides authentication.
+   * Only one auth plugin should be active at a time.
+   */
+  auth?: {
+    getToken: () => Promise<string>;
+  };
+}
+```
+
+### NexusClientPlugin (React)
+
+```ts
+import type { NexusClientPlugin } from '@nexus-framework/react';
+
+interface NexusClientPlugin {
+  id: string;
+
+  /**
+   * Receives the NexusClient instance and returns an object whose
+   * keys become methods on the nexus client instance.
+   * Hooks close over `client` directly — no React Context needed.
+   */
+  getActions?: (client: NexusClient) => Record<string, unknown>;
+}
+```
+
+## Example: custom auth plugin
+
+```ts title="plugins/api-key-auth.ts"
+import type { NexusPlugin } from '@nexus-framework/core';
+
+interface ApiKeyAuthOptions {
+  apiKey: string;
+  /** Your token exchange endpoint */
+  tokenEndpoint: string;
+}
+
+export function apiKeyAuth(options: ApiKeyAuthOptions): NexusPlugin {
+  let cachedToken: string | null = null;
+  let expiresAt = 0;
+
+  return {
+    id: 'api-key-auth',
+    auth: {
+      getToken: async () => {
+        if (cachedToken && Date.now() < expiresAt - 60_000) {
+          return cachedToken;
+        }
+
+        const res = await fetch(options.tokenEndpoint, {
+          method: 'POST',
+          headers: { 'X-Api-Key': options.apiKey },
+        });
+
+        const { token, expires_in } = await res.json();
+        cachedToken = token;
+        expiresAt = Date.now() + expires_in * 1000;
+        return token;
+      },
+    },
+  };
+}
+```
+
+Usage:
+
+```ts
+import { createNexus } from '@nexus-framework/core';
+import { apiKeyAuth } from './plugins/api-key-auth';
+
+const nexus = createNexus({
+  ledgerApiUrl: 'https://ledger.example.com',
+  plugins: [apiKeyAuth({ apiKey: '...', tokenEndpoint: '...' })],
+});
+```
+
+## Example: custom React hook plugin
+
+Add domain-specific hooks that use the ledger client:
+
+```ts title="plugins/iou-plugin.ts"
+import type { NexusClientPlugin } from '@nexus-framework/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const IOU_TEMPLATE = 'my-package:Iou:Iou';
+
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
+}
+
+export interface IouPluginActions extends Record<string, unknown> {
+  useMyIous: (partyId: string) => ReturnType<typeof useQuery>;
+  useCreateIou: () => ReturnType<typeof useMutation>;
+}
+
+export function iouPlugin(): NexusClientPlugin {
+  return {
+    id: 'iou-plugin',
+
+    getActions: (client): IouPluginActions => ({
+      useMyIous: (partyId: string) =>
+        useQuery({
+          queryKey: ['my-ious', partyId],
+          queryFn: () =>
+            client.ledger.contracts.fetchAllActiveContracts<IouPayload>({
+              templateId: IOU_TEMPLATE,
+              parties: [partyId],
+            }),
+        }),
+
+      useCreateIou: () => {
+        const queryClient = useQueryClient();
+        return useMutation({
+          mutationFn: (vars: { owner: string; amount: string; currency: string }) =>
+            client.ledger.commands.createContract(
+              IOU_TEMPLATE,
+              vars,
+              [vars.owner],
+            ),
+          onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-ious'] }),
+        });
+      },
+    }),
+  };
+}
+```
+
+Usage:
+
+```ts title="lib/nexus-client.ts"
+import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+import { iouPlugin } from './plugins/iou-plugin';
+
+export const nexus = createNexusClient({
+  baseUrl: 'http://localhost:7575',
+  plugins: [
+    sandboxAuth({ ... }),
+    tanstackQueryPlugin(),
+    iouPlugin(),        // adds nexus.useMyIous and nexus.useCreateIou
+  ],
+});
+```
+
+```tsx
+const { data: ious } = nexus.useMyIous(partyId);
+const { mutate: create } = nexus.useCreateIou();
+```
+
+## Plugin guidelines
+
+- **Auth plugins** should cache tokens and handle refresh to avoid unnecessary token requests
+- **React plugins** should close over `client` directly — avoid storing it in module state shared across multiple client instances
+- **IDs must be unique** — if two plugins share an ID, the second will silently override the first's actions
+- **Composable** — plugins should not depend on other plugins being present

@@ -1,0 +1,88 @@
+---
+title: JWT Auth
+description: Use a pre-issued JWT bearer token for authentication.
+icon: Key
+---
+
+`jwtAuth` accepts a static JWT token or a refresh callback. Use this when your identity provider issues tokens externally and you want to pass them directly to Canton.
+
+## Setup
+
+```ts title="lib/nexus.ts"
+import { createNexus, jwtAuth } from '@nexus-framework/core';
+
+export const nexus = createNexus({
+  ledgerApiUrl: 'https://ledger.example.com',
+  plugins: [
+    jwtAuth({
+      token: process.env.CANTON_JWT_TOKEN!,
+    }),
+  ],
+});
+```
+
+## With token refresh
+
+Pass a `refreshToken` callback to automatically fetch a new token when the current one is expiring:
+
+```ts
+import { createNexus, jwtAuth } from '@nexus-framework/core';
+
+export const nexus = createNexus({
+  ledgerApiUrl: 'https://ledger.example.com',
+  plugins: [
+    jwtAuth({
+      token: await fetchInitialToken(),
+      refreshToken: async () => {
+        const res = await fetch('/api/auth/token');
+        const { token } = await res.json();
+        return token;
+      },
+    }),
+  ],
+});
+```
+
+## Options
+
+```ts
+interface JwtAuthOptions {
+  /** Pre-issued JWT bearer token */
+  token: string;
+  /**
+   * Optional refresh callback — invoked when the token is within
+   * 60 seconds of expiry. Should return the new token string.
+   */
+  refreshToken?: () => Promise<string>;
+}
+```
+
+## How it works
+
+`jwtAuth` stores the token in memory. On each request it checks the JWT `exp` claim:
+
+- If the token expires **within 60 seconds** and a `refreshToken` callback is provided, it calls the callback and caches the new token.
+- If no `refreshToken` is provided, the original token is used until it expires (at which point Canton will reject requests with 401).
+
+## React setup
+
+```ts title="lib/nexus-client.ts"
+"use client";
+
+import { createNexusClient, jwtAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+
+export const nexus = createNexusClient({
+  baseUrl: 'https://ledger.example.com',
+  plugins: [
+    jwtAuth({
+      token: await getTokenFromSession(),
+      refreshToken: () => refreshTokenFromServer(),
+    }),
+    tanstackQueryPlugin(),
+  ],
+});
+```
+
+<Callout>
+  For Next.js App Router, tokens are typically read from the session cookie on the server side and passed as props to client components. See [Session Management](/docs/advanced/session).
+</Callout>

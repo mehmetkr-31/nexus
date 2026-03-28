@@ -1,0 +1,152 @@
+---
+title: Session Management
+description: AES-GCM encrypted HttpOnly cookies for Next.js SSR authentication.
+icon: Lock
+---
+
+`SessionManager` provides secure session cookies for Next.js App Router. Sessions are serialized as AES-GCM encrypted JSON and stored in an HttpOnly cookie.
+
+## Generate an encryption key
+
+```bash
+# Generate a 32-byte hex key once and store it as an environment variable
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# SESSION_ENCRYPTION_KEY=a3f8c2d1e4b9...
+```
+
+## Setup
+
+```ts
+import { SessionManager } from '@nexus-framework/core';
+
+const sessionMgr = new SessionManager({
+  encryptionKey: process.env.SESSION_ENCRYPTION_KEY!, // 32-byte hex
+  cookieName: 'nexus_session',    // optional, default: 'nexus_session'
+  ttlMs: 60 * 60 * 1000,          // optional, default: 1 hour
+  secure: true,                    // optional, auto-enabled in production
+});
+```
+
+## NexusSession
+
+```ts
+interface NexusSession {
+  token: string;      // JWT bearer token
+  partyId: string;    // Canton partyId
+  userId?: string;    // Canton userId
+  expiresAt: number;  // Unix timestamp (ms)
+}
+```
+
+## API
+
+### createSessionCookie
+
+Creates the session and returns a `Set-Cookie` header value:
+
+```ts
+const cookieValue = await sessionMgr.createSessionCookie({
+  token: jwtToken,
+  userId: 'alice',
+  partyId: 'Alice::122059a10c...',
+});
+```
+
+### getSession
+
+Parses and validates a session from a `Cookie` header. Returns `null` if missing, invalid, or expired:
+
+```ts
+const session = await sessionMgr.getSession(request.headers.get('cookie'));
+
+if (!session) {
+  redirect('/login');
+}
+
+// session.partyId, session.token, session.expiresAt
+```
+
+### destroySessionCookie
+
+Returns a `Set-Cookie` header that clears the cookie:
+
+```ts
+const clearCookie = sessionMgr.destroySessionCookie();
+```
+
+## Next.js login action
+
+```ts title="app/login/actions.ts"
+'use server';
+
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { sessionMgr } from '@/lib/session';
+
+export async function loginAction(formData: FormData) {
+  const userId = formData.get('userId') as string;
+
+  // Get Canton token (sandbox or OIDC)
+  const token = await getCantonToken(userId);
+  const partyId = await resolvePartyId(userId, token);
+
+  const cookieValue = await sessionMgr.createSessionCookie({ token, userId, partyId });
+
+  (await cookies()).set('nexus_session', cookieValue, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60,
+  });
+
+  redirect('/dashboard');
+}
+
+export async function logoutAction() {
+  const clearValue = sessionMgr.destroySessionCookie();
+  (await cookies()).set('nexus_session', clearValue, { maxAge: 0 });
+  redirect('/login');
+}
+```
+
+## Reading the session in Server Components
+
+```ts title="lib/get-session.ts"
+import { cookies } from 'next/headers';
+import { sessionMgr } from '@/lib/session';
+
+export async function getSessionOrRedirect() {
+  const session = await sessionMgr.getSession((await cookies()).toString());
+  if (!session) redirect('/login');
+  return session;
+}
+```
+
+```tsx title="app/dashboard/page.tsx"
+import { getSessionOrRedirect } from '@/lib/get-session';
+import { createServerNexusClient } from '@nexus-framework/react/server';
+
+export default async function DashboardPage() {
+  const session = await getSessionOrRedirect();
+
+  const client = await createServerNexusClient({
+    request: new Request('http://localhost', {
+      headers: { cookie: `nexus_session=${session.token}` },
+    }),
+    config: { ledgerApiUrl: process.env.CANTON_API_URL! },
+  });
+
+  // use client to prefetch, fetch, etc.
+}
+```
+
+## Security
+
+| Property | Value |
+|----------|-------|
+| Encryption | AES-256-GCM |
+| IV | Random 12 bytes per session |
+| Cookie flags | HttpOnly, SameSite=Lax |
+| HTTPS | `Secure` flag auto-set in production |
+| Expiry | Checked on `getSession()` |

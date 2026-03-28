@@ -1,0 +1,181 @@
+---
+title: Interface Queries
+description: Query contracts through Daml interfaces and access decoded interface views.
+icon: Layers
+---
+
+Daml interfaces let you query contracts polymorphically — across multiple template types that implement the same interface. Nexus exposes this via `fetchActiveInterfaces` and the `useInterface` React hook.
+
+## Core API
+
+### fetchActiveInterfaces
+
+```ts
+interface IAssetView {
+  assetName: string;
+  amount: number;
+  issuer: string;
+}
+
+const result = await nexus.ledger.contracts.fetchActiveInterfaces<IAssetView>({
+  interfaceId: 'my-package:Asset:IAsset',
+  parties: ['Alice::122059a10c...'],
+});
+
+for (const contract of result.contracts) {
+  // contract.interfaceView is typed as IAssetView
+  console.log(contract.interfaceView.assetName);
+  console.log(contract.interfaceView.amount);
+
+  // underlying template info
+  console.log(contract.contractId);
+  console.log(contract.templateId); // { packageId, moduleName, entityName }
+}
+```
+
+### fetchAllActiveInterfaces
+
+Follows pagination automatically:
+
+```ts
+const contracts = await nexus.ledger.contracts.fetchAllActiveInterfaces<IAssetView>({
+  interfaceId: 'my-package:Asset:IAsset',
+  includeCreateArguments: true, // also include the raw template payload
+});
+```
+
+### Options
+
+```ts
+interface FetchActiveInterfacesOptions {
+  interfaceId: string;
+  parties?: string[];
+  pageSize?: number;
+  /**
+   * If true, the raw template payload is included alongside the interface view.
+   * Default: false.
+   */
+  includeCreateArguments?: boolean;
+}
+```
+
+## ActiveInterface shape
+
+```ts
+interface ActiveInterface<TView, TPayload> {
+  contractId: string;
+  templateId: TemplateId;       // underlying template
+  interfaceId: string;          // queried interface
+  interfaceView: TView;         // decoded interface view
+  payload: TPayload;            // raw payload (only if includeCreateArguments: true)
+  signatories: string[];
+  observers: string[];
+  createdAt: string;
+}
+```
+
+## React: useInterface
+
+The `tanstackQueryPlugin` adds `useInterface` and `useInterfaceSuspense`:
+
+```tsx
+"use client";
+import { nexus } from '@/lib/nexus-client';
+
+interface IAssetView {
+  assetName: string;
+  amount: number;
+}
+
+export function AssetList() {
+  const { data, isLoading } = nexus.useInterface<IAssetView>({
+    interfaceId: 'my-package:Asset:IAsset',
+    parties: ['Alice::122059a10c...'],
+  });
+
+  if (isLoading) return <p>Loading…</p>;
+
+  return (
+    <ul>
+      {data?.contracts.map(c => (
+        <li key={c.contractId}>
+          {c.interfaceView.assetName}: {c.interfaceView.amount}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+### useInterfaceSuspense
+
+```tsx
+import { Suspense } from 'react';
+import { nexus } from '@/lib/nexus-client';
+
+function AssetListContent() {
+  // Never returns isLoading — throws Promise for Suspense
+  const { data } = nexus.useInterfaceSuspense<IAssetView>({
+    interfaceId: 'my-package:Asset:IAsset',
+  });
+
+  return (
+    <ul>
+      {data.contracts.map(c => <li key={c.contractId}>{c.interfaceView.assetName}</li>)}
+    </ul>
+  );
+}
+
+export function AssetList() {
+  return (
+    <Suspense fallback={<p>Loading…</p>}>
+      <AssetListContent />
+    </Suspense>
+  );
+}
+```
+
+### useInterface options
+
+```ts
+interface UseInterfaceOptions {
+  interfaceId: string;
+  parties?: string[];
+  /** If true, fetches all pages. Default: false (first page only) */
+  fetchAll?: boolean;
+  includeCreateArguments?: boolean;
+  enabled?: boolean;
+  staleTime?: number;
+}
+```
+
+## SSR prefetch
+
+```ts
+// app/assets/page.tsx (Server Component)
+import { prefetchContracts } from '@nexus-framework/react';
+import { dehydrate, HydrationBoundary } from '@tanstack/react-query';
+import { nexus } from '@/lib/nexus';
+import { getQueryClient } from '@/lib/get-query-client';
+
+export default async function AssetsPage() {
+  const queryClient = getQueryClient();
+
+  await queryClient.prefetchQuery(
+    interfaceQueryOptions({
+      client: nexus,
+      interfaceId: 'my-package:Asset:IAsset',
+    })
+  );
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <AssetList />
+    </HydrationBoundary>
+  );
+}
+```
+
+<Callout>
+  Interface queries share the same TanStack Query cache key structure as template queries but under the `["nexus", "interfaces"]` namespace. Use `nexusKeys.interfacesByType(interfaceId)` to invalidate.
+</Callout>

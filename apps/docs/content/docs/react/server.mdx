@@ -4,23 +4,21 @@ description: SSR prefetch, Server Components, and Server Actions for Next.js App
 icon: Server
 ---
 
-Import server utilities from `@nexus-framework/react/server`.
-**Do NOT import this in Client Components.**
+Server-side utilities live in `@nexus-framework/react/server`. **Do not import this in Client Components.**
 
 ```ts
 import { createServerNexusClient, getLedgerData, withLedgerAction }
   from '@nexus-framework/react/server';
 ```
 
----
-
 ## createServerNexusClient
 
-Reads the session cookie from a `Request` and returns a `NexusClient` scoped to the authenticated user.
+Reads the session cookie from a `Request` and returns a `NexusClient` scoped to that user.
 
 ```ts
-// In a Server Component:
+// app/contracts/page.tsx (Server Component)
 import { cookies } from 'next/headers';
+import { createServerNexusClient } from '@nexus-framework/react/server';
 
 const client = await createServerNexusClient({
   request: new Request('http://localhost', {
@@ -28,16 +26,38 @@ const client = await createServerNexusClient({
   }),
   config: {
     ledgerApiUrl: process.env.CANTON_API_URL!,
-    sessionEncryptionKey: process.env.SESSION_ENCRYPTION_KEY,
   },
 });
 ```
 
----
+## SSR Prefetch + HydrationBoundary
+
+Pre-populate the TanStack Query cache on the server — client components render instantly with no loading state:
+
+```tsx
+// app/contracts/page.tsx
+import { contractQueryOptions } from '@nexus-framework/react';
+import { dehydrate, HydrationBoundary, QueryClient } from '@tanstack/react-query';
+
+export default async function ContractsPage() {
+  const client = await createServerNexusClient({ ... });
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery(
+    contractQueryOptions({ client, templateId: 'my-package:Iou:Iou' })
+  );
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <IouList />  {/* nexus.useContracts() hits cache — zero loading state */}
+    </HydrationBoundary>
+  );
+}
+```
 
 ## getLedgerData
 
-Shorthand for fetching contracts in a Server Component.
+Shorthand for fetching contracts in a Server Component:
 
 ```ts
 const { contracts } = await getLedgerData({
@@ -47,77 +67,17 @@ const { contracts } = await getLedgerData({
 });
 ```
 
----
-
-## SSR Prefetch + HydrationBoundary
-
-Pre-populate TanStack Query cache on the server, then hydrate on the client with no waterfall:
-
-```tsx
-// app/contracts/page.tsx (Server Component)
-import { HydrationBoundary, QueryClient, dehydrate } from '@tanstack/react-query';
-import { prefetchContracts } from '@nexus-framework/react';
-
-export default async function ContractsPage() {
-  const client = await createServerNexusClient({ ... });
-
-  const queryClient = new QueryClient();
-  await prefetchContracts(queryClient, {
-    client,
-    templateId: 'my-package:Iou:Iou',
-  });
-
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <IouList /> {/* useContracts() hits cache — no loading state */}
-    </HydrationBoundary>
-  );
-}
-```
-
----
-
 ## withLedgerAction
 
-Wraps any ledger operation in a Server Action, catching `NexusLedgerError` and generic errors into a typed `LedgerActionResult`.
-
-```ts
-import { withLedgerAction } from '@nexus-framework/react/server';
-
-const result = await withLedgerAction(client, (c) =>
-  c.ledger.commands.createContract(
-    'my-package:Iou:Iou',
-    { owner: 'Alice::abc', amount: '100', currency: 'USD' },
-    ['Alice::abc'],
-  ),
-);
-
-if (result.success) {
-  console.log(result.data.transactionId);
-} else {
-  console.error(result.error, result.code);
-  // result.code: 'LEDGER_ERROR' | 'UNKNOWN_ERROR'
-}
-```
-
-### LedgerActionResult
-
-```ts
-type LedgerActionResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string; code: 'LEDGER_ERROR' | 'UNKNOWN_ERROR' };
-```
-
-### Full Server Action example
+Wraps any ledger operation in a Server Action with typed error handling:
 
 ```ts
 // app/contracts/actions.ts
 'use server';
 
-import { withLedgerAction } from '@nexus-framework/react/server';
+import { withLedgerAction, createServerNexusClient } from '@nexus-framework/react/server';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { createServerNexusClient } from '@nexus-framework/react/server';
 
 export async function createIouAction(formData: FormData) {
   const client = await createServerNexusClient({
@@ -141,5 +101,38 @@ export async function createIouAction(formData: FormData) {
 
   if (result.success) revalidatePath('/contracts');
   return result;
+}
+```
+
+### LedgerActionResult
+
+```ts
+type LedgerActionResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string; code: 'LEDGER_ERROR' | 'UNKNOWN_ERROR' };
+```
+
+### Client Component consuming the action
+
+```tsx
+"use client";
+
+import { useTransition } from 'react';
+import { createIouAction } from '../actions';
+
+export function CreateIouForm() {
+  const [isPending, startTransition] = useTransition();
+
+  return (
+    <form action={(fd) => startTransition(async () => {
+      const result = await createIouAction(fd);
+      if (!result.success) alert(result.error);
+    })}>
+      <input name="owner" required />
+      <input name="amount" type="number" required />
+      <input name="currency" maxLength={3} required />
+      <button type="submit" disabled={isPending}>Create</button>
+    </form>
+  );
 }
 ```
