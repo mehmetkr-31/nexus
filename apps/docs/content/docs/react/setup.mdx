@@ -1,12 +1,121 @@
 ---
 title: Setup
-description: Create a Nexus client with plugins and wrap your app with NexusProvider.
+description: Create a Nexus client with plugins and add it to your React app.
 icon: Settings
 ---
 
-## createNexusClient
+`createNexusClient` is the React client factory. It takes a `plugins` array and returns a client instance with bound hooks — no React Context lookup for the client itself (like [better-auth](https://better-auth.com/docs/installation)).
 
-`createNexusClient` is the React factory. It combines auth plugins and React plugins, and returns a client instance whose hooks are bound to that client — no React Context lookup needed.
+## Installation
+
+<Steps>
+  <Step>
+
+  ### Install packages
+
+  ```bash
+  bun add @nexus-framework/core @nexus-framework/react @tanstack/react-query
+  ```
+
+  </Step>
+  <Step>
+
+  ### Create the client module
+
+  Create a module-level `nexus` instance. Mark it `"use client"` — it must run in the browser.
+
+  The client is created once at module load time. All hooks (`nexus.useContracts`, etc.) close over this single instance.
+
+  ```ts title="lib/nexus-client.ts"
+  "use client";
+
+  import {
+    createNexusClient,
+    sandboxAuth,
+    tanstackQueryPlugin,
+  } from '@nexus-framework/react';
+
+  export const nexus = createNexusClient({
+    baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? 'http://localhost:7575',
+    plugins: [
+      // 1. Auth plugin — provides getToken()
+      sandboxAuth({
+        secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? 'secret',
+        userId: process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? 'alice',
+        partyId:
+          process.env.NEXT_PUBLIC_SANDBOX_PARTY_ID ??
+          'Alice::122059a10c67ef1bb38e4e7ff3fd9c827e2e6cbbfd68bb5cd8fa4c0c56fecdf0734b',
+      }),
+
+      // 2. React hooks — useContracts, useCreateContract, etc.
+      tanstackQueryPlugin(),
+    ],
+  });
+  ```
+
+  For production, swap `sandboxAuth` for [`jwtAuth`](/docs/authentication/jwt) or [`oidcAuth`](/docs/authentication/oidc).
+
+  </Step>
+  <Step>
+
+  ### Wrap your app with NexusProvider
+
+  `nexus.NexusProvider` wraps `QueryClientProvider` from TanStack Query. It must be an ancestor of any component using `nexus.*` hooks.
+
+  ```tsx title="app/layout.tsx"
+  import { nexus } from '@/lib/nexus-client';
+  import type { ReactNode } from 'react';
+
+  export default function RootLayout({ children }: { children: ReactNode }) {
+    return (
+      <html lang="en">
+        <body>
+          <nexus.NexusProvider>
+            {children}
+          </nexus.NexusProvider>
+        </body>
+      </html>
+    );
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### Use hooks in components
+
+  Import `nexus` and call hooks directly. No `useContext`, no import from a shared context file — just the `nexus` instance:
+
+  ```tsx title="components/IouList.tsx"
+  "use client";
+
+  import { nexus } from '@/lib/nexus-client'; // [!code highlight]
+
+  export function IouList() {
+    const { data, isLoading } = nexus.useContracts({ // [!code highlight]
+      templateId: 'my-package:Iou:Iou',
+    });
+
+    if (isLoading) return <p>Loading…</p>;
+
+    return (
+      <ul>
+        {data?.contracts.map((c) => (
+          <li key={c.contractId}>{c.payload.amount}</li>
+        ))}
+      </ul>
+    );
+  }
+  ```
+
+  </Step>
+</Steps>
+
+---
+
+## With streaming plugin
+
+Add `streamingPlugin()` to get `nexus.useStreamContracts` for real-time WebSocket updates:
 
 ```ts title="lib/nexus-client.ts"
 "use client";
@@ -15,33 +124,52 @@ import {
   createNexusClient,
   sandboxAuth,
   tanstackQueryPlugin,
+  streamingPlugin, // [!code highlight]
 } from '@nexus-framework/react';
 
 export const nexus = createNexusClient({
-  baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? 'http://localhost:7575',
+  baseUrl: 'http://localhost:7575',
   plugins: [
-    sandboxAuth({
-      secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? 'secret',
-      userId: process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? 'alice',
-      partyId: process.env.NEXT_PUBLIC_SANDBOX_PARTY_ID ?? 'Alice::...',
-    }),
+    sandboxAuth({ ... }),
     tanstackQueryPlugin(),
+    streamingPlugin(), // [!code highlight]
   ],
 });
+
+// Now available:
+// nexus.useContracts(...)
+// nexus.useStreamContracts(...)
 ```
 
-## NexusProvider
+---
 
-`NexusProvider` is the `QueryClientProvider` wrapper returned by `createNexusClient`. It must wrap any component tree that uses `nexus.*` hooks.
+## Custom QueryClient
+
+Pass a `QueryClient` instance to `NexusProvider` to control cache settings globally:
 
 ```tsx title="app/layout.tsx"
+import { QueryClient } from '@tanstack/react-query';
 import { nexus } from '@/lib/nexus-client';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Create once — don't create inside a component
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 15_000,       // 15 seconds before background refetch
+      retry: 1,                 // retry once on failure
+      refetchOnWindowFocus: true,
+    },
+    mutations: {
+      retry: 0,                 // don't retry failed mutations
+    },
+  },
+});
+
+export default function RootLayout({ children }) {
   return (
     <html>
       <body>
-        <nexus.NexusProvider>
+        <nexus.NexusProvider queryClient={queryClient}>
           {children}
         </nexus.NexusProvider>
       </body>
@@ -50,86 +178,58 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-<Callout>
-  `NexusProvider` only provides a `QueryClientProvider` — no React Context for the Nexus client itself. Hooks close over the client instance directly (like [better-auth](https://better-auth.com)), so there's no risk of stale client references.
-</Callout>
+---
 
-## Custom QueryClient
+## Multiple parties / instances
 
-Pass your own `QueryClient` to control cache settings:
+You can create multiple `nexus` instances for different parties or ledger endpoints. Each instance has its own isolated TanStack Query cache:
 
-```tsx
-import { QueryClient } from '@tanstack/react-query';
+```ts title="lib/clients.ts"
+"use client";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 10_000,
-      retry: 1,
-    },
-  },
-});
+import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
 
-<nexus.NexusProvider queryClient={queryClient}>
-  {children}
-</nexus.NexusProvider>
-```
-
-## Plugin order
-
-Auth plugins should come before React plugins:
-
-```ts
-plugins: [
-  // 1. Auth — provides getToken()
-  sandboxAuth({ ... }),         // or jwtAuth / oidcAuth
-
-  // 2. Query hooks
-  tanstackQueryPlugin(),
-
-  // 3. Streaming (optional)
-  streamingPlugin(),
-]
-```
-
-## Multiple instances
-
-You can create multiple clients for different ledger endpoints or parties:
-
-```ts
-// lib/alice-client.ts
 export const aliceNexus = createNexusClient({
   baseUrl: 'http://localhost:7575',
-  plugins: [sandboxAuth({ userId: 'alice', ... }), tanstackQueryPlugin()],
+  plugins: [
+    sandboxAuth({ userId: 'alice', secret: 'secret', partyId: 'Alice::...' }),
+    tanstackQueryPlugin(),
+  ],
 });
 
-// lib/bob-client.ts
 export const bobNexus = createNexusClient({
   baseUrl: 'http://localhost:7575',
-  plugins: [sandboxAuth({ userId: 'bob', ... }), tanstackQueryPlugin()],
+  plugins: [
+    sandboxAuth({ userId: 'bob', secret: 'secret', partyId: 'Bob::...' }),
+    tanstackQueryPlugin(),
+  ],
 });
 ```
 
-## NexusClientInstance type
+Each instance wraps its own `QueryClientProvider`, so you need both `NexusProvider`s in the tree if you use both:
 
-The type returned by `createNexusClient` merges all plugin actions:
-
-```ts
-type NexusClientInstance = {
-  NexusProvider: React.ComponentType<{ children: React.ReactNode; queryClient?: QueryClient }>;
-  // from tanstackQueryPlugin():
-  useContracts: ...;
-  useContractsSuspense: ...;
-  useInterface: ...;
-  useInterfaceSuspense: ...;
-  useExerciseChoice: ...;
-  useExerciseAndGetResult: ...;
-  useCreateContract: ...;
-  useLedgerMutation: ...;
-  useLedgerEnd: ...;
-  useSynchronizers: ...;
-  usePartyId: ...;
-  // from streamingPlugin():
-  useStreamContracts: ...;
-}
+```tsx
+<aliceNexus.NexusProvider>
+  <bobNexus.NexusProvider>
+    {children}
+  </bobNexus.NexusProvider>
+</aliceNexus.NexusProvider>
 ```
+
+---
+
+## NexusProvider props
+
+<TypeTable
+  type={{
+    children: {
+      description: "React children.",
+      type: "ReactNode",
+      required: true,
+    },
+    queryClient: {
+      description: "Custom TanStack `QueryClient`. If not provided, a default one is created with sensible defaults.",
+      type: "QueryClient",
+    },
+  }}
+/>

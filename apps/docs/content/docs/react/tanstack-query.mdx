@@ -1,19 +1,72 @@
 ---
 title: TanStack Query Plugin
-description: All query and mutation hooks added by tanstackQueryPlugin().
+description: Query hooks, mutation hooks, and cache management for Canton contracts in React.
 icon: Webhook
 ---
 
-`tanstackQueryPlugin()` adds TanStack Query-powered hooks to your `nexus` client. Add it to `createNexusClient` once — then use the hooks anywhere in your component tree.
+`tanstackQueryPlugin()` is a React plugin that adds TanStack Query-powered hooks directly to your `nexus` client instance. Hooks close over the client via closures — no `useContext` calls, no React Context for the Nexus client itself.
 
-```ts title="lib/nexus-client.ts"
-import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from '@nexus-framework/react';
+## Installation
 
-export const nexus = createNexusClient({
-  baseUrl: 'http://localhost:7575',
-  plugins: [sandboxAuth({ ... }), tanstackQueryPlugin()],
-});
-```
+<Steps>
+  <Step>
+
+  ### Install TanStack Query
+
+  ```bash
+  bun add @tanstack/react-query
+  ```
+
+  </Step>
+  <Step>
+
+  ### Add the plugin to createNexusClient
+
+  ```ts title="lib/nexus-client.ts"
+  "use client";
+
+  import {
+    createNexusClient,
+    sandboxAuth,
+    tanstackQueryPlugin, // [!code highlight]
+  } from '@nexus-framework/react';
+
+  export const nexus = createNexusClient({
+    baseUrl: 'http://localhost:7575',
+    plugins: [
+      sandboxAuth({ secret: 'secret', userId: 'alice', partyId: 'Alice::...' }),
+      tanstackQueryPlugin(), // [!code highlight]
+    ],
+  });
+  ```
+
+  After adding the plugin, `nexus.useContracts`, `nexus.useCreateContract`, etc. are all available.
+
+  </Step>
+  <Step>
+
+  ### Wrap your app with NexusProvider
+
+  `nexus.NexusProvider` provides the `QueryClientProvider` needed by TanStack Query.
+
+  ```tsx title="app/layout.tsx"
+  import { nexus } from '@/lib/nexus-client';
+
+  export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+      <html>
+        <body>
+          <nexus.NexusProvider>
+            {children}
+          </nexus.NexusProvider>
+        </body>
+      </html>
+    );
+  }
+  ```
+
+  </Step>
+</Steps>
 
 ---
 
@@ -21,85 +74,217 @@ export const nexus = createNexusClient({
 
 ### useContracts
 
-Fetches active contracts for a Daml template. Backed by TanStack Query with `stale-while-revalidate`.
+Fetches active contracts for a Daml template. Data is cached in TanStack Query and revalidated in the background.
 
-```tsx
-const { data, isLoading, error } = nexus.useContracts<IouPayload>({
-  templateId: 'my-package:Iou:Iou',
-  parties: ['Alice::...'],     // optional
-  enabled: isLoggedIn,         // optional, default: true
-  staleTime: 5_000,            // optional, ms
-});
+```tsx title="components/IouList.tsx"
+"use client";
 
-// data: ActiveContractsResponse<IouPayload> | undefined
-const contracts = data?.contracts ?? [];
-```
+import { nexus } from '@/lib/nexus-client';
 
-### useContractsSuspense
-
-Suspense variant — never returns `isLoading`, throws Promise for React Suspense boundaries.
-
-```tsx
-import { Suspense } from 'react';
-
-function IouListContent() {
-  const { data } = nexus.useContractsSuspense<IouPayload>({
-    templateId: 'my-package:Iou:Iou',
-  });
-  // data is always defined here
-  return <ul>{data.contracts.map(c => <li key={c.contractId}>{c.payload.amount}</li>)}</ul>;
+interface IouPayload {
+  owner: string;
+  amount: string;
+  currency: string;
 }
 
 export function IouList() {
-  return <Suspense fallback={<p>Loading…</p>}><IouListContent /></Suspense>;
+  const { data, isLoading, error, isFetching } = nexus.useContracts<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+    parties: ['Alice::122059a10c...'], // optional — defaults to auth party
+    enabled: true,                     // optional — set false to pause
+    staleTime: 10_000,                 // optional — ms before refetch
+  });
+
+  if (isLoading) return <p>Loading…</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <div>
+      {isFetching && <span>Refreshing…</span>}
+      <ul>
+        {data?.contracts.map((c) => (
+          <li key={c.contractId}>
+            {c.payload.amount} {c.payload.currency}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 ```
+
+<TypeTable
+  type={{
+    templateId: {
+      description: "Daml template ID in `\"packageId:Module:Entity\"` format.",
+      type: "string",
+      required: true,
+    },
+    parties: {
+      description: "Party IDs to query as. Defaults to the party from the auth plugin.",
+      type: "string[]",
+    },
+    filter: {
+      description: "Canton payload-level filter object.",
+      type: "Record<string, unknown>",
+    },
+    fetchAll: {
+      description: "If true, fetches all pages automatically. Default: false (first page only).",
+      type: "boolean",
+      default: "false",
+    },
+    enabled: {
+      description: "If false, the query does not run. Useful for conditional fetching.",
+      type: "boolean",
+      default: "true",
+    },
+    staleTime: {
+      description: "Milliseconds before the cached data is considered stale and a background refetch is triggered.",
+      type: "number",
+    },
+  }}
+/>
+
+---
+
+### useContractsSuspense
+
+Suspense variant of `useContracts`. Never returns `isLoading` — instead throws a Promise for React's `<Suspense>` boundary. The `data` field is always defined inside the component.
+
+```tsx title="components/IouListSuspense.tsx"
+"use client";
+
+import { Suspense } from 'react';
+import { nexus } from '@/lib/nexus-client';
+
+function IouListContent() {
+  // data is always defined — Suspense handles the loading state
+  const { data } = nexus.useContractsSuspense<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+  });
+
+  return (
+    <ul>
+      {data.contracts.map((c) => (
+        <li key={c.contractId}>
+          {c.payload.amount} {c.payload.currency}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function IouList() {
+  return (
+    <Suspense fallback={<p>Loading contracts…</p>}>
+      <IouListContent />
+    </Suspense>
+  );
+}
+```
+
+---
 
 ### useInterface
 
-Queries contracts through a Daml interface, returning decoded interface views.
+Queries contracts through a Daml **interface**, returning the decoded `interfaceView` alongside the underlying contract. This lets you query across multiple template types that implement the same interface.
 
-```tsx
+```tsx title="components/AssetList.tsx"
+"use client";
+
+import { nexus } from '@/lib/nexus-client';
+
 interface IAssetView {
   assetName: string;
-  amount: number;
+  totalValue: number;
+  issuer: string;
 }
 
-const { data } = nexus.useInterface<IAssetView>({
-  interfaceId: 'my-package:Asset:IAsset',
-  parties: ['Alice::...'],
-});
+export function AssetList() {
+  const { data, isLoading } = nexus.useInterface<IAssetView>({
+    interfaceId: 'my-package:Asset:IAsset',
+    parties: ['Alice::122059a10c...'],
+  });
 
-data?.contracts.map(c => c.interfaceView.assetName) // IAssetView ✓
+  if (isLoading) return <p>Loading assets…</p>;
+
+  return (
+    <ul>
+      {data?.contracts.map((c) => (
+        <li key={c.contractId}>
+          <strong>{c.interfaceView.assetName}</strong>
+          {' '}— {c.interfaceView.totalValue} (from {c.templateId.entityName})
+        </li>
+      ))}
+    </ul>
+  );
+}
 ```
 
-### useInterfaceSuspense
+<TypeTable
+  type={{
+    interfaceId: {
+      description: "Daml interface ID in `\"packageId:Module:InterfaceName\"` format.",
+      type: "string",
+      required: true,
+    },
+    parties: {
+      description: "Party IDs to query as.",
+      type: "string[]",
+    },
+    fetchAll: {
+      description: "If true, follows pagination automatically.",
+      type: "boolean",
+      default: "false",
+    },
+    includeCreateArguments: {
+      description: "If true, the raw template payload is included in the response alongside the interface view.",
+      type: "boolean",
+      default: "false",
+    },
+    enabled: {
+      description: "Set to false to pause the query.",
+      type: "boolean",
+      default: "true",
+    },
+    staleTime: {
+      description: "Milliseconds before refetch.",
+      type: "number",
+    },
+  }}
+/>
 
-Suspense variant of `useInterface`.
+---
 
 ### usePartyId
 
-Resolves a Canton `userId` to a `partyId`. Result is cached for 5 minutes.
+Resolves a Canton `userId` to a `partyId`. Result is cached for 5 minutes (matching the `PartyIdResolver` TTL).
 
 ```tsx
-const { data: partyId } = nexus.usePartyId('alice');
+const { data: partyId, isLoading } = nexus.usePartyId('alice');
+// data: "Alice::122059a10c..." | undefined
 ```
+
+---
 
 ### useLedgerEnd
 
-Returns the current ledger offset. Refreshes every 2 seconds.
+Returns the current ledger offset. Useful for polling-based sync or as a dependency for time-based logic. Refreshes every 2 seconds.
 
 ```tsx
 const { data: ledgerEnd } = nexus.useLedgerEnd();
-console.log(ledgerEnd?.offset);
+console.log('Current offset:', ledgerEnd?.offset);
 ```
+
+---
 
 ### useSynchronizers
 
-Lists connected Canton synchronizers. Refreshes every 30 seconds.
+Lists the Canton synchronizers connected to this participant. Refreshes every 30 seconds.
 
 ```tsx
 const { data: synchronizers } = nexus.useSynchronizers();
+// data: SynchronizerInfo[] | undefined
 ```
 
 ---
@@ -108,95 +293,202 @@ const { data: synchronizers } = nexus.useSynchronizers();
 
 ### useCreateContract
 
-Creates a new Daml contract. Automatically invalidates the query cache for the created template.
+Creates a Daml contract and automatically invalidates the TanStack Query cache for the affected template, triggering a background refetch.
 
-```tsx
-const { mutate, isPending, error } = nexus.useCreateContract({
-  invalidateTemplates: ['my-package:Iou:Iou'], // optional, defaults to created template
-  onSuccess: async (result) => {
-    console.log('Created:', result.transactionId);
-  },
-});
+```tsx title="components/CreateIouForm.tsx"
+"use client";
 
-// In a handler:
-mutate({
-  templateId: 'my-package:Iou:Iou',
-  createArguments: { owner: 'Alice::...', amount: '100', currency: 'USD' },
-  actAs: ['Alice::...'],
-});
+import { useState, useTransition } from 'react';
+import { nexus } from '@/lib/nexus-client';
+
+const PARTY_ID = 'Alice::122059a10c...';
+
+export function CreateIouForm() {
+  const [amount, setAmount] = useState('100');
+
+  const { mutate: createIou, isPending, error, isSuccess } = nexus.useCreateContract({
+    // Automatically invalidate cache for these templates after success
+    invalidateTemplates: ['my-package:Iou:Iou'],
+    onSuccess: async (result) => {
+      console.log('Created in tx:', result.transactionId);
+    },
+    onError: (err) => {
+      console.error('Create failed:', err.message);
+    },
+  });
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        createIou({
+          templateId: 'my-package:Iou:Iou',
+          createArguments: { owner: PARTY_ID, amount, currency: 'USD' },
+          actAs: [PARTY_ID],
+        });
+      }}
+    >
+      <input
+        type="number"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        min="1"
+        required
+      />
+      {error && <p style={{ color: 'red' }}>{error.message}</p>}
+      {isSuccess && <p style={{ color: 'green' }}>Contract created!</p>}
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Creating…' : 'Create'}
+      </button>
+    </form>
+  );
+}
 ```
+
+<TypeTable
+  type={{
+    invalidateTemplates: {
+      description: "Template IDs whose cache to invalidate after success. Defaults to the created template.",
+      type: "string[]",
+    },
+    onSuccess: {
+      description: "Callback after successful submission. Receives the `SubmitResult`.",
+      type: "(result: SubmitResult) => Promise<void> | void",
+    },
+    onError: {
+      description: "Callback on error. Receives the `Error` instance.",
+      type: "(error: Error) => void",
+    },
+  }}
+/>
+
+---
 
 ### useExerciseChoice
 
-Exercises a Daml choice. Returns `SubmitResult`.
+Exercises a Daml choice and invalidates the cache. Returns `SubmitResult` (no Daml return value). Use `useExerciseAndGetResult` if you need the typed return value.
 
 ```tsx
 const { mutate: archive, isPending } = nexus.useExerciseChoice({
   invalidateTemplates: ['my-package:Iou:Iou'],
 });
 
+// In a button handler:
 archive({
   templateId: 'my-package:Iou:Iou',
   contractId: contract.contractId,
   choice: 'Archive',
   choiceArgument: {},
-  actAs: ['Alice::...'],
-});
-```
-
-### useExerciseAndGetResult
-
-Exercises a choice and returns the **typed Daml return value**. Use this when your Daml choice returns something (new contractId, calculation, etc.).
-
-```tsx
-interface TransferResult {
-  newContractId: string;
-}
-
-const { mutate: transfer, data } = nexus.useExerciseAndGetResult<
-  { newOwner: string },  // TArg
-  TransferResult         // TResult
->({
-  onSuccess: (result) => {
-    console.log('New contract:', result.result.newContractId); // TransferResult ✓
-  },
-});
-
-transfer({
-  templateId: 'my-package:Iou:Iou',
-  contractId: contract.contractId,
-  choice: 'Transfer',
-  choiceArgument: { newOwner: 'Bob::...' },
-  actAs: ['Alice::...'],
-});
-```
-
-### useLedgerMutation
-
-Generic escape hatch for custom ledger operations:
-
-```tsx
-const { mutate } = nexus.useLedgerMutation({
-  mutationFn: async (client, vars: { contractId: string }) => {
-    // submit multiple commands, do complex logic, etc.
-    return client.ledger.commands.submitBatch([...], ['Alice::...']);
-  },
-  invalidateTemplates: ['my-package:Iou:Iou'],
+  actAs: ['Alice::122059a10c...'],
 });
 ```
 
 ---
 
-## Cache invalidation
+### useExerciseAndGetResult
 
-All mutation hooks automatically invalidate query caches after success. To manually invalidate:
+Exercises a choice and returns the **typed Daml return value** from the exercised event. This is the TanStack Query wrapper around `exerciseAndGetResult` — it also invalidates the cache after success.
 
-```ts
-import { useQueryClient } from '@tanstack/react-query';
-import { invalidateContractQueries } from '@nexus-framework/react';
+```tsx title="components/TransferButton.tsx"
+"use client";
 
-const queryClient = useQueryClient();
-await invalidateContractQueries(queryClient, ['my-package:Iou:Iou']);
+import { nexus } from '@/lib/nexus-client';
+
+interface TransferArgs {
+  newOwner: string;
+}
+
+interface TransferResult {
+  newContractId: string;
+}
+
+export function TransferButton({ contractId }: { contractId: string }) {
+  const { mutate: transfer, isPending, data } = nexus.useExerciseAndGetResult<
+    TransferArgs,
+    TransferResult
+  >({
+    invalidateTemplates: ['my-package:Iou:Iou'],
+    onSuccess: (result) => {
+      console.log('Transferred. New contract:', result.result.newContractId);
+    },
+  });
+
+  return (
+    <div>
+      <button
+        disabled={isPending}
+        onClick={() =>
+          transfer({
+            templateId: 'my-package:Iou:Iou',
+            contractId,
+            choice: 'Transfer',
+            choiceArgument: { newOwner: 'Bob::xyz...' },
+            actAs: ['Alice::122059a10c...'],
+          })
+        }
+      >
+        {isPending ? 'Transferring…' : 'Transfer to Bob'}
+      </button>
+      {data && (
+        <p>New contract: {data.result.newContractId.slice(0, 16)}…</p>
+      )}
+    </div>
+  );
+}
 ```
 
-See [Query Keys](/docs/react/query-keys) for the full cache key hierarchy.
+---
+
+### useLedgerMutation
+
+Generic escape hatch for custom ledger operations. Receives the full `NexusClient` instance so you can compose multiple commands, fetch data mid-mutation, or do anything the core API supports.
+
+```tsx
+const { mutate } = nexus.useLedgerMutation({
+  mutationFn: async (client, vars: { contractId: string; splitAmount: string }) => {
+    // 1. Exercise Split — get the two new contractIds
+    const result = await client.ledger.commands.exerciseAndGetResult<
+      { splitAmount: string },
+      { contractId1: string; contractId2: string }
+    >(
+      'my-package:Iou:Iou',
+      vars.contractId,
+      'Split',
+      { splitAmount: vars.splitAmount },
+      ['Alice::122059a10c...'],
+    );
+
+    // 2. Return whatever you want — accessible via mutation.data
+    return result.result;
+  },
+  invalidateTemplates: ['my-package:Iou:Iou'],
+  onSuccess: (result) => {
+    console.log('Split into:', result.contractId1, result.contractId2);
+  },
+});
+
+// Trigger:
+mutate({ contractId: 'abc123', splitAmount: '40' });
+```
+
+<TypeTable
+  type={{
+    mutationFn: {
+      description: "Async function that receives `(client: NexusClient, variables: TVariables)` and returns a `SubmitResult`.",
+      type: "(client: NexusClient, vars: TVariables) => Promise<SubmitResult>",
+      required: true,
+    },
+    invalidateTemplates: {
+      description: "Template IDs to invalidate after success.",
+      type: "string[]",
+    },
+    onSuccess: {
+      description: "Called after the mutation succeeds. Receives the `SubmitResult`.",
+      type: "(result: SubmitResult) => Promise<void> | void",
+    },
+    onError: {
+      description: "Called on failure.",
+      type: "(error: Error) => void",
+    },
+  }}
+/>

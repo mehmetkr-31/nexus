@@ -1,37 +1,81 @@
 ---
 title: Streaming Plugin
-description: Real-time WebSocket ACS streaming with useStreamContracts.
+description: Real-time WebSocket contract updates with useStreamContracts.
 icon: Radio
 ---
 
-`streamingPlugin()` adds real-time WebSocket hooks to your `nexus` client. Contracts are maintained as a live in-memory set — creates are added, archives are removed — automatically.
+`streamingPlugin()` adds a WebSocket-based streaming hook to your `nexus` client. Unlike `useContracts` (which polls via HTTP), `useStreamContracts` maintains a live connection and applies creates and archives in real time — zero latency, no polling interval.
 
-## Setup
+This is ideal for order books, trading dashboards, collaborative apps, or any UI where users need to see contract state change as it happens.
 
-```ts title="lib/nexus-client.ts"
+## Installation
+
+<Steps>
+  <Step>
+
+  ### Install the plugin
+
+  `streamingPlugin` ships in `@nexus-framework/react` — no extra package needed:
+
+  ```ts title="lib/nexus-client.ts"
+  "use client";
+
+  import {
+    createNexusClient,
+    sandboxAuth,
+    tanstackQueryPlugin,
+    streamingPlugin, // [!code highlight]
+  } from '@nexus-framework/react';
+
+  export const nexus = createNexusClient({
+    baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? 'http://localhost:7575',
+    plugins: [
+      sandboxAuth({
+        secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? 'secret',
+        userId: process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? 'alice',
+        partyId: process.env.NEXT_PUBLIC_SANDBOX_PARTY_ID ?? 'Alice::...',
+      }),
+      tanstackQueryPlugin(),   // keep — needed for useContracts etc.
+      streamingPlugin(),       // adds nexus.useStreamContracts // [!code highlight]
+    ],
+  });
+  ```
+
+  </Step>
+  <Step>
+
+  ### Add NexusProvider
+
+  `nexus.NexusProvider` must wrap any component tree that uses `nexus.*` hooks:
+
+  ```tsx title="app/layout.tsx"
+  import { nexus } from '@/lib/nexus-client';
+
+  export default function RootLayout({ children }: { children: React.ReactNode }) {
+    return (
+      <html>
+        <body>
+          <nexus.NexusProvider>
+            {children}
+          </nexus.NexusProvider>
+        </body>
+      </html>
+    );
+  }
+  ```
+
+  </Step>
+</Steps>
+
+---
+
+## Usage
+
+### Basic usage
+
+```tsx title="components/LiveIouList.tsx"
 "use client";
 
-import {
-  createNexusClient,
-  sandboxAuth,
-  tanstackQueryPlugin,
-  streamingPlugin,
-} from '@nexus-framework/react';
-
-export const nexus = createNexusClient({
-  baseUrl: 'http://localhost:7575',
-  plugins: [
-    sandboxAuth({ ... }),
-    tanstackQueryPlugin(),
-    streamingPlugin(),          // adds nexus.useStreamContracts
-  ],
-});
-```
-
-## useStreamContracts
-
-```tsx
-"use client";
 import { nexus } from '@/lib/nexus-client';
 
 interface IouPayload {
@@ -40,22 +84,36 @@ interface IouPayload {
   currency: string;
 }
 
+// Pass a stable reference — module constant avoids reconnects on every render
+const PARTIES = ['Alice::122059a10c...'];
+
 export function LiveIouList() {
-  const { contracts, isLive, error, close } = nexus.useStreamContracts<IouPayload>({
+  const { contracts, isLive, error } = nexus.useStreamContracts<IouPayload>({
     templateId: 'my-package:Iou:Iou',
-    parties: ['Alice::122059a10c...'],
+    parties: PARTIES,
   });
 
-  if (error) return <p>Stream error: {error.message}</p>;
+  if (error) {
+    return <p style={{ color: 'red' }}>Stream error: {error.message}</p>;
+  }
 
   return (
     <div>
-      {!isLive && <p>Connecting…</p>}
-      {isLive && <p>Live — {contracts.length} contracts</p>}
+      <h2>
+        Live Iou contracts ({contracts.length})
+        {isLive ? (
+          <span style={{ color: '#16a34a', fontSize: 12, marginLeft: 8 }}>● Live</span>
+        ) : (
+          <span style={{ color: '#9ca3af', fontSize: 12, marginLeft: 8 }}>Connecting…</span>
+        )}
+      </h2>
       <ul>
-        {contracts.map(c => (
+        {contracts.map((c) => (
           <li key={c.contractId}>
             {c.payload.amount} {c.payload.currency}
+            <code style={{ marginLeft: 8, fontSize: 11 }}>
+              {c.contractId.slice(0, 12)}…
+            </code>
           </li>
         ))}
       </ul>
@@ -64,90 +122,223 @@ export function LiveIouList() {
 }
 ```
 
+---
+
+### Conditional streaming
+
+Don't open a WebSocket until the user is authenticated:
+
+```tsx
+"use client";
+
+import { useSession } from '@/hooks/use-session';
+import { nexus } from '@/lib/nexus-client';
+import { useMemo } from 'react';
+
+export function AuthenticatedLiveList() {
+  const { session, isLoading: sessionLoading } = useSession();
+
+  // Memoize parties so the array reference stays stable
+  const parties = useMemo(
+    () => (session ? [session.partyId] : undefined),
+    [session?.partyId],
+  );
+
+  const { contracts, isLive, error } = nexus.useStreamContracts({
+    templateId: 'my-package:Iou:Iou',
+    parties,
+    enabled: !!session && !sessionLoading, // don't stream until authenticated
+    onLive: () => console.log('ACS snapshot complete, now live'),
+    onError: (err) => console.error('Stream error:', err),
+  });
+
+  if (!session) return <p>Please log in</p>;
+
+  return (
+    <div>
+      {!isLive && <p>Loading initial contract set…</p>}
+      {isLive && <p>{contracts.length} active contracts</p>}
+    </div>
+  );
+}
+```
+
+---
+
+### Manually closing the stream
+
+The stream closes automatically when the component unmounts. You can also close it manually — for example, after the user navigates away or pauses streaming:
+
+```tsx
+"use client";
+
+import { useState } from 'react';
+import { nexus } from '@/lib/nexus-client';
+
+export function PausableStream() {
+  const [paused, setPaused] = useState(false);
+
+  const { contracts, isLive, close } = nexus.useStreamContracts({
+    templateId: 'my-package:Iou:Iou',
+    enabled: !paused,
+  });
+
+  return (
+    <div>
+      <button onClick={() => {
+        if (!paused) close(); // close the WebSocket
+        setPaused((p) => !p);
+      }}>
+        {paused ? 'Resume' : 'Pause'}
+      </button>
+      <p>{isLive ? `${contracts.length} contracts (live)` : 'Stream closed'}</p>
+    </div>
+  );
+}
+```
+
+---
+
 ## Return value
 
 ```ts
 interface StreamContractsState<T> {
-  /** Live set of active contracts (creates added, archives removed) */
+  /**
+   * The current live set of active contracts.
+   * Creates are added, archives are removed in real time.
+   */
   contracts: ActiveContract<T>[];
-  /** True once the initial ACS snapshot is fully delivered */
+
+  /**
+   * True once the initial ACS snapshot has been fully delivered.
+   * Before this point, `contracts` is partially populated.
+   */
   isLive: boolean;
-  /** Non-null if the WebSocket encountered an error */
+
+  /**
+   * Set if the WebSocket encountered an error.
+   * The stream is NOT automatically retried — re-mount or toggle `enabled`.
+   */
   error: Error | null;
-  /** Call this to manually close the stream */
+
+  /**
+   * Call to manually close the WebSocket.
+   * The stream closes automatically on component unmount.
+   */
   close: () => void;
 }
 ```
 
+---
+
 ## Options
 
-```ts
-interface UseStreamContractsOptions<T> {
-  templateId: string;
-  /**
-   * Party IDs to stream as.
-   * Pass a stable reference (module constant or useMemo) to avoid reconnecting
-   * on every render.
-   */
-  parties?: string[];
-  /** Called when the initial ACS snapshot is complete */
-  onLive?: () => void;
-  /** Called if the WebSocket encounters an error */
-  onError?: (error: Error) => void;
-  /** Set to false to pause the stream. Default: true */
-  enabled?: boolean;
-}
-```
+<TypeTable
+  type={{
+    templateId: {
+      description: "Daml template ID in `\"packageId:Module:Entity\"` format.",
+      type: "string",
+      required: true,
+    },
+    parties: {
+      description: "Party IDs to stream as. Pass a stable reference (module constant or `useMemo`) to avoid reconnecting on every render.",
+      type: "string[]",
+    },
+    enabled: {
+      description: "If false, the WebSocket is not opened. Toggle to pause/resume.",
+      type: "boolean",
+      default: "true",
+    },
+    onLive: {
+      description: "Called once when the initial ACS snapshot is complete and the stream is fully live.",
+      type: "() => void",
+    },
+    onError: {
+      description: "Called if the WebSocket encounters an error.",
+      type: "(error: Error) => void",
+    },
+  }}
+/>
 
-## Lifecycle
+---
 
-1. **Open** — WebSocket connects to `ws://…/v2/state/active-contracts/stream`
-2. **Auth** — Uses `jwt.token.<TOKEN>` subprotocol (Canton standard)
-3. **Subscribe** — Sends `{ templateIds: [...], parties: [...] }`
-4. **Snapshot** — Receives existing active contracts (`onCreate` fired for each)
-5. **Live** — `isLive = true`, `onLive` callback fires
-6. **Updates** — `onCreate`/`onArchive` fire as contracts change
-7. **Cleanup** — Connection closed when component unmounts
+## How it works
 
-## Conditional streaming
+<Steps>
+  <Step>
 
-```tsx
-const { data: session } = useSession();
+  ### Connection & auth
 
-const { contracts, isLive } = nexus.useStreamContracts<IouPayload>({
-  templateId: 'my-package:Iou:Iou',
-  parties: session ? [session.partyId] : undefined,
-  enabled: !!session,   // don't stream until authenticated
-});
-```
+  When `enabled` is `true`, the hook calls `CantonClient.streamActiveContracts()`, which opens a WebSocket to:
 
-## Stable parties reference
+  ```
+  ws://your-ledger/v2/state/active-contracts/stream
+  ```
 
-Since `parties` is in the `useEffect` dependency array, passing a new array on every render causes reconnections. Pass a stable reference:
+  Authentication uses the **`jwt.token.<TOKEN>`** WebSocket subprotocol — the Canton standard for token-based WebSocket auth:
 
-```tsx
-// ✓ Stable — module-level constant
-const PARTIES = ['Alice::122059a10c...'];
-nexus.useStreamContracts({ templateId: '...', parties: PARTIES });
+  ```
+  Sec-WebSocket-Protocol: jwt.token.eyJ..., daml.ws.auth
+  ```
 
-// ✓ Stable — useMemo
-const parties = useMemo(() => [partyId], [partyId]);
-nexus.useStreamContracts({ templateId: '...', parties });
+  </Step>
+  <Step>
 
-// ✗ Reconnects every render
-nexus.useStreamContracts({ templateId: '...', parties: ['Alice::...'] });
-```
+  ### Subscription message
 
-## vs. useContracts
+  After the connection opens, a subscription message is sent:
+
+  ```json
+  {
+    "templateIds": ["my-package:Iou:Iou"],
+    "parties": ["Alice::122059a10c..."]
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### ACS snapshot
+
+  Canton immediately streams all currently active contracts matching the subscription as `created` messages. The hook accumulates these into the `contracts` array. Duplicates (by `contractId`) are skipped.
+
+  </Step>
+  <Step>
+
+  ### Live marker
+
+  Once the snapshot is complete, Canton sends a live marker. The hook sets `isLive = true` and calls `onLive()`.
+
+  </Step>
+  <Step>
+
+  ### Real-time updates
+
+  From this point, `created` events add to `contracts` and `archived` events remove from it. The component re-renders on every change.
+
+  </Step>
+  <Step>
+
+  ### Cleanup
+
+  On component unmount (or when `enabled` becomes `false`), the WebSocket is closed via `ws.close()`.
+
+  </Step>
+</Steps>
+
+---
+
+## useStreamContracts vs useContracts
 
 | | `useContracts` | `useStreamContracts` |
 |--|--|--|
-| Transport | HTTP polling | WebSocket |
-| Latency | `staleTime` dependent | Real-time |
+| Transport | HTTP (REST) | WebSocket |
+| Latency | `staleTime` + refetch | Sub-second |
 | Cache | TanStack Query | Local React state |
-| Offline | Automatic retry | Reconnect manually |
-| Use case | Standard CRUD | Live order books, chat, dashboards |
+| Offline recovery | Automatic retry | Manual — re-mount or toggle `enabled` |
+| SSR prefetch | ✓ (via `prefetchContracts`) | ✗ (browser-only) |
+| Ideal for | Standard CRUD, admin pages | Live dashboards, order books, collaboration |
 
 <Callout>
-  `streamingPlugin` and `tanstackQueryPlugin` are independent — you can use both simultaneously. `useStreamContracts` does **not** write to the TanStack Query cache, so `useContracts` queries are unaffected.
+  `streamingPlugin` and `tanstackQueryPlugin` are fully independent. `useStreamContracts` does **not** read from or write to the TanStack Query cache. You can use both hooks for the same template — one for prefetched server data, the other for live updates.
 </Callout>

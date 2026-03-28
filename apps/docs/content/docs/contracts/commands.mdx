@@ -1,144 +1,291 @@
 ---
 title: Commands
-description: Create contracts, exercise choices, and get typed Daml return values.
+description: Create contracts, exercise choices, and get typed Daml return values from the ledger.
 icon: Send
 ---
 
-Commands submit ledger transactions. Nexus provides three submission methods on `nexus.ledger.commands`.
+Commands are ledger-write operations. Every command submits a transaction to Canton and waits for it to commit. Nexus provides three submission methods on `nexus.ledger.commands`, plus TanStack Query mutation hooks in the React package.
 
 ## createContract
 
-Creates a new Daml contract on the ledger.
+Creates a new Daml contract on the ledger by submitting a `CreateCommand`.
 
-```ts
-interface IouPayload {
-  owner: string;
-  amount: string;
-  currency: string;
-}
+<Steps>
+  <Step>
 
-const result = await nexus.ledger.commands.createContract<IouPayload>(
-  'my-package:Iou:Iou',
-  { owner: 'Alice::122059a10c...', amount: '100', currency: 'USD' },
-  ['Alice::122059a10c...'],          // actAs
-  {
-    readAs: ['Bank::abc...'],        // optional
-    workflowId: 'my-workflow',       // optional
-  },
-);
+  ### Import the client
 
-console.log(result.transactionId);
-console.log(result.offset);
-```
+  ```ts
+  import { nexus } from './lib/nexus';
+  // or the React client for use in hooks
+  import { nexus } from '@/lib/nexus-client';
+  ```
+
+  </Step>
+  <Step>
+
+  ### Define your payload type
+
+  Typing the payload gives you autocomplete on `createArguments` and on the returned contract if you query it later:
+
+  ```ts
+  interface IouPayload {
+    owner: string;    // Canton partyId
+    amount: string;   // Daml Numeric stored as string
+    currency: string; // 3-letter ISO code
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### Submit the create command
+
+  ```ts
+  import { nexus } from './lib/nexus';
+
+  const result = await nexus.ledger.commands.createContract<IouPayload>(
+    'my-package:Iou:Iou',          // templateId
+    {
+      owner: 'Alice::122059a10c...',
+      amount: '100',
+      currency: 'USD',
+    },
+    ['Alice::122059a10c...'],       // actAs — who authorizes the command
+    {
+      readAs: ['Bank::abc...'],     // optional — extra read parties
+      workflowId: 'create-iou',    // optional — for audit trails
+    },
+  );
+
+  console.log('Transaction ID:', result.transactionId);
+  console.log('Ledger offset:', result.offset);
+  console.log('Committed at:', result.completedAt);
+  ```
+
+  </Step>
+</Steps>
 
 ### SubmitResult
 
 ```ts
 interface SubmitResult {
-  transactionId: string;
-  commandId: string;
-  offset: string;
-  completedAt: string;
+  transactionId: string; // globally unique transaction ID
+  commandId: string;     // echoed back from your request (or generated)
+  offset: string;        // ledger offset after this transaction
+  completedAt: string;   // ISO 8601 timestamp
 }
 ```
+
+---
 
 ## exerciseChoice
 
-Exercises a choice on an existing contract. Returns `SubmitResult`.
+Exercises a Daml choice on an existing active contract. Requires the `contractId` from a prior query.
 
-```ts
-const result = await nexus.ledger.commands.exerciseChoice(
-  'my-package:Iou:Iou',
-  contractId,
-  'Archive',
-  {},                               // choiceArgument
-  ['Alice::122059a10c...'],
-);
-```
+<Steps>
+  <Step>
 
-For choices with arguments:
+  ### Archive a contract (consuming choice)
 
-```ts
-const result = await nexus.ledger.commands.exerciseChoice(
-  'my-package:Iou:Iou',
-  contractId,
-  'Transfer',
-  { newOwner: 'Bob::xyz...' },
-  ['Alice::122059a10c...'],
-);
-```
+  Most choices that delete a contract are consuming. `Archive` is always available on every Daml template:
+
+  ```ts
+  import { nexus } from './lib/nexus';
+
+  const result = await nexus.ledger.commands.exerciseChoice(
+    'my-package:Iou:Iou', // templateId
+    contractId,           // from fetchActiveContracts or useContracts
+    'Archive',            // choice name
+    {},                   // Archive takes no arguments
+    ['Alice::122059a10c...'],
+  );
+
+  console.log('Archived in tx:', result.transactionId);
+  ```
+
+  </Step>
+  <Step>
+
+  ### Exercise a non-consuming choice with arguments
+
+  Non-consuming choices keep the contract active. Pass a typed argument:
+
+  ```ts
+  interface SplitArgs {
+    splitAmount: string;
+  }
+
+  const result = await nexus.ledger.commands.exerciseChoice<SplitArgs>(
+    'my-package:Iou:Iou',
+    contractId,
+    'Split',
+    { splitAmount: '40' },
+    ['Alice::122059a10c...'],
+    { workflowId: 'split-iou' },
+  );
+  ```
+
+  </Step>
+</Steps>
+
+---
 
 ## exerciseAndGetResult
 
-Exercises a choice and returns the **Daml choice return value** — typed via generics.
+Exercises a choice and returns the **typed Daml choice return value**. This is the key difference from `exerciseChoice` — instead of just confirming the transaction committed, you get the actual Daml value the choice computed and returned.
 
-Use this when your Daml choice returns a value (e.g. a new contractId, a calculation result, etc.).
+This uses the `POST /v2/commands/submit-and-wait-for-transaction` endpoint, which returns the full transaction tree including the `exerciseResult` field of the exercised event.
 
-```ts
-interface TransferResult {
-  newContractId: string;
-}
+<Steps>
+  <Step>
 
-const result = await nexus.ledger.commands.exerciseAndGetResult<
-  { newOwner: string },   // TArg — choice argument type
-  TransferResult          // TResult — Daml return value type
->(
-  'my-package:Iou:Iou',
-  contractId,
-  'Transfer',
-  { newOwner: 'Bob::xyz...' },
-  ['Alice::122059a10c...'],
-);
+  ### Define the argument and return value types
 
-console.log(result.result.newContractId); // TransferResult ✓
-console.log(result.transactionId);
-console.log(result.offset);
-```
+  ```ts
+  // The choice argument (what you pass in)
+  interface TransferArgs {
+    newOwner: string;
+  }
 
-### ExerciseResult shape
+  // The Daml return value (what the choice returns)
+  // Matches whatever the Daml choice returns — check your .daml source
+  interface TransferResult {
+    newContractId: string;
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### Call exerciseAndGetResult
+
+  Pass both type parameters: `TArg` then `TResult`:
+
+  ```ts
+  import { nexus } from './lib/nexus';
+
+  const result = await nexus.ledger.commands.exerciseAndGetResult<
+    TransferArgs,    // TArg — choice argument type
+    TransferResult   // TResult — Daml return value type
+  >(
+    'my-package:Iou:Iou',
+    contractId,
+    'Transfer',
+    { newOwner: 'Bob::xyz...' },
+    ['Alice::122059a10c...'],
+  );
+
+  // result.result is typed as TransferResult ✓
+  console.log('New contract ID:', result.result.newContractId);
+  console.log('Transaction:', result.transactionId);
+  console.log('Offset:', result.offset);
+  ```
+
+  </Step>
+  <Step>
+
+  ### Use the result to fetch the new contract
+
+  A common pattern is to immediately fetch the new contract created by the choice:
+
+  ```ts
+  const exerciseResult = await nexus.ledger.commands.exerciseAndGetResult<
+    TransferArgs,
+    TransferResult
+  >('my-package:Iou:Iou', contractId, 'Transfer', { newOwner: 'Bob::xyz...' }, actAs);
+
+  // Fetch the new contract that Transfer created
+  const newContract = await nexus.ledger.contracts.fetchContractById<IouPayload>(
+    'my-package:Iou:Iou',
+    exerciseResult.result.newContractId,
+  );
+
+  console.log('New owner:', newContract?.payload.owner);
+  ```
+
+  </Step>
+</Steps>
+
+### ExerciseResult
 
 ```ts
 interface ExerciseResult<TResult> {
   transactionId: string;
   commandId: string;
-  offset: number;
+  offset: number;         // note: number here, not string
   completedAt: string;
-  /** The Daml choice return value */
+  /** The Daml choice return value — typed via TResult generic */
   result: TResult;
 }
 ```
 
-### How it works
-
-`exerciseAndGetResult` calls `POST /v2/commands/submit-and-wait-for-transaction` (instead of the simpler `/v2/commands/submit-and-wait`). This endpoint returns the full transaction tree including the `exerciseResult` from the `ExercisedEvent`.
+---
 
 ## submitBatch
 
-Submits multiple commands atomically in a single transaction:
+Submits multiple commands in a single atomic transaction. Either all succeed or all fail together. Use this for complex workflows like splitting and re-creating contracts.
 
 ```ts
+import { nexus } from './lib/nexus';
+
 const result = await nexus.ledger.commands.submitBatch(
   [
-    {
-      type: 'create',
-      templateId: 'my-package:Iou:Iou',
-      createArguments: { owner: 'Alice::...', amount: '50', currency: 'EUR' },
-    },
+    // Command 1: archive the old Iou
     {
       type: 'exercise',
       templateId: 'my-package:Iou:Iou',
-      contractId: existingContractId,
+      contractId: oldContractId,
       choice: 'Archive',
       choiceArgument: {},
     },
+    // Command 2: create a new Iou for Bob
+    {
+      type: 'create',
+      templateId: 'my-package:Iou:Iou',
+      createArguments: { owner: 'Bob::xyz...', amount: '100', currency: 'USD' },
+    },
   ],
-  ['Alice::122059a10c...'],
+  ['Alice::122059a10c...'], // actAs
+  { workflowId: 'manual-transfer' },
 );
 ```
 
+---
+
+## React mutation hooks
+
+The `tanstackQueryPlugin()` provides mutation hooks that wrap the core commands with automatic cache invalidation:
+
+```tsx
+"use client";
+import { nexus } from '@/lib/nexus-client';
+
+// Create
+const { mutate: create, isPending } = nexus.useCreateContract({
+  invalidateTemplates: ['my-package:Iou:Iou'],
+  onSuccess: (result) => console.log('Created:', result.transactionId),
+});
+
+// Exercise
+const { mutate: archive } = nexus.useExerciseChoice({
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+
+// Exercise + typed return value
+const { mutate: transfer } = nexus.useExerciseAndGetResult<TransferArgs, TransferResult>({
+  onSuccess: (result) => console.log('New ID:', result.result.newContractId),
+  invalidateTemplates: ['my-package:Iou:Iou'],
+});
+```
+
+See [TanStack Query Plugin](/docs/react/tanstack-query) for the full hook API.
+
+---
+
 ## Error handling
 
-All command methods throw `NexusLedgerError` on failure:
+All command methods throw `NexusLedgerError` on failure. The `statusCode` maps to the Canton HTTP status and `details` contains the raw Canton error body:
 
 ```ts
 import { NexusLedgerError } from '@nexus-framework/core';
@@ -149,17 +296,23 @@ try {
     contractId,
     'Archive',
     {},
-    ['Alice::...'],
+    ['Alice::122059a10c...'],
   );
 } catch (err) {
   if (err instanceof NexusLedgerError) {
-    console.error(err.code);       // "LEDGER_ERROR"
-    console.error(err.statusCode); // HTTP status code (e.g. 409)
-    console.error(err.details);    // Canton error details
+    switch (err.statusCode) {
+      case 404:
+        console.error('Contract not found — may already be archived');
+        break;
+      case 409:
+        console.error('Contract conflict — concurrent modification');
+        break;
+      case 401:
+        console.error('Auth error — token may be expired');
+        break;
+      default:
+        console.error(`Canton error ${err.statusCode}:`, err.details);
+    }
   }
 }
 ```
-
-## React hooks
-
-Use `nexus.useExerciseChoice()` and `nexus.useExerciseAndGetResult()` for mutations in components. See [TanStack Query Plugin](/docs/react/tanstack-query).

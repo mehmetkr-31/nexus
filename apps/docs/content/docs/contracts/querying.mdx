@@ -1,120 +1,215 @@
 ---
 title: Querying Contracts
-description: Fetch active contracts from the Canton ledger with type-safe payloads.
+description: Fetch active contracts from the Canton ledger with type-safe, paginated queries.
 icon: FileSearch
 ---
 
-## Active Contract Set (ACS)
-
-The Canton ledger maintains an **Active Contract Set** — the current live state of all contracts. Nexus wraps the `/v2/state/active-contracts` endpoint with full TypeScript generics.
+The Canton ledger maintains an **Active Contract Set (ACS)** — the complete live state of all contracts. Every time a contract is created it enters the ACS; when archived it leaves. Nexus wraps the `POST /v2/state/active-contracts` endpoint with Zod validation and full TypeScript generics.
 
 ## fetchActiveContracts
 
-Fetches the first page of contracts matching a template ID.
+Fetches the first page of active contracts for a template.
 
-```ts
-const result = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
-  templateId: 'my-package:Iou:Iou',
-  parties: ['Alice::122059a10c...'], // optional
-});
+<Steps>
+  <Step>
 
-// result: ActiveContractsResponse<IouPayload>
-console.log(result.contracts);      // ActiveContract<IouPayload>[]
-console.log(result.nextPageToken);  // string | undefined
-```
+  ### Define your payload type
 
-### Options
+  Creating an interface for your contract payload gives you type-safe access to `payload` fields everywhere — in queries, mutations, and React components:
 
-```ts
-interface ContractQueryOptions<T> {
-  /** "packageId:Module:Entity" format */
-  templateId: string;
-  /** Party IDs to query as. Defaults to the auth party. */
-  parties?: string[];
-  /** Payload-level filter (Canton API filter object) */
-  filter?: Record<string, unknown>;
-  /** Page size. Default: Canton API default (~100) */
-  pageSize?: number;
-}
-```
+  ```ts
+  interface IouPayload {
+    owner: string;    // Canton partyId of the Iou holder
+    amount: string;   // Daml stores Numeric as string on the JSON API
+    currency: string; // 3-letter ISO code
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### Fetch the first page
+
+  ```ts
+  import { nexus } from './lib/nexus';
+
+  const result = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+  });
+
+  // result: ActiveContractsResponse<IouPayload>
+  console.log('Contracts:', result.contracts.length);
+  console.log('Next page token:', result.nextPageToken); // undefined = last page
+
+  for (const contract of result.contracts) {
+    // contract.payload is fully typed as IouPayload
+    console.log(`${contract.contractId}: ${contract.payload.amount} ${contract.payload.currency}`);
+    console.log(`  Owner: ${contract.payload.owner}`);
+    console.log(`  Created: ${contract.createdAt}`);
+    console.log(`  Signatories: ${contract.signatories.join(', ')}`);
+  }
+  ```
+
+  </Step>
+  <Step>
+
+  ### Filter by party
+
+  Pass `parties` to scope the query to contracts visible to specific parties. Without it, Canton uses the parties from your auth token:
+
+  ```ts
+  const result = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+    parties: ['Alice::122059a10c...', 'Bank::abc...'],
+    pageSize: 50,   // optional — limit results per page
+  });
+  ```
+
+  </Step>
+</Steps>
 
 ### ActiveContract shape
 
 ```ts
 interface ActiveContract<T = Record<string, unknown>> {
-  contractId: string;
+  contractId: string;       // globally unique, changes on each create
   templateId: TemplateId;   // { packageId, moduleName, entityName }
-  payload: T;
-  createdAt: string;        // ISO 8601
-  signatories: string[];
-  observers: string[];
+  payload: T;               // typed as your interface
+  createdAt: string;        // ISO 8601 timestamp
+  signatories: string[];    // parties that signed the create
+  observers: string[];      // parties that can see but not sign
+}
+
+interface TemplateId {
+  packageId: string;
+  moduleName: string;
+  entityName: string;
 }
 ```
 
+### Options
+
+<TypeTable
+  type={{
+    templateId: {
+      description: "Daml template ID. Use `\"packageId:Module:Entity\"` string format.",
+      type: "string",
+      required: true,
+    },
+    parties: {
+      description: "Party IDs to query as. Defaults to the auth plugin's configured party.",
+      type: "string[]",
+    },
+    filter: {
+      description: "Canton payload-level filter object passed directly to the API.",
+      type: "Record<string, unknown>",
+    },
+    pageSize: {
+      description: "Maximum contracts per page.",
+      type: "number",
+    },
+  }}
+/>
+
+---
+
 ## fetchAllActiveContracts
 
-Automatically follows pagination cursors and returns all contracts. Use with care on large datasets.
+Automatically follows `nextPageToken` cursors and returns all contracts as a flat array. Useful for reports, bulk operations, or when you know the dataset is small.
+
+<Callout type="warn">
+  This can be slow and memory-intensive on large ledger states. For production, prefer `fetchActiveContracts` with pagination or use `useStreamContracts` for live data.
+</Callout>
 
 ```ts
+import { nexus } from './lib/nexus';
+
 const contracts = await nexus.ledger.contracts.fetchAllActiveContracts<IouPayload>({
   templateId: 'my-package:Iou:Iou',
-  pageSize: 200,            // batches of 200
+  pageSize: 200,   // fetch 200 at a time internally
 });
 
-console.log(contracts.length); // total count across all pages
+console.log(`Total: ${contracts.length} contracts`);
+
+// Aggregate — sum all amounts
+const total = contracts.reduce((sum, c) => sum + Number(c.payload.amount), 0);
+console.log(`Total value: ${total} USD`);
 ```
+
+---
 
 ## fetchContractById
 
-Fetches a single contract by its contractId. Returns `undefined` if not found.
+Finds a single contract by its `contractId`. Returns `undefined` if not found or already archived.
 
 ```ts
+import { nexus } from './lib/nexus';
+
 const contract = await nexus.ledger.contracts.fetchContractById<IouPayload>(
   'my-package:Iou:Iou',
-  'contract-abc123',
+  'contract-abc123...',
 );
 
-if (contract) {
-  console.log(contract.payload.owner);
+if (!contract) {
+  console.log('Contract not found — may be archived');
+} else {
+  console.log('Found:', contract.payload.amount, contract.payload.currency);
 }
 ```
 
 <Callout>
-  The Canton JSON API v2 doesn't expose a direct `GET /contract/:id` endpoint. `fetchContractById` queries all contracts and filters client-side. For large datasets, use `fetchContractByKey` with a payload predicate instead.
+  Canton JSON API v2 doesn't have a direct `GET /contract/:id` endpoint. `fetchContractById` queries up to 1000 contracts and filters client-side. If you need to look up contracts by business key, use [`fetchContractByKey`](/docs/contracts/by-key) instead.
 </Callout>
 
-## Template ID formats
+---
 
-Both string and object forms are accepted:
+## React: useContracts
 
-```ts
-// String form (recommended for brevity)
-templateId: 'packageId:ModuleName:EntityName'
+In React components, use `nexus.useContracts` (from `tanstackQueryPlugin`). It wraps `fetchActiveContracts` with TanStack Query caching, background refetch, and automatic cache invalidation after mutations.
 
-// Object form
-templateId: {
-  packageId: 'abc123...',
-  moduleName: 'Iou',
-  entityName: 'Iou',
-}
-```
+```tsx title="components/IouList.tsx"
+"use client";
 
-## Type parameters
+import { nexus } from '@/lib/nexus-client';
 
-Define your contract payload as a TypeScript interface and pass it as a type argument:
-
-```ts
 interface IouPayload {
   owner: string;
   amount: string;
   currency: string;
 }
 
-const { contracts } = await nexus.ledger.contracts.fetchActiveContracts<IouPayload>({
-  templateId: 'my-package:Iou:Iou',
-});
+export function IouList() {
+  const { data, isLoading, error } = nexus.useContracts<IouPayload>({
+    templateId: 'my-package:Iou:Iou',
+    staleTime: 5_000,  // refetch after 5 seconds
+  });
 
-// contracts[0].payload is now typed as IouPayload
-contracts[0]?.payload.owner   // string ✓
-contracts[0]?.payload.amount  // string ✓
+  if (isLoading) return <p>Loading…</p>;
+  if (error) return <p>Error: {error.message}</p>;
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Contract ID</th>
+          <th>Owner</th>
+          <th>Amount</th>
+          <th>Currency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data?.contracts.map((c) => (
+          <tr key={c.contractId}>
+            <td><code>{c.contractId.slice(0, 12)}…</code></td>
+            <td><code>{c.payload.owner.slice(0, 16)}…</code></td>
+            <td>{c.payload.amount}</td>
+            <td>{c.payload.currency}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 ```
+
+For real-time updates without polling, see [Streaming Plugin](/docs/react/streaming).
