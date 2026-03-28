@@ -1,9 +1,9 @@
 "use server";
 
 import { withLedgerAction } from "@nexus-framework/react/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { CANTON_API_URL, IOU_TEMPLATE_ID, SANDBOX_PARTY_ID, getServerClient } from "../../lib/nexus";
+import { cookies } from "next/headers";
+import { getServerClient, IOU_TEMPLATE_ID, SANDBOX_PARTY_ID } from "../../lib/nexus";
 
 async function getClient() {
 	const jar = await cookies();
@@ -18,11 +18,7 @@ export async function createIouAction(formData: FormData) {
 
 	const client = await getClient();
 	const result = await withLedgerAction(client, (c) =>
-		c.ledger.commands.createContract(
-			IOU_TEMPLATE_ID,
-			{ owner, amount, currency },
-			[owner],
-		),
+		c.ledger.commands.createContract(IOU_TEMPLATE_ID, { owner, amount, currency }, [owner]),
 	);
 
 	if (result.success) {
@@ -35,13 +31,7 @@ export async function createIouAction(formData: FormData) {
 export async function archiveIouAction(contractId: string, actAs: string) {
 	const client = await getClient();
 	const result = await withLedgerAction(client, (c) =>
-		c.ledger.commands.exerciseChoice(
-			IOU_TEMPLATE_ID,
-			contractId,
-			"Archive",
-			{},
-			[actAs],
-		),
+		c.ledger.commands.exerciseChoice(IOU_TEMPLATE_ID, contractId, "Archive", {}, [actAs]),
 	);
 
 	if (result.success) {

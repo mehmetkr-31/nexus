@@ -52,7 +52,12 @@ export default function LoginPage() {
 
 					{state?.error && <p className="error">{state.error}</p>}
 
-					<button type="submit" className="btn-primary" disabled={isPending} style={{ marginTop: "0.5rem" }}>
+					<button
+						type="submit"
+						className="btn-primary"
+						disabled={isPending}
+						style={{ marginTop: "0.5rem" }}
+					>
 						{isPending ? "Connecting…" : "Connect"}
 					</button>
 				</form>

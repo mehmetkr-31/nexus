@@ -26,7 +26,9 @@ export async function loginAction(_prevState: LoginState, formData: FormData): P
 	try {
 		token = await client.getToken();
 	} catch {
-		return { error: "Failed to authenticate with the ledger. Check your credentials." } satisfies LoginState;
+		return {
+			error: "Failed to authenticate with the ledger. Check your credentials.",
+		} satisfies LoginState;
 	}
 
 	const cookieHeader = await sessionManager.createSessionCookie({

@@ -1,10 +1,15 @@
-import { HydrationBoundary, QueryClient, dehydrate } from "@tanstack/react-query";
 import { prefetchContracts } from "@nexus-framework/react";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { cookies } from "next/headers";
-import { logoutAction } from "../login/actions";
-import { IouList } from "../../components/IouList";
 import { CreateIouForm } from "../../components/CreateIouForm";
-import { CANTON_API_URL, IOU_TEMPLATE_ID, SANDBOX_PARTY_ID, getServerClient } from "../../lib/nexus";
+import { IouList } from "../../components/IouList";
+import {
+	CANTON_API_URL,
+	getServerClient,
+	IOU_TEMPLATE_ID,
+	SANDBOX_PARTY_ID,
+} from "../../lib/nexus";
+import { logoutAction } from "../login/actions";
 
 export default async function ContractsPage() {
 	const jar = await cookies();
@@ -29,7 +34,17 @@ export default async function ContractsPage() {
 				<nav>
 					<a href="/login">Login</a>
 					<form action={logoutAction} style={{ display: "inline" }}>
-						<button type="submit" style={{ background: "none", border: "none", color: "#0070f3", cursor: "pointer", fontSize: "inherit", padding: 0 }}>
+						<button
+							type="submit"
+							style={{
+								background: "none",
+								border: "none",
+								color: "#0070f3",
+								cursor: "pointer",
+								fontSize: "inherit",
+								padding: 0,
+							}}
+						>
 							Logout
 						</button>
 					</form>
@@ -37,7 +52,14 @@ export default async function ContractsPage() {
 			</header>
 
 			<main className="container">
-				<div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.5rem", alignItems: "start" }}>
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "1fr 340px",
+						gap: "1.5rem",
+						alignItems: "start",
+					}}
+				>
 					<HydrationBoundary state={dehydratedState}>
 						<IouList />
 					</HydrationBoundary>

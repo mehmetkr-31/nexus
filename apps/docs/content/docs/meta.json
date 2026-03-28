@@ -1,20 +1,20 @@
 {
-  "title": "Nexus Framework",
-  "pages": [
-    "index",
-    "---Getting Started---",
-    "getting-started/installation",
-    "getting-started/quick-start",
-    "---Core API---",
-    "core/client",
-    "core/auth",
-    "core/contracts",
-    "core/commands",
-    "core/session",
-    "---React---",
-    "react/provider",
-    "react/hooks",
-    "react/server",
-    "react/query-keys"
-  ]
+	"title": "Nexus Framework",
+	"pages": [
+		"index",
+		"---Getting Started---",
+		"getting-started/installation",
+		"getting-started/quick-start",
+		"---Core API---",
+		"core/client",
+		"core/auth",
+		"core/contracts",
+		"core/commands",
+		"core/session",
+		"---React---",
+		"react/provider",
+		"react/hooks",
+		"react/server",
+		"react/query-keys"
+	]
 }

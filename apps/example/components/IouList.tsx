@@ -75,6 +75,7 @@ function IouRow({ contract }: { contract: ActiveContract<IouPayload> }) {
 			</td>
 			<td>
 				<button
+					type="button"
 					className="btn-danger"
 					onClick={handleArchive}
 					disabled={isPending}

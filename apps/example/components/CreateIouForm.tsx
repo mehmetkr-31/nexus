@@ -47,14 +47,7 @@ export function CreateIouForm({ defaultPartyId }: Props) {
 				</div>
 				<div>
 					<label htmlFor="amount">Amount</label>
-					<input
-						id="amount"
-						name="amount"
-						type="number"
-						min="1"
-						defaultValue="100"
-						required
-					/>
+					<input id="amount" name="amount" type="number" min="1" defaultValue="100" required />
 				</div>
 				<div>
 					<label htmlFor="currency">Currency</label>
@@ -70,9 +63,7 @@ export function CreateIouForm({ defaultPartyId }: Props) {
 
 				{error && <p className="error">{error}</p>}
 				{success && (
-					<p style={{ color: "#15803d", fontSize: "0.875rem" }}>
-						Contract created successfully!
-					</p>
+					<p style={{ color: "#15803d", fontSize: "0.875rem" }}>Contract created successfully!</p>
 				)}
 
 				<button type="submit" className="btn-primary" disabled={isPending}>
