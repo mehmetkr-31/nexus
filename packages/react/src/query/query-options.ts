@@ -1,4 +1,8 @@
-import type { ActiveContractsResponse, NexusClient } from "@nexus-framework/core";
+import type {
+	ActiveContractsResponse,
+	ActiveInterfacesResponse,
+	NexusClient,
+} from "@nexus-framework/core";
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
@@ -91,6 +95,56 @@ export function partyIdQueryOptions(client: NexusClient, userId: string) {
 		queryKey: nexusKeys.partyId(userId),
 		queryFn: () => client.auth.partyId.resolvePartyId(userId),
 		staleTime: 5 * 60 * 1000, // 5 minutes — matches PartyIdResolver cache TTL
+	});
+}
+
+// ─── Interface queryOptions factory ──────────────────────────────────────────
+
+export interface InterfaceQueryOptionsInput<
+	_TView = Record<string, unknown>,
+	_TPayload = Record<string, unknown>,
+> {
+	client: NexusClient;
+	interfaceId: string;
+	parties?: string[];
+	fetchAll?: boolean;
+	includeCreateArguments?: boolean;
+	enabled?: boolean;
+	staleTime?: number;
+}
+
+/**
+ * Creates a TanStack Query `queryOptions` object for fetching active contracts
+ * viewed through a Daml interface.
+ */
+export function interfaceQueryOptions<
+	TView = Record<string, unknown>,
+	TPayload = Record<string, unknown>,
+>(input: InterfaceQueryOptionsInput<TView, TPayload>) {
+	const filters: ContractQueryFilters = { parties: input.parties };
+
+	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
+		queryKey: nexusKeys.interfaceQuery(input.interfaceId, filters),
+		queryFn: async () => {
+			if (input.fetchAll) {
+				const contracts = await input.client.ledger.contracts.fetchAllActiveInterfaces<
+					TView,
+					TPayload
+				>({
+					interfaceId: input.interfaceId,
+					parties: input.parties,
+					includeCreateArguments: input.includeCreateArguments,
+				});
+				return { contracts, nextPageToken: undefined };
+			}
+			return input.client.ledger.contracts.fetchActiveInterfaces<TView, TPayload>({
+				interfaceId: input.interfaceId,
+				parties: input.parties,
+				includeCreateArguments: input.includeCreateArguments,
+			});
+		},
+		enabled: input.enabled,
+		staleTime: input.staleTime,
 	});
 }
 

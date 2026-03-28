@@ -16,9 +16,7 @@ import type { CantonClient } from "../client/canton-client.ts";
  * };
  * ```
  */
-export interface NexusPlugin<
-	TContext extends Record<string, unknown> = Record<string, unknown>,
-> {
+export interface NexusPlugin<TContext extends Record<string, unknown> = Record<string, unknown>> {
 	/** Unique plugin identifier */
 	id: string;
 

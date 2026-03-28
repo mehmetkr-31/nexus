@@ -10,53 +10,56 @@ import type { NexusPlugin } from "./types/plugin.ts";
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-// Auth plugins
-export { sandboxAuth } from "./auth/plugins/sandbox-auth.ts";
-export type { SandboxAuthOptions } from "./auth/plugins/sandbox-auth.ts";
-export { jwtAuth } from "./auth/plugins/jwt-auth.ts";
-export type { JwtAuthOptions } from "./auth/plugins/jwt-auth.ts";
-export { oidcAuth } from "./auth/plugins/oidc-auth.ts";
-export type { OidcAuthOptions } from "./auth/plugins/oidc-auth.ts";
-
 // Core internals (advanced use)
 export { JwtManager } from "./auth/jwt-manager.ts";
 export { formatParty, PartyIdResolver } from "./auth/party-id-resolver.ts";
+export type { JwtAuthOptions } from "./auth/plugins/jwt-auth.ts";
+export { jwtAuth } from "./auth/plugins/jwt-auth.ts";
+export type { OidcAuthOptions } from "./auth/plugins/oidc-auth.ts";
+export { oidcAuth } from "./auth/plugins/oidc-auth.ts";
+export type { SandboxAuthOptions } from "./auth/plugins/sandbox-auth.ts";
+// Auth plugins
+export { sandboxAuth } from "./auth/plugins/sandbox-auth.ts";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
 export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
 export { LedgerIdentity } from "./ledger/ledger-identity.ts";
-
-// Plugin types
-export type { NexusPlugin } from "./types/plugin.ts";
-
 // Domain types
+// Legacy auth config types (for createNexusClient compat shim)
 export type {
 	ActiveContract,
 	ActiveContractsResponse,
+	ActiveInterface,
+	ActiveInterfacesResponse,
+	ArchivedEvent,
+	AuthConfig,
 	CantonParty,
 	CantonUser,
 	Command,
 	ContractId,
 	CreateCommand,
 	ExerciseCommand,
+	ExercisedEvent,
+	ExerciseResult,
+	JwtAuthConfig,
 	LedgerEnd,
+	NexusConfig,
 	NexusSession,
+	OidcAuthConfig,
+	SandboxAuthConfig,
+	StreamHandle,
+	StreamHandlers,
 	SubmitRequest,
 	SubmitResult,
 	SynchronizerInfo,
 	TemplateId,
+	TransactionEvent,
+	TransactionResult,
 } from "./types/index.ts";
 export { NexusAuthError, NexusError, NexusLedgerError } from "./types/index.ts";
-
-// Legacy auth config types (for createNexusClient compat shim)
-export type {
-	AuthConfig,
-	JwtAuthConfig,
-	NexusConfig,
-	OidcAuthConfig,
-	SandboxAuthConfig,
-} from "./types/index.ts";
+// Plugin types
+export type { NexusPlugin } from "./types/plugin.ts";
 
 // ─── NexusClient ──────────────────────────────────────────────────────────────
 

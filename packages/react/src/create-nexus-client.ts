@@ -1,7 +1,7 @@
 "use client";
 
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode } from "react";
 import { createDefaultQueryClient } from "./context/nexus-provider.tsx";
 import type { NexusClientPlugin, TanstackQueryActions } from "./plugins/tanstack-query.ts";
@@ -75,12 +75,8 @@ export function createNexusClient(options: {
 	timeoutMs?: number;
 	plugins: AnyPlugin[];
 }): NexusClientInstance {
-	const serverPlugins = options.plugins.filter(
-		(p): p is NexusPlugin => "auth" in p || "init" in p,
-	);
-	const clientPlugins = options.plugins.filter(
-		(p): p is NexusClientPlugin => "getActions" in p,
-	);
+	const serverPlugins = options.plugins.filter((p): p is NexusPlugin => "auth" in p || "init" in p);
+	const clientPlugins = options.plugins.filter((p): p is NexusClientPlugin => "getActions" in p);
 
 	const coreClient = createNexus({
 		ledgerApiUrl: options.baseUrl,

@@ -114,6 +114,104 @@ export interface SubmitResult {
 	completedAt: string;
 }
 
+// ─── Transaction Events ───────────────────────────────────────────────────────
+
+export interface ExercisedEvent<TResult = unknown> {
+	nodeId: number;
+	offset: number;
+	contractId: string;
+	templateId: TemplateId;
+	/** Set if the choice was exercised via a Daml interface */
+	interfaceId?: string;
+	choice: string;
+	choiceArgument: unknown;
+	actingParties: string[];
+	/** True if the contract was archived by this exercise */
+	consuming: boolean;
+	witnessParties: string[];
+	/** The Daml return value of the choice */
+	exerciseResult: TResult;
+	childNodeIds: number[];
+	packageName: string;
+}
+
+export interface ArchivedEvent {
+	nodeId: number;
+	offset: number;
+	contractId: string;
+	templateId: TemplateId;
+	witnessParties: string[];
+	packageName: string;
+	implementedInterfaces?: string[];
+}
+
+export type TransactionEvent<T = unknown, TResult = unknown> =
+	| { type: "created"; contract: ActiveContract<T> }
+	| { type: "archived"; contractId: string; templateId: TemplateId }
+	| { type: "exercised"; event: ExercisedEvent<TResult> };
+
+export interface TransactionResult<T = unknown, TResult = unknown> {
+	transactionId: string;
+	commandId: string;
+	offset: number;
+	completedAt: string;
+	events: TransactionEvent<T, TResult>[];
+}
+
+/** Result of an exercise command — includes the Daml choice return value */
+export interface ExerciseResult<TResult = unknown> {
+	transactionId: string;
+	commandId: string;
+	offset: number;
+	completedAt: string;
+	/** The Daml choice return value */
+	result: TResult;
+}
+
+// ─── Interface Views ──────────────────────────────────────────────────────────
+
+/** A contract viewed through a Daml interface */
+export interface ActiveInterface<
+	TView = Record<string, unknown>,
+	TPayload = Record<string, unknown>,
+> {
+	contractId: string;
+	templateId: TemplateId;
+	payload: TPayload;
+	interfaceId: string;
+	/** The decoded interface view value */
+	interfaceView: TView;
+	signatories: string[];
+	observers: string[];
+	createdAt: string;
+}
+
+export interface ActiveInterfacesResponse<
+	TView = Record<string, unknown>,
+	TPayload = Record<string, unknown>,
+> {
+	contracts: ActiveInterface<TView, TPayload>[];
+	nextPageToken?: string;
+}
+
+// ─── Streaming ────────────────────────────────────────────────────────────────
+
+/** Returned by streaming methods — call close() to stop the stream */
+export interface StreamHandle {
+	close: () => void;
+}
+
+export interface StreamHandlers<T = Record<string, unknown>> {
+	/** Called for each active contract in the initial ACS snapshot and new creates */
+	onCreate?: (contract: ActiveContract<T>) => void;
+	/** Called when a contract is archived */
+	onArchive?: (contractId: string, templateId: TemplateId) => void;
+	/** Called when the initial ACS snapshot is fully delivered */
+	onLive?: () => void;
+	onError?: (error: Error) => void;
+	onClose?: () => void;
+}
+
 // ─── Ledger State ────────────────────────────────────────────────────────────
 
 export interface LedgerEnd {

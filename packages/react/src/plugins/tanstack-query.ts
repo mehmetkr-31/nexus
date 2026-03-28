@@ -1,4 +1,12 @@
-import type { NexusClient, SubmitResult } from "@nexus-framework/core";
+import type {
+	ActiveContractsResponse,
+	ActiveInterfacesResponse,
+	ExerciseResult,
+	LedgerEnd,
+	NexusClient,
+	SubmitResult,
+	SynchronizerInfo,
+} from "@nexus-framework/core";
 import {
 	type UseMutationResult,
 	type UseQueryResult,
@@ -16,10 +24,10 @@ import type {
 	UseExerciseChoiceOptions,
 	UseLedgerMutationOptions,
 } from "../hooks/use-submit.ts";
-import type { ActiveContractsResponse, LedgerEnd, SynchronizerInfo } from "@nexus-framework/core";
 import { invalidateContractQueries } from "../query/query-keys.ts";
 import {
 	contractQueryOptions,
+	interfaceQueryOptions,
 	ledgerEndQueryOptions,
 	partyIdQueryOptions,
 	synchronizersQueryOptions,
@@ -41,6 +49,43 @@ export interface NexusClientPlugin {
 
 // ─── TanstackQueryActions ─────────────────────────────────────────────────────
 
+// ─── ExerciseAndGetResult variables ──────────────────────────────────────────
+
+export interface ExerciseAndGetResultVariables<
+	TArg extends Record<string, unknown> = Record<string, unknown>,
+> {
+	templateId: string;
+	contractId: string;
+	choice: string;
+	choiceArgument: TArg;
+	actAs: string[];
+	readAs?: string[];
+	workflowId?: string;
+	invalidateTemplates?: string[];
+}
+
+export interface UseExerciseAndGetResultOptions<TResult = unknown> {
+	onSuccess?: (result: ExerciseResult<TResult>) => Promise<void> | void;
+	onError?: (error: Error) => void;
+	invalidateTemplates?: string[];
+}
+
+// ─── Interface query options ──────────────────────────────────────────────────
+
+export interface UseInterfaceOptions<
+	_TView = Record<string, unknown>,
+	_TPayload = Record<string, unknown>,
+> {
+	interfaceId: string;
+	parties?: string[];
+	fetchAll?: boolean;
+	includeCreateArguments?: boolean;
+	enabled?: boolean;
+	staleTime?: number;
+}
+
+// ─── TanstackQueryActions ─────────────────────────────────────────────────────
+
 export interface TanstackQueryActions extends Record<string, unknown> {
 	useContracts: <T = Record<string, unknown>>(
 		options: UseContractsOptions<T>,
@@ -50,6 +95,20 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 		options: UseContractsOptions<T>,
 	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
 
+	/**
+	 * Query contracts through a Daml interface — returns interfaceView + payload.
+	 */
+	useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+		options: UseInterfaceOptions<TView, TPayload>,
+	) => UseQueryResult<ActiveInterfacesResponse<TView, TPayload>>;
+
+	/**
+	 * Suspense variant of useInterface.
+	 */
+	useInterfaceSuspense: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+		options: UseInterfaceOptions<TView, TPayload>,
+	) => UseSuspenseQueryResult<ActiveInterfacesResponse<TView, TPayload>>;
+
 	useCreateContract: (
 		options?: UseCreateContractOptions,
 	) => UseMutationResult<SubmitResult, Error, CreateContractVariables>;
@@ -57,6 +116,17 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	useExerciseChoice: (
 		options?: UseExerciseChoiceOptions,
 	) => UseMutationResult<SubmitResult, Error, ExerciseChoiceVariables>;
+
+	/**
+	 * Exercise a Daml choice and get back the typed return value from the ledger.
+	 * Use this when you need `exerciseResult` from the choice.
+	 */
+	useExerciseAndGetResult: <
+		TArg extends Record<string, unknown> = Record<string, unknown>,
+		TResult = unknown,
+	>(
+		options?: UseExerciseAndGetResultOptions<TResult>,
+	) => UseMutationResult<ExerciseResult<TResult>, Error, ExerciseAndGetResultVariables<TArg>>;
 
 	useLedgerMutation: <TVariables = void>(
 		options: UseLedgerMutationOptions<TVariables>,
@@ -96,13 +166,25 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 		id: "tanstack-query",
 
 		getActions: (client): TanstackQueryActions => ({
-			// ─── Queries ────────────────────────────────────────────────────────
+			// ─── Contract Queries ────────────────────────────────────────────────
 
 			useContracts: <T = Record<string, unknown>>(opts: UseContractsOptions<T>) =>
 				useQuery(contractQueryOptions<T>({ client, ...opts })),
 
 			useContractsSuspense: <T = Record<string, unknown>>(opts: UseContractsOptions<T>) =>
 				useSuspenseQuery(contractQueryOptions<T>({ client, ...opts })),
+
+			// ─── Interface Queries ───────────────────────────────────────────────
+
+			useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+				opts: UseInterfaceOptions<TView, TPayload>,
+			) => useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts })),
+
+			useInterfaceSuspense: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+				opts: UseInterfaceOptions<TView, TPayload>,
+			) => useSuspenseQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts })),
+
+			// ─── Ledger State ────────────────────────────────────────────────────
 
 			usePartyId: (userId: string) => useQuery(partyIdQueryOptions(client, userId)),
 
@@ -152,6 +234,33 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 								? vars.templateId
 								: `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
 						await invalidateContractQueries(queryClient, opts.invalidateTemplates ?? [templateId]);
+						await opts.onSuccess?.(result);
+					},
+					onError: opts.onError,
+				});
+			},
+
+			useExerciseAndGetResult: <
+				TArg extends Record<string, unknown> = Record<string, unknown>,
+				TResult = unknown,
+			>(
+				opts: UseExerciseAndGetResultOptions<TResult> = {},
+			) => {
+				const queryClient = useQueryClient();
+				return useMutation({
+					mutationFn: (vars: ExerciseAndGetResultVariables<TArg>) =>
+						client.ledger.commands.exerciseAndGetResult<TArg, TResult>(
+							vars.templateId,
+							vars.contractId,
+							vars.choice,
+							vars.choiceArgument,
+							vars.actAs,
+							{ readAs: vars.readAs, workflowId: vars.workflowId },
+						),
+					onSuccess: async (result, vars) => {
+						const templates = opts.invalidateTemplates ??
+							vars.invalidateTemplates ?? [vars.templateId];
+						await invalidateContractQueries(queryClient, templates);
 						await opts.onSuccess?.(result);
 					},
 					onError: opts.onError,

@@ -1,4 +1,4 @@
-import { createNexus, sandboxAuth, SessionManager } from "@nexus-framework/core";
+import { createNexus, SessionManager, sandboxAuth } from "@nexus-framework/core";
 import { createServerNexusClient } from "@nexus-framework/react/server";
 
 // ─── Config ──────────────────────────────────────────────────────────────────

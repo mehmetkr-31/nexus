@@ -9,6 +9,11 @@
 	],
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.9",
+		"@c7-digital/ledger": "^0.0.12",
+		"@c7-digital/react": "^0.0.12",
+		"@daml/ledger": "^2.10.4",
+		"@daml/react": "^2.10.4",
+		"@daml/types": "^2.10.4",
 		"@types/bun": "latest",
 		"turbo": "^2.8.21",
 		"typescript": "^5"

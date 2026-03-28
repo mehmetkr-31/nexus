@@ -40,6 +40,16 @@ export const nexusKeys = {
 	contractsQuery: (templateId: string, filters?: ContractQueryFilters) =>
 		["nexus", "contracts", templateId, filters ?? {}] as const,
 
+	/** All interface queries */
+	interfaces: () => ["nexus", "interfaces"] as const,
+
+	/** All queries for a specific Daml interface */
+	interfacesByType: (interfaceId: string) => ["nexus", "interfaces", interfaceId] as const,
+
+	/** A specific interface query with party scope */
+	interfaceQuery: (interfaceId: string, filters?: ContractQueryFilters) =>
+		["nexus", "interfaces", interfaceId, filters ?? {}] as const,
+
 	/** Ledger end offset */
 	ledgerEnd: () => ["nexus", "ledger-end"] as const,
 
