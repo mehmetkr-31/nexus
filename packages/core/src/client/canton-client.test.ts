@@ -173,6 +173,179 @@ describe("CantonClient — getLedgerEnd", () => {
 	});
 });
 
+describe("CantonClient — submitAndWaitForTransaction", () => {
+	const mockTxResult = {
+		transactionId: "txn-789",
+		commandId: "cmd-101",
+		offset: 42,
+		completedAt: "2026-01-01T00:00:10Z",
+		events: [
+			{
+				type: "exercised",
+				event: {
+					nodeId: 0,
+					offset: 42,
+					contractId: "contract-1",
+					templateId: { packageId: "pkg", moduleName: "Mod", entityName: "T" },
+					choice: "Archive",
+					choiceArgument: {},
+					actingParties: ["Alice::abc"],
+					consuming: true,
+					witnessParties: ["Alice::abc"],
+					exerciseResult: { newContractId: "contract-2" },
+					childNodeIds: [],
+					packageName: "my-package",
+				},
+			},
+		],
+	};
+
+	test("returns TransactionResult on success", async () => {
+		const server = makeMockServer({
+			"/v2/commands/submit-and-wait-for-transaction": { body: mockTxResult },
+		});
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+		});
+
+		const result = await client.submitAndWaitForTransaction({
+			commands: [
+				{
+					type: "exercise",
+					templateId: "pkg:Mod:T",
+					contractId: "contract-1",
+					choice: "Archive",
+					choiceArgument: {},
+				},
+			],
+			actAs: ["Alice::abc"],
+		});
+		server.stop();
+
+		expect(result.transactionId).toBe("txn-789");
+		expect(result.offset).toBe(42);
+		expect(result.events).toHaveLength(1);
+	});
+
+	test("throws NexusLedgerError on command rejection", async () => {
+		const server = makeMockServer({
+			"/v2/commands/submit-and-wait-for-transaction": {
+				status: 400,
+				body: { message: "Contract not found" },
+			},
+		});
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+		});
+
+		await expect(
+			client.submitAndWaitForTransaction({
+				commands: [
+					{
+						type: "exercise",
+						templateId: "pkg:Mod:T",
+						contractId: "bad-id",
+						choice: "Archive",
+						choiceArgument: {},
+					},
+				],
+				actAs: ["Alice::abc"],
+			}),
+		).rejects.toBeInstanceOf(NexusLedgerError);
+		server.stop();
+	});
+});
+
+describe("CantonClient — queryByInterface", () => {
+	const mockInterfaceResponse = {
+		contracts: [
+			{
+				contractId: "contract-1",
+				templateId: { packageId: "pkg", moduleName: "Mod", entityName: "T" },
+				payload: { owner: "Alice::abc" },
+				interfaceId: "pkg:Iface:IAsset",
+				interfaceView: { assetName: "Gold", amount: 100 },
+				signatories: ["Alice::abc"],
+				observers: [],
+				createdAt: "2026-01-01T00:00:00Z",
+			},
+		],
+		nextPageToken: undefined,
+	};
+
+	test("returns interface contracts with view data", async () => {
+		let receivedBody: unknown;
+		const server = Bun.serve({
+			port: 0,
+			async fetch(req) {
+				receivedBody = await req.json();
+				return Response.json(mockInterfaceResponse);
+			},
+		});
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+		});
+
+		const result = await client.queryByInterface<{ assetName: string; amount: number }>(
+			"pkg:Iface:IAsset",
+			{ parties: ["Alice::abc"] },
+		);
+		server.stop();
+
+		expect(result.contracts).toHaveLength(1);
+		expect(result.contracts[0]?.interfaceId).toBe("pkg:Iface:IAsset");
+		expect(result.contracts[0]?.interfaceView.assetName).toBe("Gold");
+		expect(result.contracts[0]?.interfaceView.amount).toBe(100);
+	});
+
+	test("sends interfaceFilters with includeInterfaceView: true", async () => {
+		let receivedBody: Record<string, unknown> = {};
+		const server = Bun.serve({
+			port: 0,
+			async fetch(req) {
+				receivedBody = (await req.json()) as Record<string, unknown>;
+				return Response.json({ contracts: [], nextPageToken: undefined });
+			},
+		});
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+		});
+
+		await client.queryByInterface("pkg:Iface:IAsset");
+		server.stop();
+
+		const filter = (receivedBody.filter as Record<string, unknown>) ?? {};
+		const interfaceFilters = filter.interfaceFilters as Array<Record<string, unknown>>;
+		expect(interfaceFilters).toHaveLength(1);
+		expect(interfaceFilters[0]?.interfaceId).toBe("pkg:Iface:IAsset");
+		expect(interfaceFilters[0]?.includeInterfaceView).toBe(true);
+	});
+
+	test("throws NexusLedgerError on 403", async () => {
+		const server = makeMockServer({
+			"/v2/state/active-contracts": { status: 403, body: { message: "Forbidden" } },
+		});
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+		});
+
+		await expect(client.queryByInterface("pkg:Iface:IAsset")).rejects.toBeInstanceOf(
+			NexusLedgerError,
+		);
+		server.stop();
+	});
+});
+
 describe("CantonClient — timeout", () => {
 	test("throws on timeout", async () => {
 		const server = Bun.serve({
