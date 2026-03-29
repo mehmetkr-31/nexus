@@ -20,18 +20,16 @@ function makeMockServer(handlers: Record<string, unknown>) {
 	});
 }
 
-const mockContracts = {
-	contracts: [
-		{
-			contractId: "c1",
-			templateId: { packageId: "pkg", moduleName: "Mod", entityName: "Iou" },
-			payload: { amount: 100 },
-			createdAt: "2026-01-01T00:00:00Z",
-			signatories: ["Alice::abc"],
-			observers: [],
-		},
-	],
-};
+const mockContracts = [
+	{
+		contractId: "c1",
+		templateId: { packageId: "pkg", moduleName: "Mod", entityName: "Iou" },
+		payload: { amount: 100 },
+		createdAt: "2026-01-01T00:00:00Z",
+		signatories: ["Alice::abc"],
+		observers: [],
+	},
+];
 
 describe("contractQueryOptions", () => {
 	test("queryKey matches nexusKeys.contractsQuery structure", () => {

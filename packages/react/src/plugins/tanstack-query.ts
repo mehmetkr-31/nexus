@@ -16,14 +16,6 @@ import {
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import type { UseContractsOptions } from "../hooks/use-contracts.ts";
-import type {
-	CreateContractVariables,
-	ExerciseChoiceVariables,
-	UseCreateContractOptions,
-	UseExerciseChoiceOptions,
-	UseLedgerMutationOptions,
-} from "../hooks/use-submit.ts";
 import { invalidateContractQueries } from "../query/query-keys.ts";
 import {
 	contractQueryOptions,
@@ -32,6 +24,55 @@ import {
 	partyIdQueryOptions,
 	synchronizersQueryOptions,
 } from "../query/query-options.ts";
+
+
+import type { TemplateId } from "@nexus-framework/core";
+
+export interface UseContractsOptions<T = Record<string, unknown>> {
+	templateId: string;
+	parties?: string[];
+	filter?: Record<string, unknown>;
+	fetchAll?: boolean;
+	enabled?: boolean;
+	staleTime?: number;
+}
+
+export interface CreateContractVariables<T = Record<string, unknown>> {
+	templateId: string | TemplateId;
+	createArguments: T;
+	actAs: string[];
+	readAs?: string[];
+	workflowId?: string;
+}
+
+export interface UseCreateContractOptions {
+	invalidateTemplates?: string[];
+	onSuccess?: (result: SubmitResult) => void | Promise<void>;
+	onError?: (error: Error) => void;
+}
+
+export interface ExerciseChoiceVariables<TArg = Record<string, unknown>> {
+	templateId: string | TemplateId;
+	contractId: string;
+	choice: string;
+	choiceArgument: TArg;
+	actAs: string[];
+	readAs?: string[];
+	workflowId?: string;
+}
+
+export interface UseExerciseChoiceOptions {
+	invalidateTemplates?: string[];
+	onSuccess?: (result: SubmitResult) => void | Promise<void>;
+	onError?: (error: Error) => void;
+}
+
+export interface UseLedgerMutationOptions<TVariables = void> {
+	mutationFn: (client: NexusClient, variables: TVariables) => Promise<SubmitResult>;
+	invalidateTemplates?: string[];
+	onSuccess?: (result: SubmitResult) => void | Promise<void>;
+	onError?: (error: Error) => void;
+}
 
 // ─── NexusClientPlugin ────────────────────────────────────────────────────────
 

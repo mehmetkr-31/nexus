@@ -1,4 +1,4 @@
-import { type AuthConfig, NexusAuthError } from "../types/index.ts";
+import { type AuthConfig, NexusAuthError } from "../types/index";
 
 // ─── Token payload ────────────────────────────────────────────────────────────
 
@@ -61,7 +61,9 @@ async function createSandboxToken(
 	// Include actAs party in payload per Canton sandbox convention if provided
 	const payloadObj = {
 		...claims,
-		...(!admin && partyId ? { "https://daml.com/ledger-api": { actAs: [partyId], readAs: [] } } : {}),
+		...(!admin && partyId
+			? { "https://daml.com/ledger-api": { actAs: [partyId], readAs: [] } }
+			: {}),
 	};
 	const payload = btoa(JSON.stringify(payloadObj))
 		.replace(/=/g, "")

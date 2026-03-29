@@ -1,10 +1,25 @@
 "use client";
 
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
-import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode, useMemo } from "react";
-import { createDefaultQueryClient } from "./context/nexus-provider.tsx";
 import type { NexusClientPlugin, TanstackQueryActions } from "./plugins/tanstack-query.ts";
+
+export function createDefaultQueryClient(): QueryClient {
+	return new QueryClient({
+		defaultOptions: {
+			queries: {
+				// Canton finality takes 3-10s — stale after 5s is a reasonable default
+				staleTime: 5_000,
+				retry: 2,
+				retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+			},
+			mutations: {
+				retry: 0,
+			},
+		},
+	});
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

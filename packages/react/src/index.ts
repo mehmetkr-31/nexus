@@ -18,6 +18,7 @@ export type {
 	TemplateId,
 	TransactionResult,
 } from "@nexus-framework/core";
+
 // Auth plugins (re-exported from core for convenience)
 export {
 	jwtAuth,
@@ -27,47 +28,36 @@ export {
 	oidcAuth,
 	sandboxAuth,
 } from "@nexus-framework/core";
-// ─── Context & Provider ───────────────────────────────────────────────────────
-export type { NexusProviderProps } from "./context/nexus-provider.tsx";
-export { NexusProvider, useNexusClient } from "./context/nexus-provider.tsx";
+
+// ─── createNexusClient (React client factory) ────────────────────────────────
 export type {
 	AnyPlugin,
 	NexusClientInstance,
 	NexusProviderComponentProps,
 } from "./create-nexus-client.ts";
-// ─── createNexusClient (React client factory) ────────────────────────────────
 export { createNexusClient } from "./create-nexus-client.ts";
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-export type { UseContractsOptions } from "./hooks/use-contracts.ts";
-export { useContracts, useContractsSuspense } from "./hooks/use-contracts.ts";
-export { useLedgerEnd, useSynchronizers } from "./hooks/use-ledger-end.ts";
-export { usePartyId } from "./hooks/use-party-id.ts";
-export type {
-	CreateContractVariables,
-	ExerciseChoiceVariables,
-	UseCreateContractOptions,
-	UseExerciseChoiceOptions,
-	UseLedgerMutationOptions,
-} from "./hooks/use-submit.ts";
-export {
-	useCreateContract,
-	useExerciseChoice,
-	useLedgerMutation,
-} from "./hooks/use-submit.ts";
+
+// ─── Plugins ──────────────────────────────────────────────────────────────────
 export type {
 	StreamContractsState,
 	StreamingActions,
 	UseStreamContractsOptions,
 } from "./plugins/streaming.ts";
 export { streamingPlugin } from "./plugins/streaming.ts";
+
 export type {
+	CreateContractVariables,
 	ExerciseAndGetResultVariables,
+	ExerciseChoiceVariables,
 	NexusClientPlugin,
 	TanstackQueryActions,
+	UseContractsOptions,
+	UseCreateContractOptions,
 	UseExerciseAndGetResultOptions,
+	UseExerciseChoiceOptions,
 	UseInterfaceOptions,
+	UseLedgerMutationOptions,
 } from "./plugins/tanstack-query.ts";
-// ─── Plugins ──────────────────────────────────────────────────────────────────
 export { tanstackQueryPlugin } from "./plugins/tanstack-query.ts";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
