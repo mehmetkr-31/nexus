@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  canton-sandbox:
+    # Daml SDK ve doğru locale (İngilizce Java 17) ayarları için lokal Dockerfile'dan oluşturuyoruz
+    build: .
+    working_dir: /workspace
+    # Mevcut klasörü (/sandbox) container'ın içine /workspace olarak bağlıyoruz
+    volumes:
+      - .:/workspace
+    # Gerekli portları makineye açıyoruz (Daml Ledger API ve JSON API)
+    ports:
+      - "6865:6865"
+      - "7575:7575"

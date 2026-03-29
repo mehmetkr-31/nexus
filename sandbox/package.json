@@ -2,6 +2,7 @@
 	"name": "canton-sandbox",
 	"private": true,
 	"scripts": {
-		"dev": "~/.daml/bin/daml sandbox --json-api-port 7575"
+		"dev": "JAVA_TOOL_OPTIONS=\"-Duser.language=en -Duser.country=US\" ~/.daml/bin/daml sandbox --json-api-port 7575",
+		"dev:docker": "docker compose up"
 	}
 }
