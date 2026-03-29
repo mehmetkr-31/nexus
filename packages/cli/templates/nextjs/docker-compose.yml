@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  canton-sandbox:
+    build: .
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    ports:
+      - "6865:6865"
+      - "7575:7575"

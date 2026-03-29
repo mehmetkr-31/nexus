@@ -1,0 +1,25 @@
+import {
+	createNexusClient,
+	packageDiscoveryPlugin,
+	type StreamingActions,
+	sandboxAuth,
+	streamingPlugin,
+	type TanstackQueryActions,
+	tanstackQueryPlugin,
+} from "@nexus-framework/react";
+
+export const NEXUS_USER_ID = process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? "alice";
+
+/**
+ * Client-side Nexus instance.
+ * Hooks close over this instance directly — no React Context needed.
+ */
+export const nexus = createNexusClient<TanstackQueryActions & StreamingActions>({
+	baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575",
+	plugins: [
+    {{authPluginConfig}},
+		packageDiscoveryPlugin(),
+		tanstackQueryPlugin(),
+		streamingPlugin(),
+	],
+});

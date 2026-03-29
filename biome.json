@@ -52,9 +52,21 @@
 	},
 	"overrides": [
 		{
-			"includes": [".agents", "**/*.md", "dist", "node_modules", ".turbo", ".next"],
-			"linter": { "enabled": false },
-			"formatter": { "enabled": false }
+			"includes": [
+				".agents",
+				"**/*.md",
+				"dist",
+				"node_modules",
+				".turbo",
+				".next",
+				"**/packages/cli/templates/**"
+			],
+			"linter": {
+				"enabled": false
+			},
+			"formatter": {
+				"enabled": false
+			}
 		},
 		{
 			"includes": ["**/routeTree.gen.ts"],

@@ -1,0 +1,28 @@
+import { createNexus, provisionSandboxUser, sandboxAuth } from "@nexus-framework/core";
+import { cookies } from "next/headers";
+
+export const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
+export const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
+const SANDBOX_SECRET = process.env.SANDBOX_SECRET ?? "secret";
+
+/**
+ * Server-side Nexus client for use in Server Components and Actions.
+ */
+export async function getServerClient(partyId?: string) {
+	await cookies();
+	return createNexus({
+		ledgerApiUrl: CANTON_API_URL,
+		plugins: [
+			{{serverAuthPluginConfig}}
+		],
+	});
+}
+
+/**
+ * Resolves the current server session (client + partyId).
+ * Auto-provisions the user if they don't exist (Sandbox only).
+ */
+export async function resolveServerSession() {
+	const client = await getServerClient();
+	provisioningLogic;
+}
