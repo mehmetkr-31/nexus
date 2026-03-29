@@ -95,9 +95,12 @@ async function createSandboxToken(
 export class JwtManager {
 	private cachedToken: string | null = null;
 	private readonly config: AuthConfig;
+	private refreshTimer?: ReturnType<typeof setTimeout>;
+	private onTokenRefreshed?: (newToken: string) => void;
 
-	constructor(config: AuthConfig) {
+	constructor(config: AuthConfig, onTokenRefreshed?: (newToken: string) => void) {
 		this.config = config;
+		this.onTokenRefreshed = onTokenRefreshed;
 	}
 
 	async getToken(): Promise<string> {
@@ -107,6 +110,7 @@ export class JwtManager {
 
 		const token = await this.fetchFreshToken();
 		this.cachedToken = token;
+		this.scheduleRefresh(token);
 		return token;
 	}
 
@@ -136,6 +140,40 @@ export class JwtManager {
 			return isExpiringSoon(payload);
 		} catch {
 			return true;
+		}
+	}
+
+	private scheduleRefresh(token: string): void {
+		if (this.refreshTimer) {
+			clearTimeout(this.refreshTimer);
+		}
+
+		try {
+			const payload = decodeJwtPayload(token);
+			if (!payload.exp) return;
+
+			const expiryMs = payload.exp * 1000;
+			const now = Date.now();
+			// Refresh 60 seconds before expiry, or halfway if token is very short-lived
+			const bufferMs = Math.min(60_000, (expiryMs - now) / 2);
+			const delay = expiryMs - now - bufferMs;
+
+			if (delay > 0) {
+				this.refreshTimer = setTimeout(async () => {
+					try {
+						const newToken = await this.fetchFreshToken();
+						this.cachedToken = newToken;
+						this.onTokenRefreshed?.(newToken);
+						this.scheduleRefresh(newToken);
+					} catch (err) {
+						console.error("[Nexus] Silent token refresh failed:", err);
+						// Retry in 30 seconds if refresh failed
+						this.refreshTimer = setTimeout(() => this.scheduleRefresh(token), 30_000);
+					}
+				}, delay);
+			}
+		} catch {
+			// Ignore decode errors here, will be handled on next getToken call
 		}
 	}
 

@@ -1,6 +1,4 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
-import { JwtManager } from "../auth/jwt-manager.ts";
-import { NexusLedgerError } from "../types/index.ts";
 import { provisionSandboxUser } from "./sandbox-provision.ts";
 
 // Mock JwtManager to avoid real JWT generation and signing
@@ -45,6 +43,7 @@ describe("provisionSandboxUser", () => {
 
 		// Assert allocation request format
 		const allocReq = fetchSpy.mock.calls[0];
+		if (!allocReq) throw new Error("No allocation request sent");
 		expect(allocReq[0]).toBe("http://localhost:7575/v2/parties");
 		expect(allocReq[1]?.method).toBe("POST");
 		expect(JSON.parse(allocReq[1]?.body as string)).toEqual({
@@ -86,6 +85,7 @@ describe("provisionSandboxUser", () => {
 		expect(fetchSpy).toHaveBeenCalledTimes(4);
 
 		const listReq = fetchSpy.mock.calls[1];
+		if (!listReq) throw new Error("No list request sent");
 		expect(listReq[0]).toBe("http://localhost:7575/v2/parties");
 		expect(listReq[1]?.method).toBeUndefined(); // Default GET
 

@@ -6,6 +6,8 @@ import type {
 	NexusClient,
 	SubmitResult,
 	SynchronizerInfo,
+	TemplateDescriptor,
+	TemplateId,
 } from "@nexus-framework/core";
 import {
 	type UseMutationResult,
@@ -16,7 +18,7 @@ import {
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import { invalidateContractQueries } from "../query/query-keys.ts";
+import { invalidateContractQueries, nexusKeys } from "../query/query-keys.ts";
 import {
 	contractQueryOptions,
 	interfaceQueryOptions,
@@ -25,11 +27,12 @@ import {
 	synchronizersQueryOptions,
 } from "../query/query-options.ts";
 
+function isTemplateId(t: unknown): t is TemplateId {
+	return !!t && typeof t === "object" && "packageId" in t;
+}
 
-import type { TemplateId } from "@nexus-framework/core";
-
-export interface UseContractsOptions<T = Record<string, unknown>> {
-	templateId: string;
+export interface UseContractsOptions<_T = Record<string, unknown>> {
+	templateId: string | TemplateDescriptor;
 	parties?: string[];
 	filter?: Record<string, unknown>;
 	fetchAll?: boolean;
@@ -38,7 +41,7 @@ export interface UseContractsOptions<T = Record<string, unknown>> {
 }
 
 export interface CreateContractVariables<T = Record<string, unknown>> {
-	templateId: string | TemplateId;
+	templateId: string | TemplateId | TemplateDescriptor;
 	createArguments: T;
 	actAs: string[];
 	readAs?: string[];
@@ -46,13 +49,15 @@ export interface CreateContractVariables<T = Record<string, unknown>> {
 }
 
 export interface UseCreateContractOptions {
-	invalidateTemplates?: string[];
+	invalidateTemplates?: Array<string | TemplateDescriptor>;
 	onSuccess?: (result: SubmitResult) => void | Promise<void>;
 	onError?: (error: Error) => void;
+	/** If true, wait for the transaction to be committed to the ledger before resolving. */
+	waitForFinality?: boolean;
 }
 
 export interface ExerciseChoiceVariables<TArg = Record<string, unknown>> {
-	templateId: string | TemplateId;
+	templateId: string | TemplateId | TemplateDescriptor;
 	contractId: string;
 	choice: string;
 	choiceArgument: TArg;
@@ -62,16 +67,20 @@ export interface ExerciseChoiceVariables<TArg = Record<string, unknown>> {
 }
 
 export interface UseExerciseChoiceOptions {
-	invalidateTemplates?: string[];
+	invalidateTemplates?: Array<string | TemplateDescriptor>;
 	onSuccess?: (result: SubmitResult) => void | Promise<void>;
 	onError?: (error: Error) => void;
+	/** If true, wait for the transaction to be committed to the ledger before resolving. */
+	waitForFinality?: boolean;
 }
 
 export interface UseLedgerMutationOptions<TVariables = void> {
 	mutationFn: (client: NexusClient, variables: TVariables) => Promise<SubmitResult>;
-	invalidateTemplates?: string[];
+	invalidateTemplates?: Array<string | TemplateDescriptor>;
 	onSuccess?: (result: SubmitResult) => void | Promise<void>;
 	onError?: (error: Error) => void;
+	/** If true, wait for the transaction to be committed to the ledger before resolving. */
+	waitForFinality?: boolean;
 }
 
 // ─── NexusClientPlugin ────────────────────────────────────────────────────────
@@ -86,6 +95,7 @@ export interface UseLedgerMutationOptions<TVariables = void> {
 export interface NexusClientPlugin {
 	id: string;
 	getActions?: (client: NexusClient) => Record<string, unknown>;
+	onTokenRefreshed?: (newToken: string) => void | Promise<void>;
 }
 
 // ─── TanstackQueryActions ─────────────────────────────────────────────────────
@@ -95,7 +105,7 @@ export interface NexusClientPlugin {
 export interface ExerciseAndGetResultVariables<
 	TArg extends Record<string, unknown> = Record<string, unknown>,
 > {
-	templateId: string;
+	templateId: string | TemplateDescriptor;
 	contractId: string;
 	choice: string;
 	choiceArgument: TArg;
@@ -117,7 +127,7 @@ export interface UseInterfaceOptions<
 	_TView = Record<string, unknown>,
 	_TPayload = Record<string, unknown>,
 > {
-	interfaceId: string;
+	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
 	fetchAll?: boolean;
 	includeCreateArguments?: boolean;
@@ -207,6 +217,13 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	useSynchronizers: () => UseQueryResult<SynchronizerInfo[]>;
 
 	/**
+	 * Check the status of a transaction on the ledger.
+	 *
+	 * @param transactionId Hex ID of the transaction to check
+	 */
+	useTransactionStatus: (transactionId: string | undefined) => UseQueryResult<boolean>;
+
+	/**
 	 * Returns a scoped set of query hooks pre-bound to the given party as `readAs`.
 	 * Equivalent to @c7-digital/react's `useRightsAs()` — useful for multi-party UIs
 	 * where you want to switch perspective without threading `parties` everywhere.
@@ -272,26 +289,71 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 
 			useLedgerEnd: () => useQuery(ledgerEndQueryOptions(client)),
 
-			useSynchronizers: () => useQuery(synchronizersQueryOptions(client)),
+			useSynchronizers: () => {
+				return useQuery(synchronizersQueryOptions(client));
+			},
+
+			useTransactionStatus: (transactionId: string | undefined) => {
+				return useQuery({
+					queryKey: nexusKeys.transactionStatus(transactionId ?? ""),
+					queryFn: async () => {
+						if (!transactionId) return false;
+						try {
+							await client.http.waitForTransaction(transactionId, { timeoutMs: 2000 });
+							return true;
+						} catch {
+							return false;
+						}
+					},
+					enabled: !!transactionId,
+					refetchInterval: (query) => (query.state.data === true ? false : 1000),
+				});
+			},
 
 			// ─── Mutations ──────────────────────────────────────────────────────
 
 			useCreateContract: (opts: UseCreateContractOptions = {}) => {
 				const queryClient = useQueryClient();
 				return useMutation({
-					mutationFn: (vars: CreateContractVariables) =>
-						client.ledger.commands.createContract(
-							vars.templateId,
+					mutationFn: async (vars: CreateContractVariables) => {
+						let finalTemplateId = vars.templateId;
+						if (
+							typeof finalTemplateId !== "string" &&
+							!("packageId" in finalTemplateId) &&
+							client.packages
+						) {
+							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
+							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+						}
+						return client.ledger.commands.createContract(
+							finalTemplateId as string | TemplateId,
 							vars.createArguments,
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
-						),
+						);
+					},
 					onSuccess: async (result, vars) => {
+						if (opts.waitForFinality) {
+							await client.http.waitForTransaction(result.transactionId);
+						}
+
 						const templateId =
 							typeof vars.templateId === "string"
 								? vars.templateId
-								: `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
-						await invalidateContractQueries(queryClient, opts.invalidateTemplates ?? [templateId]);
+								: isTemplateId(vars.templateId)
+									? `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`
+									: `${(vars.templateId as TemplateDescriptor).packageName}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
+
+						const templates =
+							opts.invalidateTemplates ?? ([templateId] as Array<string | TemplateDescriptor>);
+						const stableTemplates = templates.map((t) =>
+							typeof t === "string"
+								? t
+								: isTemplateId(t)
+									? `${t.packageId}:${t.moduleName}:${t.entityName}`
+									: `${(t as TemplateDescriptor).packageName}:${t.moduleName}:${t.entityName}`,
+						);
+						await invalidateContractQueries(queryClient, stableTemplates);
 						await opts.onSuccess?.(result);
 					},
 					onError: opts.onError,
@@ -301,21 +363,47 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 			useExerciseChoice: (opts: UseExerciseChoiceOptions = {}) => {
 				const queryClient = useQueryClient();
 				return useMutation({
-					mutationFn: (vars: ExerciseChoiceVariables) =>
-						client.ledger.commands.exerciseChoice(
-							vars.templateId,
+					mutationFn: async (vars: ExerciseChoiceVariables) => {
+						let finalTemplateId = vars.templateId;
+						if (
+							typeof finalTemplateId !== "string" &&
+							!("packageId" in finalTemplateId) &&
+							client.packages
+						) {
+							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
+							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+						}
+						return client.ledger.commands.exerciseChoice(
+							finalTemplateId as string | TemplateId,
 							vars.contractId,
 							vars.choice,
 							vars.choiceArgument,
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
-						),
+						);
+					},
 					onSuccess: async (result, vars) => {
+						if (opts.waitForFinality) {
+							await client.http.waitForTransaction(result.transactionId);
+						}
+
 						const templateId =
 							typeof vars.templateId === "string"
 								? vars.templateId
-								: `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
-						await invalidateContractQueries(queryClient, opts.invalidateTemplates ?? [templateId]);
+								: isTemplateId(vars.templateId)
+									? `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`
+									: `${(vars.templateId as TemplateDescriptor).packageName}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
+
+						const templates =
+							opts.invalidateTemplates ?? ([templateId] as Array<string | TemplateDescriptor>);
+						const stableTemplates = templates.map((t) =>
+							typeof t === "string"
+								? t
+								: isTemplateId(t)
+									? `${t.packageId}:${t.moduleName}:${t.entityName}`
+									: `${(t as TemplateDescriptor).packageName}:${t.moduleName}:${t.entityName}`,
+						);
+						await invalidateContractQueries(queryClient, stableTemplates);
 						await opts.onSuccess?.(result);
 					},
 					onError: opts.onError,
@@ -330,19 +418,33 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 			) => {
 				const queryClient = useQueryClient();
 				return useMutation({
-					mutationFn: (vars: ExerciseAndGetResultVariables<TArg>) =>
-						client.ledger.commands.exerciseAndGetResult<TArg, TResult>(
-							vars.templateId,
+					mutationFn: async (vars: ExerciseAndGetResultVariables<TArg>) => {
+						let finalTemplateId = vars.templateId;
+						if (typeof finalTemplateId !== "string" && client.packages) {
+							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
+							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+						}
+						return client.ledger.commands.exerciseAndGetResult<TArg, TResult>(
+							finalTemplateId as string | TemplateId,
 							vars.contractId,
 							vars.choice,
 							vars.choiceArgument,
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
-						),
+						);
+					},
 					onSuccess: async (result, vars) => {
 						const templates = opts.invalidateTemplates ??
 							vars.invalidateTemplates ?? [vars.templateId];
-						await invalidateContractQueries(queryClient, templates);
+
+						const stableTemplates = templates.map((t) =>
+							typeof t === "string"
+								? t
+								: isTemplateId(t)
+									? `${t.packageId}:${t.moduleName}:${t.entityName}`
+									: `${(t as TemplateDescriptor).packageName}:${t.moduleName}:${t.entityName}`,
+						);
+						await invalidateContractQueries(queryClient, stableTemplates);
 						await opts.onSuccess?.(result);
 					},
 					onError: opts.onError,
@@ -353,9 +455,20 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 				const queryClient = useQueryClient();
 				return useMutation({
 					mutationFn: (vars: TVariables) => opts.mutationFn(client, vars),
-					onSuccess: async (result) => {
-						if (opts.invalidateTemplates?.length) {
-							await invalidateContractQueries(queryClient, opts.invalidateTemplates);
+					onSuccess: async (result, _vars) => {
+						if (opts.waitForFinality) {
+							await client.http.waitForTransaction(result.transactionId);
+						}
+
+						if (opts.invalidateTemplates && opts.invalidateTemplates.length > 0) {
+							const stableTemplates = opts.invalidateTemplates.map((t) =>
+								typeof t === "string"
+									? t
+									: isTemplateId(t)
+										? `${t.packageId}:${t.moduleName}:${t.entityName}`
+										: `${(t as TemplateDescriptor).packageName}:${t.moduleName}:${t.entityName}`,
+							);
+							await invalidateContractQueries(queryClient, stableTemplates);
 						}
 						await opts.onSuccess?.(result);
 					},
@@ -367,13 +480,16 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 
 			useRightsAs: (party: string): UseRightsAsResult => ({
 				readAsParty: party,
-				useContracts: <T = Record<string, unknown>>(opts: Omit<UseContractsOptions<T>, "parties">) =>
-					useQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
-				useContractsSuspense: <T = Record<string, unknown>>(opts: Omit<UseContractsOptions<T>, "parties">) =>
-					useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				useContracts: <T = Record<string, unknown>>(
+					opts: Omit<UseContractsOptions<T>, "parties">,
+				) => useQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				useContractsSuspense: <T = Record<string, unknown>>(
+					opts: Omit<UseContractsOptions<T>, "parties">,
+				) => useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
 				useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
 					opts: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
-				) => useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts, parties: [party] })),
+				) =>
+					useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts, parties: [party] })),
 			}),
 		}),
 	};

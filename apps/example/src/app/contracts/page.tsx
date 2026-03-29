@@ -5,7 +5,7 @@ import { IouList } from "../../components/IouList";
 import { LedgerStatus } from "../../components/LedgerStatus";
 import { StreamIouList } from "../../components/StreamIouList";
 import { SuspenseIouList } from "../../components/SuspenseIouList";
-import { resolveServerSession, IOU_TEMPLATE_ID } from "../../lib/nexus";
+import { IOU_TEMPLATE_ID, resolveServerSession } from "../../lib/nexus";
 
 export const dynamic = "force-dynamic";
 

@@ -89,7 +89,9 @@ const activeInterfaceSchema = z.object({
 	createdAt: z.string(),
 });
 
-const activeInterfacesResponseSchema = z.array(activeInterfaceSchema).transform((contracts) => ({ contracts }));
+const activeInterfacesResponseSchema = z
+	.array(activeInterfaceSchema)
+	.transform((contracts) => ({ contracts }));
 
 // ─── CantonClient ─────────────────────────────────────────────────────────────
 
@@ -390,7 +392,7 @@ export class CantonClient {
 		options?: { parties?: string[] },
 	): Promise<import("../types/index.ts").StreamHandle> {
 		const token = await this.getToken();
-		const wsUrl = this.baseUrl.replace(/^http/, "ws") + "/v2/state/active-contracts/stream";
+		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}/v2/state/active-contracts/stream`;
 
 		let ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
 		let _connected = false;
@@ -447,7 +449,7 @@ export class CantonClient {
 			 */
 			updateToken: (newToken: string) => {
 				ws.close();
-				const newUrl = this.baseUrl.replace(/^http/, "ws") + "/v2/state/active-contracts/stream";
+				const newUrl = `${this.baseUrl.replace(/^http/, "ws")}/v2/state/active-contracts/stream`;
 				ws = new WebSocket(newUrl, [`jwt.token.${newToken}`, "daml.ws.auth"]);
 				subscribe(ws);
 			},
@@ -457,6 +459,28 @@ export class CantonClient {
 		};
 
 		return handle;
+	}
+
+	// ─── Packages ──────────────────────────────────────────────────────────────
+
+	/**
+	 * List all packages uploaded to the participant node.
+	 *
+	 * @returns Array of package identifiers (hex strings)
+	 */
+	async listPackages(): Promise<string[]> {
+		const response = await this.request<{ packageIds: string[] }>("GET", "/v2/packages");
+		return response.packageIds ?? [];
+	}
+
+	/**
+	 * Get metadata for a specific package.
+	 * Includes information about templates, choices, and views.
+	 *
+	 * @param packageId Hex identifier of the package
+	 */
+	async getPackage(packageId: string): Promise<Record<string, unknown>> {
+		return this.request("GET", `/v2/packages/${packageId}`);
 	}
 
 	// ─── Ledger State ──────────────────────────────────────────────────────────
@@ -487,6 +511,52 @@ export class CantonClient {
 
 		const qs = params.toString() ? `?${params.toString()}` : "";
 		return this.request("GET", `/v2/updates${qs}`);
+	}
+
+	/**
+	 * Wait for a transaction to be committed to the ledger.
+	 * Polls the `/v2/updates` endpoint until the transactionId appears.
+	 *
+	 * @param transactionId ID from a successful command submission
+	 * @param options Polling configuration (timeout, interval)
+	 */
+	async waitForTransaction(
+		transactionId: string,
+		options?: { timeoutMs?: number; intervalMs?: number },
+	): Promise<void> {
+		const timeout = options?.timeoutMs ?? 30_000;
+		const interval = options?.intervalMs ?? 1_000;
+		const start = Date.now();
+
+		// Start from the very end of the ledger to avoid scanning old history
+		const ledgerEnd = await this.getLedgerEnd();
+		let currentOffset = ledgerEnd.offset;
+
+		while (Date.now() - start < timeout) {
+			const { updates, nextOffset } = await this.getUpdates({
+				beginOffset: currentOffset,
+				pageSize: 50,
+			});
+
+			for (const update of updates) {
+				if (
+					update &&
+					typeof update === "object" &&
+					"transactionId" in update &&
+					update.transactionId === transactionId
+				) {
+					return; // Found!
+				}
+			}
+
+			if (nextOffset) {
+				currentOffset = nextOffset;
+			}
+
+			await new Promise((resolve) => setTimeout(resolve, interval));
+		}
+
+		throw new Error(`Transaction ${transactionId} did not appear on ledger within ${timeout}ms`);
 	}
 }
 

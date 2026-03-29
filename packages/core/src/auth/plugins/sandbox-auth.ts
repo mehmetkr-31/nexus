@@ -43,11 +43,19 @@ export interface SandboxAuthPlugin extends NexusPlugin {
  * });
  * ```
  */
-export function sandboxAuth(options: SandboxAuthOptions): SandboxAuthPlugin {
-	const manager = new JwtManager({ type: "sandbox", ...options });
+export function sandboxAuth(
+	options: SandboxAuthOptions,
+): SandboxAuthPlugin & { setRefreshDispatcher: (cb: (t: string) => void) => void } {
+	let dispatcher: ((t: string) => void) | undefined;
+	const manager = new JwtManager({ type: "sandbox", ...options }, (newToken) => {
+		dispatcher?.(newToken);
+	});
 	return {
 		id: "sandbox-auth",
 		auth: { getToken: () => manager.getToken() },
 		getAdminToken: () => manager.getAdminToken(),
+		setRefreshDispatcher: (cb: (t: string) => void) => {
+			dispatcher = cb;
+		},
 	};
 }

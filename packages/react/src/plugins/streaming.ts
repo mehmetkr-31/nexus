@@ -49,7 +49,9 @@ export interface MultiStreamEntry {
 	parties?: string[];
 }
 
-export type MultiStreamContractsState<TMap extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>> = {
+export type MultiStreamContractsState<
+	TMap extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>,
+> = {
 	[K in keyof TMap]: ActiveContract<TMap[K]>[];
 } & {
 	/** True when ALL streams have received their initial ACS snapshot */
@@ -139,8 +141,15 @@ export interface StreamingActions extends Record<string, unknown> {
  * ```
  */
 export function streamingPlugin(): NexusClientPlugin {
+	const activeHandles = new Set<import("@nexus-framework/core").StreamHandle>();
+
 	return {
 		id: "streaming",
+		onTokenRefreshed: (newToken) => {
+			for (const handle of activeHandles) {
+				handle.updateToken(newToken);
+			}
+		},
 
 		getActions: (client): StreamingActions => ({
 			// ─── useStreamContracts ───────────────────────────────────────────────
@@ -216,6 +225,7 @@ export function streamingPlugin(): NexusClientPlugin {
 								return;
 							}
 							handleRef.current = streamHandle;
+							activeHandles.add(streamHandle);
 						})
 						.catch((err: unknown) => {
 							if (cancelled) return;
@@ -246,7 +256,10 @@ export function streamingPlugin(): NexusClientPlugin {
 			// ─── useMultiStreamContracts ──────────────────────────────────────────
 
 			useMultiStreamContracts: <
-				TMap extends Record<string, Record<string, unknown>> = Record<string, Record<string, unknown>>,
+				TMap extends Record<string, Record<string, unknown>> = Record<
+					string,
+					Record<string, unknown>
+				>,
 			>(
 				opts: UseMultiStreamContractsOptions,
 			): MultiStreamContractsState<TMap> => {
@@ -258,7 +271,9 @@ export function streamingPlugin(): NexusClientPlugin {
 				const [liveSet, setLiveSet] = useState<Set<string>>(new Set());
 				const [connectedSet, setConnectedSet] = useState<Set<string>>(new Set());
 				const [error, setError] = useState<Error | null>(null);
-				const handlesRef = useRef<Map<string, import("@nexus-framework/core").StreamHandle>>(new Map());
+				const handlesRef = useRef<Map<string, import("@nexus-framework/core").StreamHandle>>(
+					new Map(),
+				);
 
 				const onAllLiveRef = useRef(opts.onAllLive);
 				const onErrorRef = useRef(opts.onError);
@@ -267,7 +282,9 @@ export function streamingPlugin(): NexusClientPlugin {
 
 				const enabled = opts.enabled !== false;
 				// stable key from streams array to detect changes
-				const streamsKey = opts.streams.map((s) => `${s.key}:${s.templateId}:${(s.parties ?? []).join(",")}`).join("|");
+				const streamsKey = opts.streams
+					.map((s) => `${s.key}:${s.templateId}:${(s.parties ?? []).join(",")}`)
+					.join("|");
 
 				// biome-ignore lint/correctness/useExhaustiveDependencies: streamsKey captures full identity
 				useEffect(() => {
@@ -321,13 +338,18 @@ export function streamingPlugin(): NexusClientPlugin {
 									},
 									onClose: () => {
 										if (cancelled) return;
-										setLiveSet((prev) => { const s = new Set(prev); s.delete(key); return s; });
+										setLiveSet((prev) => {
+											const s = new Set(prev);
+											s.delete(key);
+											return s;
+										});
 									},
 									onConnectedChange: (isConnected: boolean) => {
 										if (cancelled) return;
 										setConnectedSet((prev) => {
 											const next = new Set(prev);
-											if (isConnected) next.add(key); else next.delete(key);
+											if (isConnected) next.add(key);
+											else next.delete(key);
 											return next;
 										});
 									},
@@ -335,7 +357,10 @@ export function streamingPlugin(): NexusClientPlugin {
 								{ parties },
 							)
 							.then((handle) => {
-								if (cancelled) { handle.close(); return; }
+								if (cancelled) {
+									handle.close();
+									return;
+								}
 								handlesRef.current.set(key, handle);
 							})
 							.catch((err: unknown) => {

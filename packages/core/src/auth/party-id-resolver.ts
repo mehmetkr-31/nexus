@@ -78,9 +78,7 @@ export class PartyIdResolver {
 		});
 
 		if (res.status === 404) {
-			throw new NexusAuthError(
-				`User "${userId}" not found (404): USER_NOT_FOUND`,
-			);
+			throw new NexusAuthError(`User "${userId}" not found (404): USER_NOT_FOUND`);
 		}
 
 		if (res.ok) {

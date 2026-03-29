@@ -29,10 +29,18 @@ export interface OidcAuthOptions {
  * ]
  * ```
  */
-export function oidcAuth(options: OidcAuthOptions): NexusPlugin {
-	const manager = new JwtManager({ type: "oidc", ...options });
+export function oidcAuth(
+	options: OidcAuthOptions,
+): NexusPlugin & { setRefreshDispatcher: (cb: (t: string) => void) => void } {
+	let dispatcher: ((t: string) => void) | undefined;
+	const manager = new JwtManager({ type: "oidc", ...options }, (newToken) => {
+		dispatcher?.(newToken);
+	});
 	return {
 		id: "oidc-auth",
 		auth: { getToken: () => manager.getToken() },
+		setRefreshDispatcher: (cb: (t: string) => void) => {
+			dispatcher = cb;
+		},
 	};
 }

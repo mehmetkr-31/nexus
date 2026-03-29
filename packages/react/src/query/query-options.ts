@@ -2,6 +2,7 @@ import type {
 	ActiveContractsResponse,
 	ActiveInterfacesResponse,
 	NexusClient,
+	TemplateDescriptor,
 } from "@nexus-framework/core";
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
@@ -10,7 +11,7 @@ import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
 export interface ContractQueryOptionsInput<_T = Record<string, unknown>> {
 	client: NexusClient;
-	templateId: string;
+	templateId: string | TemplateDescriptor;
 	parties?: string[];
 	filter?: Record<string, unknown>;
 	/**
@@ -46,19 +47,35 @@ export function contractQueryOptions<T = Record<string, unknown>>(
 		filter: input.filter,
 	};
 
+	const stableId =
+		typeof input.templateId === "string"
+			? input.templateId
+			: `${input.templateId.packageName}:${input.templateId.moduleName}:${input.templateId.entityName}`;
+
 	return queryOptions<ActiveContractsResponse<T>>({
-		queryKey: nexusKeys.contractsQuery(input.templateId, filters),
+		queryKey: nexusKeys.contractsQuery(stableId, filters),
 		queryFn: async () => {
+			let finalTemplateId = input.templateId;
+
+			// If we have a descriptor and the package-discovery plugin is active, resolve it
+			if (typeof finalTemplateId !== "string" && input.client.packages) {
+				const resolver = input.client.packages as import("@nexus-framework/core").PackageResolver;
+				finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+			} else if (typeof finalTemplateId !== "string") {
+				// Fallback if plugin missing
+				finalTemplateId = `${finalTemplateId.packageName}:${finalTemplateId.moduleName}:${finalTemplateId.entityName}`;
+			}
+
 			if (input.fetchAll) {
 				const contracts = await input.client.ledger.contracts.fetchAllActiveContracts<T>({
-					templateId: input.templateId,
+					templateId: finalTemplateId,
 					parties: input.parties,
 					filter: input.filter,
 				});
 				return { contracts, nextPageToken: undefined };
 			}
 			return input.client.ledger.contracts.fetchActiveContracts<T>({
-				templateId: input.templateId,
+				templateId: finalTemplateId,
 				parties: input.parties,
 				filter: input.filter,
 			});
@@ -105,7 +122,7 @@ export interface InterfaceQueryOptionsInput<
 	_TPayload = Record<string, unknown>,
 > {
 	client: NexusClient;
-	interfaceId: string;
+	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
 	fetchAll?: boolean;
 	includeCreateArguments?: boolean;
@@ -123,22 +140,36 @@ export function interfaceQueryOptions<
 >(input: InterfaceQueryOptionsInput<TView, TPayload>) {
 	const filters: ContractQueryFilters = { parties: input.parties };
 
+	const stableId =
+		typeof input.interfaceId === "string"
+			? input.interfaceId
+			: `${input.interfaceId.packageName}:${input.interfaceId.moduleName}:${input.interfaceId.entityName}`;
+
 	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
-		queryKey: nexusKeys.interfaceQuery(input.interfaceId, filters),
+		queryKey: nexusKeys.interfaceQuery(stableId, filters),
 		queryFn: async () => {
+			let finalInterfaceId = input.interfaceId;
+
+			if (typeof finalInterfaceId !== "string" && input.client.packages) {
+				const resolver = input.client.packages as import("@nexus-framework/core").PackageResolver;
+				finalInterfaceId = await resolver.resolveTemplateId(finalInterfaceId);
+			} else if (typeof finalInterfaceId !== "string") {
+				finalInterfaceId = `${finalInterfaceId.packageName}:${finalInterfaceId.moduleName}:${finalInterfaceId.entityName}`;
+			}
+
 			if (input.fetchAll) {
 				const contracts = await input.client.ledger.contracts.fetchAllActiveInterfaces<
 					TView,
 					TPayload
 				>({
-					interfaceId: input.interfaceId,
+					interfaceId: finalInterfaceId,
 					parties: input.parties,
 					includeCreateArguments: input.includeCreateArguments,
 				});
 				return { contracts, nextPageToken: undefined };
 			}
 			return input.client.ledger.contracts.fetchActiveInterfaces<TView, TPayload>({
-				interfaceId: input.interfaceId,
+				interfaceId: finalInterfaceId,
 				parties: input.parties,
 				includeCreateArguments: input.includeCreateArguments,
 			});

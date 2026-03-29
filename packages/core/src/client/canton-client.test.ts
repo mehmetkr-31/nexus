@@ -278,11 +278,11 @@ describe("CantonClient — queryByInterface", () => {
 	};
 
 	test("returns interface contracts with view data", async () => {
-		let receivedBody: unknown;
+		let _receivedBody: unknown;
 		const server = Bun.serve({
 			port: 0,
 			async fetch(req) {
-				receivedBody = await req.json();
+				_receivedBody = await req.json();
 				return Response.json(mockInterfaceResponse.contracts);
 			},
 		});
@@ -310,7 +310,7 @@ describe("CantonClient — queryByInterface", () => {
 			port: 0,
 			async fetch(req) {
 				receivedBody = (await req.json()) as Record<string, unknown>;
-				return Response.json([])
+				return Response.json([]);
 			},
 		});
 

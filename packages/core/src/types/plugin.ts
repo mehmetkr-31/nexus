@@ -34,6 +34,18 @@ export interface NexusPlugin<TContext extends Record<string, unknown> = Record<s
 		getToken: () => Promise<string>;
 	};
 
+	/**
+	 * Optional callback called whenever the session token is refreshed.
+	 * Plugins can use this to update internal state (e.g. WebSocket connections).
+	 */
+	onTokenRefreshed?: (newToken: string) => void | Promise<void>;
+
+	/**
+	 * Internal: Sets a callback to be called when the token is refreshed by the auth plugin.
+	 * Core uses this to dispatch refreshes to all other plugins.
+	 */
+	setRefreshDispatcher?: (dispatch: (newToken: string) => void) => void;
+
 	/** Type inference marker — mirrors the better-auth $Infer pattern */
 	$Infer?: Record<string, unknown>;
 }

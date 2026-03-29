@@ -27,10 +27,18 @@ export interface JwtAuthOptions {
  * plugins: [jwtAuth({ token: currentToken, refreshToken: () => fetchNewToken() })]
  * ```
  */
-export function jwtAuth(options: JwtAuthOptions): NexusPlugin {
-	const manager = new JwtManager({ type: "jwt", ...options });
+export function jwtAuth(
+	options: JwtAuthOptions,
+): NexusPlugin & { setRefreshDispatcher: (cb: (t: string) => void) => void } {
+	let dispatcher: ((t: string) => void) | undefined;
+	const manager = new JwtManager({ type: "jwt", ...options }, (newToken) => {
+		dispatcher?.(newToken);
+	});
 	return {
 		id: "jwt-auth",
 		auth: { getToken: () => manager.getToken() },
+		setRefreshDispatcher: (cb: (t: string) => void) => {
+			dispatcher = cb;
+		},
 	};
 }

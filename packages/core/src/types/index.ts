@@ -116,6 +116,22 @@ export interface SubmitResult {
 
 // ─── Transaction Events ───────────────────────────────────────────────────────
 
+/**
+ * Represents a Daml template by its logical name.
+ * Used by the `PackageResolver` to lookup the corresponding Package ID at runtime.
+ */
+export interface TemplateDescriptor {
+	/** Human-readable package name, e.g. "iou" */
+	packageName: string;
+	/** Daml module name, e.g. "Iou" */
+	moduleName: string;
+	/** Daml entity name, e.g. "Iou" */
+	entityName: string;
+}
+
+/** Hex-encoded package ID, e.g. "122059a10c67ef1bb38e4e7ff3fd9c827e2e6cbbfd68bb5cd8fa4c0c56fecdf0734b" */
+export type PackageId = string;
+
 export interface ExercisedEvent<TResult = unknown> {
 	nodeId: number;
 	offset: number;

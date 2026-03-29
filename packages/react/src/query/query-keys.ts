@@ -58,6 +58,8 @@ export const nexusKeys = {
 
 	/** Party ID for a given userId */
 	partyId: (userId: string) => ["nexus", "party", userId] as const,
+	/** Transaction commit status */
+	transactionStatus: (transactionId: string) => ["nexus", "transaction", transactionId] as const,
 } as const;
 
 // ─── Cache invalidation helpers ───────────────────────────────────────────────

@@ -25,6 +25,8 @@ export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
 export { LedgerIdentity } from "./ledger/ledger-identity.ts";
+export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin.ts";
+export { PackageResolver } from "./ledger/package-resolver.ts";
 export type { ProvisionSandboxUserOptions } from "./ledger/sandbox-provision.ts";
 export { provisionSandboxUser } from "./ledger/sandbox-provision.ts";
 // Domain types
@@ -55,6 +57,7 @@ export type {
 	SubmitRequest,
 	SubmitResult,
 	SynchronizerInfo,
+	TemplateDescriptor,
 	TemplateId,
 	TransactionEvent,
 	TransactionResult,
@@ -65,7 +68,7 @@ export type { NexusPlugin } from "./types/plugin.ts";
 
 // ─── NexusClient ──────────────────────────────────────────────────────────────
 
-export interface NexusClient {
+export interface NexusClient extends Record<string, unknown> {
 	/** Raw Canton HTTP client — use for custom requests */
 	readonly http: CantonClient;
 	/** Auth primitives */
@@ -142,33 +145,73 @@ export function createNexus(options: {
 	const commands = new CommandSubmitter(http);
 	const identity = new LedgerIdentity(http);
 
-	return {
+	const client: NexusClient = {
 		http,
 		auth: { partyId, session },
 		ledger: { contracts, commands, identity },
 		getToken,
 	};
+
+	// Link auth plugin refresh to all other plugins
+	const dispatchRefresh = (newToken: string) => {
+		for (const p of options.plugins) {
+			p.onTokenRefreshed?.(newToken);
+		}
+	};
+
+	// Initialize plugins and merge context
+	for (const plugin of options.plugins) {
+		// Provide the refresh dispatcher to the auth plugin if it wants it
+		if (plugin.id.endsWith("-auth") && plugin.setRefreshDispatcher) {
+			plugin.setRefreshDispatcher(dispatchRefresh);
+		}
+
+		if (plugin.init) {
+			const context = plugin.init(http);
+			if (context instanceof Promise) {
+				context.then((res) => {
+					Object.assign(client, res);
+				});
+			} else {
+				Object.assign(client, context);
+			}
+		}
+	}
+	for (const plugin of options.plugins) {
+		if (plugin.init) {
+			const context = plugin.init(http);
+			// Note: if context is a Promise, it's the plugin's responsibility to handle it,
+			// or we could potentially make createNexus async. For now, we allow both.
+			if (context instanceof Promise) {
+				context.then((res) => {
+					Object.assign(client, res);
+				});
+			} else {
+				Object.assign(client, context);
+			}
+		}
+	}
+
+	return client;
 }
 
 // ─── createNexusClient (legacy compat shim) ────────────────────────────────────
 
 /**
  * @deprecated Use `createNexus()` with auth plugins instead.
- *
- * @example
- * ```ts
- * // Before:
- * createNexusClient({ ledgerApiUrl, auth: { type: "sandbox", ... } })
- *
- * // After:
- * createNexus({ ledgerApiUrl, plugins: [sandboxAuth({ ... })] })
- * ```
  */
 export function createNexusClient(config: NexusConfig): NexusClient {
-	const jwt = new JwtManager(config.auth);
+	const plugins: NexusPlugin[] = [];
+	const jwt = new JwtManager(config.auth, (newToken) => {
+		for (const p of plugins) {
+			p.onTokenRefreshed?.(newToken);
+		}
+	});
+	plugins.push({ id: "legacy-jwt-manager", auth: { getToken: () => jwt.getToken() } });
+
 	return createNexus({
 		ledgerApiUrl: config.ledgerApiUrl,
 		timeoutMs: config.timeoutMs,
-		plugins: [{ id: "legacy-jwt-manager", auth: { getToken: () => jwt.getToken() } }],
+		plugins,
 	});
 }

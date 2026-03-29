@@ -59,9 +59,9 @@ describe("SessionManager — encrypted (AES-GCM)", () => {
 		const mgr = new SessionManager({ secure: false, encryptionKey: key });
 		const cookieHeader = await mgr.createSessionCookie(baseSession);
 
-		const name = cookieHeader.split("=")[0]!;
+		const name = cookieHeader.split("=")[0] ?? "";
 		const value = cookieHeader.split(";")[0]?.slice(name.length + 1);
-		if (!value) throw new Error("No cookie value");
+		if (!value || !name) throw new Error("No cookie value or name");
 
 		const session = await mgr.getSession(`${name}=${value}`);
 		expect(session?.partyId).toBe("Alice::abc123");
@@ -79,9 +79,9 @@ describe("SessionManager — expiry", () => {
 	test("expired session returns null", async () => {
 		const mgr = new SessionManager({ secure: false, ttlMs: 1 });
 		const cookieHeader = await mgr.createSessionCookie(baseSession);
-		const name = cookieHeader.split("=")[0]!;
+		const name = cookieHeader.split("=")[0] ?? "";
 		const value = cookieHeader.split(";")[0]?.slice(name.length + 1);
-		if (!value) throw new Error("No cookie value");
+		if (!value || !name) throw new Error("No cookie value or name");
 
 		// Wait for expiry
 		await new Promise((r) => setTimeout(r, 5));
@@ -94,8 +94,9 @@ describe("SessionManager — getSessionFromRequest", () => {
 	test("extracts session from Request object", async () => {
 		const mgr = new SessionManager({ secure: false });
 		const cookieHeader = await mgr.createSessionCookie(baseSession);
-		const name = cookieHeader.split("=")[0]!;
+		const name = cookieHeader.split("=")[0] ?? "";
 		const value = cookieHeader.split(";")[0]?.slice(name.length + 1);
+		if (!value || !name) throw new Error("No cookie value or name");
 
 		const req = new Request("http://localhost/", {
 			headers: { cookie: `${name}=${value}` },

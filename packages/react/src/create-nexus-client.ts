@@ -97,7 +97,18 @@ export function createNexusClient<TActions = TanstackQueryActions>(options: {
 	const coreClient = createNexus({
 		ledgerApiUrl: options.baseUrl,
 		timeoutMs: options.timeoutMs,
-		plugins: serverPlugins,
+		plugins: [
+			...serverPlugins,
+			// Bridge core refreshes to client plugins
+			{
+				id: "react-plugin-bridge",
+				onTokenRefreshed: (newToken) => {
+					for (const p of clientPlugins) {
+						p.onTokenRefreshed?.(newToken);
+					}
+				},
+			},
+		],
 	});
 
 	// Actions close over coreClient — no context involved

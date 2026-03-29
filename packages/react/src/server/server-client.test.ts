@@ -42,7 +42,7 @@ describe("createServerNexusClient", () => {
 			userId: "alice",
 		});
 
-		const cookieName = cookieHeader.split("=")[0]!;
+		const cookieName = cookieHeader.split("=")[0] ?? "";
 		const cookieValue = cookieHeader.split(";")[0]?.slice(cookieName.length + 1);
 
 		const req = new Request("http://localhost/api/data", {
