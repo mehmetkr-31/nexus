@@ -47,30 +47,52 @@ export async function provisionSandboxUser(
 	};
 	const partyHint = userId.charAt(0).toUpperCase() + userId.slice(1);
 
-	// ── Step 1: Allocate party (idempotent) ──────────────────────────────────
+	// ── Step 1: Allocate party (with retry for sandbox startup) ─────────────
 	let partyId: string | undefined;
 
-	const partyRes = await fetch(`${ledgerApiUrl}/v2/parties`, {
-		method: "POST",
-		headers: authHeaders,
-		body: JSON.stringify({ partyIdHint: partyHint, displayName: partyHint }),
-	});
+	const MAX_ALLOC_RETRIES = 10;
+	const ALLOC_RETRY_DELAY_MS = 3000;
 
-	if (partyRes.ok) {
-		const data = (await partyRes.json()) as Record<string, unknown>;
-		partyId =
-			((data.result as Record<string, unknown>)?.partyId as string) ??
-			(data.partyId as string | undefined);
-	} else {
-		const text = await partyRes.text();
-		if (!text.includes("ALREADY_EXISTS") && !text.includes("already exists")) {
-			throw new NexusLedgerError(`Failed to allocate party: ${partyRes.status} ${text}`);
+	for (let attempt = 1; attempt <= MAX_ALLOC_RETRIES; attempt++) {
+		const res = await fetch(`${ledgerApiUrl}/v2/parties`, {
+			method: "POST",
+			headers: authHeaders,
+			body: JSON.stringify({ partyIdHint: partyHint, displayName: partyHint }),
+		});
+
+		if (res.ok) {
+			const data = (await res.json()) as Record<string, unknown>;
+			// Canton v2: { partyRecord: { party: "..." } }; older: { result: { partyId } } or { partyId }
+			const rawPartyId =
+				((data.partyRecord as Record<string, unknown>)?.party as string | undefined) ??
+				((data.result as Record<string, unknown>)?.partyId as string | undefined) ??
+				(data.partyId as string | undefined) ??
+				(data.party as string | undefined);
+			// Canton 3.4.x appends a participant suffix after a period (e.g. "Alice::1220hash.participant").
+			// Daml-LF only accepts the part before the first period in the fingerprint.
+			partyId = rawPartyId ? toDamlLFPartyId(rawPartyId) : undefined;
+			break;
 		}
-		// Try to extract the existing party ID from the error body
-		const match =
-			text.match(/party\s+([^\s]+)\s+is already allocated/i) ??
-			text.match(/partyId\s+['"]([^'"]+)['"]\s+already exists/i);
-		if (match?.[1]) partyId = match[1];
+
+		const text = await res.text();
+
+		if (text.includes("ALREADY_EXISTS") || text.includes("already exists")) {
+			// Party was already allocated — extract ID from error body if possible
+			const match =
+				text.match(/party\s+([^\s]+)\s+is already allocated/i) ??
+				text.match(/partyId\s+['"]([^'"]+)['"]\s+already exists/i);
+			if (match?.[1]) partyId = toDamlLFPartyId(match[1]);
+			break;
+		}
+
+		if (text.includes("PARTY_ALLOCATION_WITHOUT_CONNECTED_SYNCHRONIZER") && attempt < MAX_ALLOC_RETRIES) {
+			// Canton sandbox is still starting up — wait for the synchronizer to connect
+			console.log(`[nexus:provision] Waiting for Canton synchronizer... (attempt ${attempt}/${MAX_ALLOC_RETRIES})`);
+			await new Promise<void>((resolve) => setTimeout(resolve, ALLOC_RETRY_DELAY_MS));
+			continue;
+		}
+
+		throw new NexusLedgerError(`Failed to allocate party: ${res.status} ${text}`);
 	}
 
 	// ── Step 2: Discover party by listing (fallback) ─────────────────────────
@@ -82,30 +104,39 @@ export async function provisionSandboxUser(
 			throw new NexusLedgerError(`Failed to list parties: ${listRes.status}`);
 		}
 		const listData = (await listRes.json()) as unknown;
-		const parties: Array<Record<string, string>> = Array.isArray(listData)
-			? listData
-			: ((listData as Record<string, unknown>).result as Array<Record<string, string>>) ??
-				((listData as Record<string, unknown>).parties as Array<Record<string, string>>) ??
-				[];
+		// Canton v2: { partyRecords: [{ party, displayName, ... }] }
+		// Older:     { result: [...] } or [...]
+		type PartyRecord = Record<string, string>;
+		const rawList = (listData as Record<string, unknown>);
+		const parties: PartyRecord[] =
+			Array.isArray(listData) ? listData
+			: Array.isArray(rawList.partyRecords) ? (rawList.partyRecords as PartyRecord[])
+			: Array.isArray(rawList.result) ? (rawList.result as PartyRecord[])
+			: Array.isArray(rawList.parties) ? (rawList.parties as PartyRecord[])
+			: [];
+
+		// Resolve whichever field holds the party ID (v2 uses `party`, older uses `partyId`)
+		const getPartyId = (p: PartyRecord) => p.party ?? p.partyId;
 
 		const found =
 			parties.find(
 				(p) =>
-					p.partyId?.toLowerCase().startsWith(`${userId.toLowerCase()}::`) ||
+					getPartyId(p)?.toLowerCase().startsWith(`${userId.toLowerCase()}::`) ||
 					p.displayName?.toLowerCase() === userId.toLowerCase(),
-			) ?? parties.find((p) => p.partyId?.includes("::"));
+			);
 
-		if (!found?.partyId) {
+		const resolvedId = found ? getPartyId(found) : undefined;
+		if (!resolvedId) {
 			throw new NexusLedgerError(`Could not find or allocate party for user "${userId}"`);
 		}
-		partyId = found.partyId;
+		partyId = toDamlLFPartyId(resolvedId);
 	}
 
 	// ── Step 3: Create user (idempotent) ────────────────────────────────────
 	const userRes = await fetch(`${ledgerApiUrl}/v2/users`, {
 		method: "POST",
 		headers: authHeaders,
-		body: JSON.stringify({ user: { userId, primaryParty: partyId } }),
+		body: JSON.stringify({ user: { id: userId, primaryParty: partyId, isDeactivated: false, identityProviderId: "" } }),
 	});
 
 	if (!userRes.ok) {
@@ -127,5 +158,28 @@ export async function provisionSandboxUser(
 		}),
 	});
 
+	if (!partyId) {
+		throw new NexusLedgerError(`Could not resolve party ID for user "${userId}" after provisioning`);
+	}
 	return partyId;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Canton 3.x party IDs may include a participant suffix after the fingerprint
+ * (e.g. `"Alice::1220hash.participantName"`). The Daml-LF party spec only
+ * allows characters in `[a-zA-Z0-9:#_-]`, so we strip everything from the
+ * first period in the fingerprint segment onwards.
+ *
+ * `"Alice::1220hash.local"` → `"Alice::1220hash"`
+ * `"Alice::1220hash"`       → `"Alice::1220hash"` (unchanged)
+ */
+function toDamlLFPartyId(partyId: string): string {
+	const sepIdx = partyId.indexOf("::");
+	if (sepIdx === -1) return partyId;
+	const fingerprint = partyId.slice(sepIdx + 2);
+	const dotIdx = fingerprint.indexOf(".");
+	if (dotIdx === -1) return partyId;
+	return `${partyId.slice(0, sepIdx + 2)}${fingerprint.slice(0, dotIdx)}`;
 }

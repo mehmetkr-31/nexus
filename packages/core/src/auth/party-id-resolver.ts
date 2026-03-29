@@ -1,9 +1,13 @@
 import { type CantonParty, NexusAuthError } from "../types/index.ts";
 
+// Canton v2 (3.x): rights are in a flat array of { type, partyId } objects
+// Older Canton / legacy: { canActAs: string[], canReadAs: string[] }
 interface UserRightsResponse {
 	participantAdmin?: boolean;
 	canActAs?: string[];
 	canReadAs?: string[];
+	// Canton 3.x format
+	rights?: Array<{ type: string; partyId?: string }>;
 }
 
 interface CacheEntry {
@@ -47,13 +51,13 @@ export class PartyIdResolver {
 	/** Fetch all parties the current token can act as */
 	async getActAsParties(userId: string): Promise<string[]> {
 		const rights = await this.fetchUserRights(userId);
-		return rights.canActAs ?? [];
+		return normalizeActAs(rights);
 	}
 
 	/** Fetch all parties the current token can read as */
 	async getReadAsParties(userId: string): Promise<string[]> {
 		const rights = await this.fetchUserRights(userId);
-		return rights.canReadAs ?? [];
+		return normalizeReadAs(rights);
 	}
 
 	/** Invalidate cached entry for a userId */
@@ -68,27 +72,37 @@ export class PartyIdResolver {
 	// ─── Private ───────────────────────────────────────────────────────────────
 
 	private async fetchPartyId(userId: string): Promise<string> {
-		// First try: /v2/users/:userId to get primaryParty
 		const token = await this.getToken();
 		const res = await fetch(`${this.baseUrl}/v2/users/${encodeURIComponent(userId)}`, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 
+		if (res.status === 404) {
+			throw new NexusAuthError(
+				`User "${userId}" not found (404): USER_NOT_FOUND`,
+			);
+		}
+
 		if (res.ok) {
-			const data = (await res.json()) as { primaryParty?: string };
-			if (data.primaryParty) return data.primaryParty;
+			const data = (await res.json()) as Record<string, unknown>;
+			// Canton 3.x: { user: { primaryParty: "..." } }
+			// Older: { primaryParty: "..." }
+			const primaryParty =
+				((data.user as Record<string, unknown> | undefined)?.primaryParty as string | undefined) ??
+				(data.primaryParty as string | undefined);
+			// Strip participant suffix (Canton 3.x adds ".participantName" to fingerprint)
+			if (primaryParty) return stripParticipantSuffix(primaryParty);
 		}
 
 		// Fallback: derive from actAs rights
 		const rights = await this.fetchUserRights(userId);
-		const actAs = rights.canActAs ?? [];
+		const actAs = normalizeActAs(rights);
 		if (actAs.length === 0) {
 			throw new NexusAuthError(
 				`Cannot resolve Party ID for userId "${userId}": no actAs rights found`,
 			);
 		}
-		// Return first actAs party as primary
-		return actAs[0]!;
+		return actAs[0] as string;
 	}
 
 	private async fetchUserRights(userId: string): Promise<UserRightsResponse> {
@@ -113,4 +127,40 @@ export class PartyIdResolver {
 /** Format a CantonParty for display */
 export function formatParty(party: CantonParty): string {
 	return party.displayName ? `${party.displayName} (${party.partyId})` : party.partyId;
+}
+
+/**
+ * Normalize actAs parties from either Canton 3.x `{ rights: [{type, partyId}] }`
+ * or older `{ canActAs: string[] }` response format.
+ */
+function normalizeActAs(rights: UserRightsResponse): string[] {
+	if (rights.rights) {
+		return rights.rights.flatMap((r) =>
+			r.type === "canActAs" && r.partyId ? [stripParticipantSuffix(r.partyId)] : [],
+		);
+	}
+	return (rights.canActAs ?? []).map(stripParticipantSuffix);
+}
+
+function normalizeReadAs(rights: UserRightsResponse): string[] {
+	if (rights.rights) {
+		return rights.rights.flatMap((r) =>
+			r.type === "canReadAs" && r.partyId ? [stripParticipantSuffix(r.partyId)] : [],
+		);
+	}
+	return (rights.canReadAs ?? []).map(stripParticipantSuffix);
+}
+
+/**
+ * Canton 3.x party IDs may include a participant suffix after the fingerprint
+ * (e.g. `"Alice::1220hash.participantName"`). Strip the suffix so the party ID
+ * is Daml-LF compatible: only `[a-zA-Z0-9:#_-]` characters.
+ */
+function stripParticipantSuffix(partyId: string): string {
+	const sepIdx = partyId.indexOf("::");
+	if (sepIdx === -1) return partyId;
+	const fingerprint = partyId.slice(sepIdx + 2);
+	const dotIdx = fingerprint.indexOf(".");
+	if (dotIdx === -1) return partyId;
+	return `${partyId.slice(0, sepIdx + 2)}${fingerprint.slice(0, dotIdx)}`;
 }
