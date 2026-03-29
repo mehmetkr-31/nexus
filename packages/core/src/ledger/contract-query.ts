@@ -4,17 +4,20 @@ import type {
 	ActiveContractsResponse,
 	ActiveInterface,
 	ActiveInterfacesResponse,
+	TemplateId,
 } from "../types/index.ts";
 
 export interface ContractQueryOptions<_T = Record<string, unknown>> {
 	/** Daml template ID — either "packageId:Module:Entity" or TemplateId object */
-	templateId: string;
+	templateId: string | TemplateId;
 	/** Party IDs to query as */
 	parties?: string[];
 	/** Optional payload-level filter */
 	filter?: Record<string, unknown>;
 	/** Page size for pagination */
 	pageSize?: number;
+	/** Page token for pagination */
+	pageToken?: string;
 }
 
 // ─── ContractQuery ────────────────────────────────────────────────────────────
@@ -23,7 +26,7 @@ export class ContractQuery {
 	constructor(private readonly client: CantonClient) {}
 
 	/**
-	 * Fetch the first page of active contracts matching the given template.
+	 * Fetch a page of active contracts matching the given template.
 	 */
 	async fetchActiveContracts<T = Record<string, unknown>>(
 		options: ContractQueryOptions<T>,
@@ -32,6 +35,7 @@ export class ContractQuery {
 			parties: options.parties,
 			filter: options.filter,
 			pageSize: options.pageSize,
+			pageToken: options.pageToken,
 		});
 	}
 
@@ -96,7 +100,7 @@ export class ContractQuery {
 	}
 
 	/**
-	 * Fetch the first page of active contracts viewed through a Daml interface.
+	 * Fetch a page of active contracts viewed through a Daml interface.
 	 */
 	async fetchActiveInterfaces<
 		TView = Record<string, unknown>,
@@ -105,11 +109,13 @@ export class ContractQuery {
 		interfaceId: string;
 		parties?: string[];
 		pageSize?: number;
+		pageToken?: string;
 		includeCreateArguments?: boolean;
 	}): Promise<ActiveInterfacesResponse<TView, TPayload>> {
 		return this.client.queryByInterface<TView, TPayload>(options.interfaceId, {
 			parties: options.parties,
 			pageSize: options.pageSize,
+			pageToken: options.pageToken,
 			includeCreateArguments: options.includeCreateArguments,
 		});
 	}

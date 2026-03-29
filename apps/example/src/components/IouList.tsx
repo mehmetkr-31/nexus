@@ -1,23 +1,27 @@
 "use client";
 
-import type { ActiveContract } from "@nexus-framework/react";
-import { Trash2, Wallet } from "lucide-react";
+import type { ActiveContract, TemplateDescriptor } from "@nexus-framework/react";
+import { Clock, Trash2, Wallet } from "lucide-react";
 import { useMemo } from "react";
 import { nexus } from "../lib/nexus-client";
 
-interface IouPayload {
+type IouPayload = {
 	owner: string;
 	amount: string;
 	currency: string;
-}
+};
 
-const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
+const IOU_TEMPLATE: TemplateDescriptor = {
+	packageName: "nexus-example",
+	moduleName: "Iou",
+	entityName: "Iou",
+};
 
 export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
 	const { data, isLoading } = nexus.useContracts<IouPayload>({
-		templateId: IOU_TEMPLATE_ID,
+		templateId: IOU_TEMPLATE,
 		parties,
 	});
 
@@ -71,7 +75,7 @@ function IouRow({
 
 	const handleArchive = () => {
 		mutate({
-			templateId: IOU_TEMPLATE_ID,
+			templateId: IOU_TEMPLATE,
 			contractId: contract.contractId,
 			choice: "Archive",
 			choiceArgument: {},
@@ -80,7 +84,11 @@ function IouRow({
 	};
 
 	return (
-		<div className="px-6 py-5 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group">
+		<div
+			className={`px-6 py-5 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group ${
+				contract.isOptimistic ? "opacity-50 cursor-wait" : ""
+			}`}
+		>
 			<div className="flex gap-4 items-center min-w-0">
 				<div className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20 group-hover:border-blue-200 dark:group-hover:border-blue-800 group-hover:text-blue-500 transition-all duration-300">
 					<span className="text-sm font-bold tracking-tighter">
@@ -95,6 +103,12 @@ function IouRow({
 						<span className="text-xs font-bold text-blue-500 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded leading-none uppercase tracking-wide">
 							{contract.payload.currency}
 						</span>
+						{contract.isOptimistic && (
+							<span className="flex items-center gap-1 text-[10px] font-bold text-amber-500 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider animate-pulse">
+								<Clock size={10} />
+								Processing...
+							</span>
+						)}
 					</div>
 					<p
 						className="text-[11px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[180px]"

@@ -15,6 +15,7 @@ export type {
 	SandboxAuthOptions,
 	SubmitResult,
 	SynchronizerInfo,
+	TemplateDescriptor,
 	TemplateId,
 	TransactionResult,
 } from "@nexus-framework/core";
@@ -26,6 +27,7 @@ export {
 	NexusError,
 	NexusLedgerError,
 	oidcAuth,
+	packageDiscoveryPlugin,
 	sandboxAuth,
 } from "@nexus-framework/core";
 

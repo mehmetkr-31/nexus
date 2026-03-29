@@ -1,10 +1,21 @@
 "use client";
 
+import type { TemplateDescriptor } from "@nexus-framework/react";
 import { Plus, RefreshCw, Send, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 import { nexus } from "../lib/nexus-client";
 
-const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
+const IOU_TEMPLATE: TemplateDescriptor = {
+	packageName: "nexus-example",
+	moduleName: "Iou",
+	entityName: "Iou",
+};
+
+type IouPayload = {
+	amount: string;
+	currency: string;
+	owner: string;
+};
 
 export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 	const [amount, setAmount] = useState("");
@@ -13,7 +24,11 @@ export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 
 	const actAs = useMemo(() => [guestPartyId], [guestPartyId]);
 
-	const { mutate, isPending, error } = nexus.useCreateContract({
+	const { mutate, isPending, error } = nexus.useCreateContract<IouPayload>({
+		waitForFinality: true,
+		optimisticContract: (vars) => ({
+			payload: vars.createArguments,
+		}),
 		onSuccess: () => {
 			setAmount("");
 			setOwner("");
@@ -26,7 +41,7 @@ export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 		if (!amount || !owner) return;
 
 		mutate({
-			templateId: IOU_TEMPLATE_ID,
+			templateId: IOU_TEMPLATE,
 			createArguments: {
 				amount,
 				currency,

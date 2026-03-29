@@ -3,6 +3,7 @@ import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query
 import { CreateIouForm } from "../../components/CreateIouForm";
 import { IouList } from "../../components/IouList";
 import { LedgerStatus } from "../../components/LedgerStatus";
+import { PagedIouList } from "../../components/PagedIouList";
 import { StreamIouList } from "../../components/StreamIouList";
 import { SuspenseIouList } from "../../components/SuspenseIouList";
 import { IOU_TEMPLATE_ID, resolveServerSession } from "../../lib/nexus";
@@ -94,7 +95,10 @@ export default async function ContractsPage() {
 								</h2>
 								<div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 mx-6" />
 							</div>
-							<StreamIouList partyId={partyId} />
+							<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+								<StreamIouList partyId={partyId} />
+								<PagedIouList partyId={partyId} />
+							</div>
 						</div>
 					</div>
 

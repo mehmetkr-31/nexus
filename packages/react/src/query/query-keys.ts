@@ -19,6 +19,7 @@ export type NexusQueryKey = readonly unknown[];
 export interface ContractQueryFilters {
 	parties?: string[];
 	filter?: Record<string, unknown>;
+	pageSize?: number;
 }
 
 // ─── nexusKeys ────────────────────────────────────────────────────────────────

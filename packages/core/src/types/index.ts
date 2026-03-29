@@ -74,6 +74,8 @@ export interface ActiveContract<T = Record<string, unknown>> {
 	createdAt: string;
 	signatories: string[];
 	observers: string[];
+	/** If true, this contract is currently awaiting consensus on the ledger. */
+	isOptimistic?: boolean;
 }
 
 export interface ActiveContractsResponse<T = Record<string, unknown>> {
@@ -200,6 +202,8 @@ export interface ActiveInterface<
 	signatories: string[];
 	observers: string[];
 	createdAt: string;
+	/** If true, this contract is currently awaiting consensus on the ledger. */
+	isOptimistic?: boolean;
 }
 
 export interface ActiveInterfacesResponse<

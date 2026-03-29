@@ -1,5 +1,6 @@
 import {
 	createNexusClient,
+	packageDiscoveryPlugin,
 	type StreamingActions,
 	sandboxAuth,
 	streamingPlugin,
@@ -22,6 +23,7 @@ export const nexus = createNexusClient<TanstackQueryActions & StreamingActions>(
 			secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? "secret",
 			userId: NEXUS_USER_ID,
 		}),
+		packageDiscoveryPlugin(),
 		tanstackQueryPlugin(),
 		streamingPlugin(),
 	],

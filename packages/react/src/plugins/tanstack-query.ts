@@ -1,4 +1,5 @@
 import type {
+	ActiveContract,
 	ActiveContractsResponse,
 	ActiveInterfacesResponse,
 	ExerciseResult,
@@ -10,9 +11,12 @@ import type {
 	TemplateId,
 } from "@nexus-framework/core";
 import {
+	type InfiniteData,
+	type UseInfiniteQueryResult,
 	type UseMutationResult,
 	type UseQueryResult,
 	type UseSuspenseQueryResult,
+	useInfiniteQuery,
 	useMutation,
 	useQuery,
 	useQueryClient,
@@ -48,10 +52,17 @@ export interface CreateContractVariables<T = Record<string, unknown>> {
 	workflowId?: string;
 }
 
-export interface UseCreateContractOptions {
+export interface UseCreateContractOptions<
+	T extends Record<string, unknown> = Record<string, unknown>,
+> {
 	invalidateTemplates?: Array<string | TemplateDescriptor>;
 	onSuccess?: (result: SubmitResult) => void | Promise<void>;
 	onError?: (error: Error) => void;
+	/**
+	 * Optional function to generate a temporary "optimistic" contract.
+	 * This contract will be added to the cache immediately when the mutation starts.
+	 */
+	optimisticContract?: (vars: CreateContractVariables<T>) => Partial<ActiveContract<T>>;
 	/** If true, wait for the transaction to be committed to the ledger before resolving. */
 	waitForFinality?: boolean;
 }
@@ -135,6 +146,13 @@ export interface UseInterfaceOptions<
 	staleTime?: number;
 }
 
+export interface UsePagedContractsOptions<_T = Record<string, unknown>> {
+	templateId: string | TemplateDescriptor;
+	parties?: string[];
+	pageSize?: number;
+	filter?: Record<string, unknown>;
+}
+
 // ─── useRightsAs ─────────────────────────────────────────────────────────────
 
 /**
@@ -156,6 +174,10 @@ export interface UseRightsAsResult {
 	useContractsSuspense: <T = Record<string, unknown>>(
 		options: Omit<UseContractsOptions<T>, "parties">,
 	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
+	/** Scoped paged contract query. */
+	usePagedContracts: <T = Record<string, unknown>>(
+		options: Omit<UsePagedContractsOptions<T>, "parties">,
+	) => UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>>;
 	/** Scoped interface query. */
 	useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
 		options: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
@@ -174,6 +196,13 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
 
 	/**
+	 * Paged contract query using infinite scrolling.
+	 */
+	usePagedContracts: <T = Record<string, unknown>>(
+		options: UsePagedContractsOptions<T>,
+	) => UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>>;
+
+	/**
 	 * Query contracts through a Daml interface — returns interfaceView + payload.
 	 */
 	useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
@@ -187,9 +216,9 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 		options: UseInterfaceOptions<TView, TPayload>,
 	) => UseSuspenseQueryResult<ActiveInterfacesResponse<TView, TPayload>>;
 
-	useCreateContract: (
-		options?: UseCreateContractOptions,
-	) => UseMutationResult<SubmitResult, Error, CreateContractVariables>;
+	useCreateContract: <T extends Record<string, unknown> = Record<string, unknown>>(
+		options?: UseCreateContractOptions<T>,
+	) => UseMutationResult<SubmitResult, Error, CreateContractVariables<T>>;
 
 	useExerciseChoice: (
 		options?: UseExerciseChoiceOptions,
@@ -273,6 +302,41 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 			useContractsSuspense: <T = Record<string, unknown>>(opts: UseContractsOptions<T>) =>
 				useSuspenseQuery(contractQueryOptions<T>({ client, ...opts })),
 
+			usePagedContracts: <T = Record<string, unknown>>(opts: UsePagedContractsOptions<T>) => {
+				const stableId =
+					typeof opts.templateId === "string"
+						? opts.templateId
+						: `${opts.templateId.packageName}:${opts.templateId.moduleName}:${opts.templateId.entityName}`;
+
+				return useInfiniteQuery({
+					queryKey: nexusKeys.contractsQuery(stableId, {
+						parties: opts.parties,
+						filter: opts.filter,
+						pageSize: opts.pageSize,
+					}),
+					queryFn: async ({ pageParam }) => {
+						let finalTemplateId = opts.templateId;
+						if (
+							typeof finalTemplateId !== "string" &&
+							!("packageId" in finalTemplateId) &&
+							client.packages
+						) {
+							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
+							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+						}
+						return client.ledger.contracts.fetchActiveContracts<T>({
+							templateId: finalTemplateId as string | TemplateId,
+							parties: opts.parties,
+							filter: opts.filter,
+							pageSize: opts.pageSize ?? 50,
+							pageToken: pageParam as string | undefined,
+						});
+					},
+					initialPageParam: undefined as string | undefined,
+					getNextPageParam: (lastPage) => lastPage.nextPageToken,
+				});
+			},
+
 			// ─── Interface Queries ───────────────────────────────────────────────
 
 			useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
@@ -312,10 +376,12 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 
 			// ─── Mutations ──────────────────────────────────────────────────────
 
-			useCreateContract: (opts: UseCreateContractOptions = {}) => {
+			useCreateContract: <T extends Record<string, unknown> = Record<string, unknown>>(
+				opts: UseCreateContractOptions<T> = {},
+			) => {
 				const queryClient = useQueryClient();
 				return useMutation({
-					mutationFn: async (vars: CreateContractVariables) => {
+					mutationFn: async (vars: CreateContractVariables<T>) => {
 						let finalTemplateId = vars.templateId;
 						if (
 							typeof finalTemplateId !== "string" &&
@@ -331,6 +397,50 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
 						);
+					},
+					onMutate: async (vars) => {
+						if (!opts.optimisticContract) return;
+
+						const stableTemplateId =
+							typeof vars.templateId === "string"
+								? vars.templateId
+								: isTemplateId(vars.templateId)
+									? `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`
+									: `${(vars.templateId as TemplateDescriptor).packageName}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
+
+						const parties = [...vars.actAs, ...(vars.readAs ?? [])];
+						const queryKey = nexusKeys.contractsQuery(stableTemplateId, { parties });
+
+						await queryClient.cancelQueries({ queryKey });
+						const previousData = queryClient.getQueryData<ActiveContractsResponse<T>>(queryKey);
+
+						if (previousData) {
+							const optimistic = opts.optimisticContract(vars);
+							queryClient.setQueryData<ActiveContractsResponse<T>>(queryKey, {
+								...previousData,
+								contracts: [
+									{
+										contractId: `optimistic-${Date.now()}`,
+										templateId: vars.templateId as TemplateId, // cast for type-safety in cache
+										signatories: vars.actAs,
+										observers: vars.readAs ?? [],
+										createdAt: new Date().toISOString(),
+										isOptimistic: true,
+										payload: vars.createArguments as unknown as T,
+										...optimistic,
+									} as ActiveContract<T>,
+									...previousData.contracts,
+								],
+							});
+						}
+
+						return { previousData, queryKey };
+					},
+					onError: (err, _vars, context) => {
+						if (context?.queryKey && context.previousData) {
+							queryClient.setQueryData(context.queryKey, context.previousData);
+						}
+						opts.onError?.(err);
 					},
 					onSuccess: async (result, vars) => {
 						if (opts.waitForFinality) {
@@ -356,7 +466,6 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 						await invalidateContractQueries(queryClient, stableTemplates);
 						await opts.onSuccess?.(result);
 					},
-					onError: opts.onError,
 				});
 			},
 
@@ -486,6 +595,42 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 				useContractsSuspense: <T = Record<string, unknown>>(
 					opts: Omit<UseContractsOptions<T>, "parties">,
 				) => useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				usePagedContracts: <T = Record<string, unknown>>(
+					opts: Omit<UsePagedContractsOptions<T>, "parties">,
+				) => {
+					const stableId =
+						typeof opts.templateId === "string"
+							? opts.templateId
+							: `${opts.templateId.packageName}:${opts.templateId.moduleName}:${opts.templateId.entityName}`;
+
+					return useInfiniteQuery({
+						queryKey: nexusKeys.contractsQuery(stableId, {
+							parties: [party],
+							filter: opts.filter,
+							pageSize: opts.pageSize,
+						}),
+						queryFn: async ({ pageParam }) => {
+							let finalTemplateId = opts.templateId;
+							if (
+								typeof finalTemplateId !== "string" &&
+								!("packageId" in finalTemplateId) &&
+								client.packages
+							) {
+								const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
+								finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
+							}
+							return client.ledger.contracts.fetchActiveContracts<T>({
+								templateId: finalTemplateId as string | TemplateId,
+								parties: [party],
+								filter: opts.filter,
+								pageSize: opts.pageSize ?? 50,
+								pageToken: pageParam as string | undefined,
+							});
+						},
+						initialPageParam: undefined as string | undefined,
+						getNextPageParam: (lastPage) => lastPage.nextPageToken,
+					});
+				},
 				useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
 					opts: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
 				) =>

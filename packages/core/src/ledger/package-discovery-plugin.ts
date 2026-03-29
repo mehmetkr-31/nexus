@@ -37,8 +37,7 @@ export function packageDiscoveryPlugin(): NexusPlugin<PackageDiscoveryActions> {
 		id: "package-discovery",
 		init: (client) => {
 			const resolver = new PackageResolver(client);
-			// Trigger background initialization, resolveTemplateId will also ensure it's ready
-			void resolver.init();
+			// Initialization will happen lazily on first resolveTemplateId call
 			return { packages: resolver };
 		},
 	};

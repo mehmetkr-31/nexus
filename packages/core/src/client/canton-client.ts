@@ -7,6 +7,7 @@ import {
 	type SubmitRequest,
 	type SubmitResult,
 	type SynchronizerInfo,
+	type TemplateId,
 	type TransactionResult,
 } from "../types/index.ts";
 
@@ -185,7 +186,7 @@ export class CantonClient {
 	// ─── Active Contracts ──────────────────────────────────────────────────────
 
 	async queryContracts<T = Record<string, unknown>>(
-		templateId: string,
+		templateId: string | TemplateId,
 		options?: {
 			filter?: Record<string, unknown>;
 			parties?: string[];
@@ -205,7 +206,8 @@ export class CantonClient {
 		const body: Record<string, unknown> = {
 			filter: {
 				filtersByParty,
-				alsoFilterByTemplateId: templateId,
+				alsoFilterByTemplateId:
+					typeof templateId === "string" ? templateId : formatTemplateId(templateId),
 				...options?.filter,
 			},
 			activeAtOffset: "0",
