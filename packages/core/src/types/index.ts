@@ -315,6 +315,11 @@ import type { PackageResolver } from "../ledger/package-resolver.ts";
 export interface NexusConfig {
 	/** Canton JSON Ledger API base URL, e.g. http://localhost:7575 */
 	ledgerApiUrl: string;
+	/**
+	 * Path prefix for the Canton JSON Ledger API.
+	 * Default: "/v2"
+	 */
+	apiPathPrefix?: string;
 	auth?: AuthConfig;
 	/** Request timeout in milliseconds. Default: 30000 */
 	timeoutMs?: number;

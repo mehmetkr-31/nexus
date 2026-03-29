@@ -113,6 +113,7 @@ export type NexusClientInstance<TPluginContext = Record<string, never>> = NexusC
  */
 export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 	baseUrl: string;
+	apiPathPrefix?: string;
 	timeoutMs?: number;
 	plugins: TPlugins;
 }): Promise<NexusClientInstance<InferNexusPlugins<TPlugins>>> {
@@ -123,6 +124,7 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 
 	const coreClient = await createNexus({
 		ledgerApiUrl: options.baseUrl,
+		apiPathPrefix: options.apiPathPrefix,
 		timeoutMs: options.timeoutMs,
 		plugins: [
 			...serverPlugins,

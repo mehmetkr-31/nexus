@@ -119,6 +119,11 @@ const activeInterfacesResponseSchema = z.union([
 
 export interface CantonClientOptions {
 	baseUrl: string;
+	/**
+	 * Path prefix for the Canton JSON Ledger API.
+	 * Default: "/v2"
+	 */
+	apiPathPrefix?: string;
 	getToken: () => Promise<string>;
 	timeoutMs?: number;
 	middlewares?: FetchMiddleware[];
@@ -129,13 +134,14 @@ export class CantonClient {
 	public readonly getToken: () => Promise<string>;
 	private readonly timeoutMs: number;
 	private readonly middlewares: FetchMiddleware[];
-	private readonly apiBase = "/v2";
+	private readonly apiBase: string;
 
 	constructor(options: CantonClientOptions) {
 		this.baseUrl = options.baseUrl.replace(/\/$/, "");
 		this.getToken = options.getToken;
 		this.timeoutMs = options.timeoutMs ?? 30_000;
 		this.middlewares = options.middlewares ?? [];
+		this.apiBase = options.apiPathPrefix ?? "/v2";
 	}
 
 	// ─── Core fetch helper ─────────────────────────────────────────────────────

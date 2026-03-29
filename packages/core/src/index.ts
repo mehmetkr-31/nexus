@@ -45,6 +45,7 @@ export async function createNexus<
 	TPlugins extends NexusPlugin<Record<string, unknown>>[],
 >(options: {
 	ledgerApiUrl: string;
+	apiPathPrefix?: string;
 	timeoutMs?: number;
 	plugins: TPlugins;
 }): Promise<NexusClient & InferNexusPlugins<TPlugins>> {
@@ -66,6 +67,7 @@ export async function createNexus<
 
 	const http = new CantonClient({
 		baseUrl: options.ledgerApiUrl,
+		apiPathPrefix: options.apiPathPrefix,
 		getToken,
 		timeoutMs: options.timeoutMs,
 		middlewares,
@@ -76,6 +78,7 @@ export async function createNexus<
 	const client: NexusClient = {
 		config: {
 			ledgerApiUrl: options.ledgerApiUrl,
+			apiPathPrefix: options.apiPathPrefix,
 			timeoutMs: options.timeoutMs,
 		},
 		packages,
