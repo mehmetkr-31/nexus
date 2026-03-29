@@ -4,7 +4,7 @@ import type {
 	NexusClient,
 	TemplateDescriptor,
 } from "@nexus-framework/core";
-import { type QueryClient, queryOptions } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
 // ─── Contract queryOptions factory ───────────────────────────────────────────
@@ -209,13 +209,4 @@ export function interfaceQueryOptions<
 
 // ─── Prefetch helpers ─────────────────────────────────────────────────────────
 
-/**
- * Prefetch active contracts into a QueryClient.
- * Useful in Next.js `generateStaticParams` / `loader` functions.
- */
-export async function prefetchContracts<T = Record<string, unknown>>(
-	queryClient: QueryClient,
-	input: ContractQueryOptionsInput<T>,
-): Promise<void> {
-	await queryClient.prefetchQuery(contractQueryOptions(input));
-}
+// Prefetch helpers are internal-only. Use nexus.prefetch.X(...)

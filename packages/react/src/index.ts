@@ -73,17 +73,3 @@ export {
 	invalidateContractQueries,
 	nexusKeys,
 } from "./query/query-keys.ts";
-
-// ─── Query Options (TanStack) ─────────────────────────────────────────────────
-export type {
-	ContractQueryOptionsInput,
-	InterfaceQueryOptionsInput,
-} from "./query/query-options.ts";
-export {
-	contractQueryOptions,
-	interfaceQueryOptions,
-	ledgerEndQueryOptions,
-	partyIdQueryOptions,
-	prefetchContracts,
-	synchronizersQueryOptions,
-} from "./query/query-options.ts";

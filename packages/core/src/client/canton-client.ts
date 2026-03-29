@@ -28,9 +28,19 @@ const activeContractSchema = z.object({
 	observers: z.array(z.string()),
 });
 
-const activeContractsResponseSchema = z.array(activeContractSchema).transform((contracts) => ({
-	contracts,
-}));
+const activeContractsResponseSchema = z.union([
+	z.array(activeContractSchema).transform((contracts) => ({ contracts })),
+	z
+		.object({
+			contracts: z.array(activeContractSchema).optional(),
+			activeContracts: z.array(activeContractSchema).optional(),
+			nextPageToken: z.string().optional(),
+		})
+		.transform((obj) => ({
+			contracts: obj.contracts ?? obj.activeContracts ?? [],
+			nextPageToken: obj.nextPageToken,
+		})),
+]);
 
 const submitResultSchema = z.object({
 	transactionId: z.string(),
@@ -90,9 +100,19 @@ const activeInterfaceSchema = z.object({
 	createdAt: z.string(),
 });
 
-const activeInterfacesResponseSchema = z
-	.array(activeInterfaceSchema)
-	.transform((interfaces) => ({ interfaces }));
+const activeInterfacesResponseSchema = z.union([
+	z.array(activeInterfaceSchema).transform((interfaces) => ({ interfaces })),
+	z
+		.object({
+			interfaces: z.array(activeInterfaceSchema).optional(),
+			activeInterfaces: z.array(activeInterfaceSchema).optional(),
+			nextPageToken: z.string().optional(),
+		})
+		.transform((obj) => ({
+			interfaces: obj.interfaces ?? obj.activeInterfaces ?? [],
+			nextPageToken: obj.nextPageToken,
+		})),
+]);
 
 // ─── CantonClient ─────────────────────────────────────────────────────────────
 

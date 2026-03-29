@@ -1,16 +1,6 @@
 import { describe, expect, it, mock, spyOn } from "bun:test";
+import { JwtManager } from "../auth/jwt-manager.ts";
 import { provisionSandboxUser } from "./sandbox-provision.ts";
-
-// Mock JwtManager to avoid real JWT generation and signing
-mock.module("../auth/jwt-manager.ts", () => {
-	return {
-		JwtManager: class MockJwtManager {
-			async getAdminToken() {
-				return "mocked-admin-token";
-			}
-		},
-	};
-});
 
 describe("provisionSandboxUser", () => {
 	const options = {
@@ -21,6 +11,9 @@ describe("provisionSandboxUser", () => {
 
 	it("should successfully allocate party with modern Canton (partyDetails)", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
+		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+			"mocked-admin-token",
+		);
 
 		// 1. Party Allocation
 		fetchSpy.mockResolvedValueOnce(
@@ -52,12 +45,16 @@ describe("provisionSandboxUser", () => {
 		});
 
 		fetchSpy.mockRestore();
+		jwtSpy.mockRestore();
 	});
 
-	it("should fallback to party list (partyDetails array) if allocation returns ALREADY_EXISTS without partyId", async () => {
+	it("should fallback to list parties on ALREADY_EXISTS without partyId in error", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
+		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+			"mocked-admin-token",
+		);
 
-		// 1. Party Allocation returns generic ALREADY_EXISTS (no ID)
+		// 1. Party Allocation fails with ALREADY_EXISTS (no ID)
 		fetchSpy.mockResolvedValueOnce(
 			new Response("ALREADY_EXISTS", {
 				status: 400,
@@ -90,12 +87,16 @@ describe("provisionSandboxUser", () => {
 		expect(listReq[1]?.method).toBeUndefined(); // Default GET
 
 		fetchSpy.mockRestore();
+		jwtSpy.mockRestore();
 	});
 
-	it("should extract party ID directly from Canton 3.x ALREADY_EXISTS error message", async () => {
+	it("should extract partyId from ALREADY_EXISTS error message if possible", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
+		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+			"mocked-admin-token",
+		);
 
-		// 1. Party Allocation returns Canton 3.x specific ALREADY_EXISTS
+		// 1. Party Allocation fails with detailed error message
 		fetchSpy.mockResolvedValueOnce(
 			new Response(
 				"The submitted request has invalid arguments: Party already exists: party Alice::1220hash... is already allocated on this node",
@@ -119,10 +120,14 @@ describe("provisionSandboxUser", () => {
 		expect(fetchSpy).toHaveBeenCalledTimes(3);
 
 		fetchSpy.mockRestore();
+		jwtSpy.mockRestore();
 	});
 
-	it("should format Canton 3.4.x party IDs correctly (stripping participant suffix)", async () => {
+	it("should clean up participant suffix from partyId", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
+		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+			"mocked-admin-token",
+		);
 
 		// 1. Party Allocation
 		fetchSpy.mockResolvedValueOnce(
@@ -141,10 +146,14 @@ describe("provisionSandboxUser", () => {
 		expect(partyId).toBe("Alice::1220hash");
 
 		fetchSpy.mockRestore();
+		jwtSpy.mockRestore();
 	});
 
 	it("should support legacy Canton (partyRecord) responses", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
+		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+			"mocked-admin-token",
+		);
 
 		// 1. Party Allocation
 		fetchSpy.mockResolvedValueOnce(

@@ -3,8 +3,8 @@ import { generateEncryptionKey, NexusAuthError, SessionManager } from "@nexus-fr
 import { createServerNexusClient, createServerNexusClientFromSession } from "./server-client.ts";
 
 describe("createServerNexusClientFromSession", () => {
-	test("creates a client from a valid session", () => {
-		const client = createServerNexusClientFromSession(
+	test("creates a client from a valid session", async () => {
+		const client = await createServerNexusClientFromSession(
 			{ token: "test.token.sig", partyId: "Alice::abc", expiresAt: Date.now() + 3600_000 },
 			"http://localhost:7575",
 		);
@@ -13,7 +13,7 @@ describe("createServerNexusClientFromSession", () => {
 	});
 
 	test("client getToken() returns the session token", async () => {
-		const client = createServerNexusClientFromSession(
+		const client = await createServerNexusClientFromSession(
 			{ token: "my.jwt.token", partyId: "Alice::abc", expiresAt: Date.now() + 3600_000 },
 			"http://localhost:7575",
 		);

@@ -16,7 +16,7 @@ export const NEXUS_USER_ID = process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? "alice";
  *
  * All React hooks are attached to this instance.
  */
-export const nexus = createNexusClient<TanstackQueryActions & StreamingActions>({
+export const nexus = await createNexusClient<TanstackQueryActions & StreamingActions>({
 	baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575",
 	plugins: [
 		sandboxAuth({

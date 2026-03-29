@@ -35,7 +35,7 @@ export type AuthConfig = SandboxAuthConfig | JwtAuthConfig | OidcAuthConfig;
 export interface NexusConfig {
 	/** Canton JSON Ledger API base URL, e.g. http://localhost:7575 */
 	ledgerApiUrl: string;
-	auth: AuthConfig;
+	auth?: AuthConfig;
 	/** Request timeout in milliseconds. Default: 30000 */
 	timeoutMs?: number;
 }
@@ -299,4 +299,85 @@ export class NexusLedgerError extends NexusError {
 		super(message, "LEDGER_ERROR", statusCode, details);
 		this.name = "NexusLedgerError";
 	}
+}
+
+// ─── Nexus Client & Config ───────────────────────────────────────────────────
+
+import type { PartyIdResolver } from "../auth/party-id-resolver.ts";
+import type { SessionManager } from "../auth/session-manager.ts";
+import type { CantonClient } from "../client/canton-client.ts";
+import type { CommandSubmitter } from "../ledger/command-submitter.ts";
+import type { ContractQuery } from "../ledger/contract-query.ts";
+import type { InterfaceQuery } from "../ledger/interface-query.ts";
+import type { LedgerIdentity } from "../ledger/ledger-identity.ts";
+import type { PackageResolver } from "../ledger/package-resolver.ts";
+
+export interface NexusConfig {
+	/** Canton JSON Ledger API base URL, e.g. http://localhost:7575 */
+	ledgerApiUrl: string;
+	auth?: AuthConfig;
+	/** Request timeout in milliseconds. Default: 30000 */
+	timeoutMs?: number;
+}
+
+/**
+ * The core Nexus client instance.
+ * Provides access to all ledger and auth services.
+ */
+export interface NexusClient {
+	config: NexusConfig;
+	http: CantonClient;
+	packages?: PackageResolver;
+	auth: {
+		partyId: PartyIdResolver;
+		session: SessionManager;
+	};
+	ledger: {
+		contracts: ContractQuery;
+		interfaces: InterfaceQuery;
+		commands: CommandSubmitter;
+		identity: LedgerIdentity;
+	};
+	getToken: () => Promise<string>;
+}
+
+/**
+ * The core Nexus client instance.
+ * Provides access to all ledger and auth services.
+ */
+export interface NexusClient {
+	config: NexusConfig;
+	http: CantonClient;
+	packages?: PackageResolver;
+	auth: {
+		partyId: PartyIdResolver;
+		session: SessionManager;
+	};
+	ledger: {
+		contracts: ContractQuery;
+		interfaces: InterfaceQuery;
+		commands: CommandSubmitter;
+		identity: LedgerIdentity;
+	};
+	getToken: () => Promise<string>;
+}
+
+/**
+ * The core Nexus client instance.
+ * Provides access to all ledger and auth services.
+ */
+export interface NexusClient {
+	config: NexusConfig;
+	http: CantonClient;
+	auth: {
+		partyId: PartyIdResolver;
+		session: SessionManager;
+	};
+	ledger: {
+		contracts: ContractQuery;
+		interfaces: InterfaceQuery;
+		commands: CommandSubmitter;
+		identity: LedgerIdentity;
+	};
+	getToken: () => Promise<string>;
 }

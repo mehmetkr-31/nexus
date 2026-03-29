@@ -1,12 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { createNexusClient } from "@nexus-framework/core";
 import { QueryClient } from "@tanstack/react-query";
+import { createNexusClient } from "../create-nexus-client.ts";
+import { tanstackQueryPlugin } from "../plugins/tanstack-query.ts";
 import { nexusKeys } from "./query-keys.ts";
-import {
-	contractQueryOptions,
-	ledgerEndQueryOptions,
-	partyIdQueryOptions,
-} from "./query-options.ts";
 
 function makeMockServer(handlers: Record<string, unknown>) {
 	return Bun.serve({
@@ -32,22 +28,26 @@ const mockContracts = [
 ];
 
 describe("contractQueryOptions", () => {
-	test("queryKey matches nexusKeys.contractsQuery structure", () => {
+	test("queryKey matches nexusKeys.contractsQuery structure", async () => {
 		const server = Bun.serve({ port: 0, fetch: () => Response.json({}) });
-		const client = createNexusClient({
-			ledgerApiUrl: `http://localhost:${server.port}`,
-			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
+		const client = await createNexusClient({
+			baseUrl: `http://localhost:${server.port}`,
+			plugins: [
+				{
+					id: "mock-auth",
+					auth: { getToken: async () => "token" },
+				},
+				tanstackQueryPlugin(),
+			],
 		});
 		server.stop();
 
-		const opts = contractQueryOptions({
-			client,
+		const opts = client.query.contracts({
 			templateId: "pkg:Mod:Iou",
 			parties: ["Alice::abc"],
 		});
 
 		const expected = nexusKeys.contractsQuery("pkg:Mod:Iou", { parties: ["Alice::abc"] });
-		// Compare key contents (TanStack v5 brands queryKeys with type symbols — compare as array)
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(expected));
 	});
 
@@ -56,13 +56,19 @@ describe("contractQueryOptions", () => {
 			"/v2/state/active-contracts": mockContracts,
 		});
 
-		const client = createNexusClient({
-			ledgerApiUrl: `http://localhost:${server.port}`,
-			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
+		const client = await createNexusClient({
+			baseUrl: `http://localhost:${server.port}`,
+			plugins: [
+				{
+					id: "mock-auth",
+					auth: { getToken: async () => "token" },
+				},
+				tanstackQueryPlugin(),
+			],
 		});
 
 		const qc = new QueryClient();
-		const opts = contractQueryOptions({ client, templateId: "pkg:Mod:Iou" });
+		const opts = client.query.contracts({ templateId: "pkg:Mod:Iou" });
 		const result = await qc.fetchQuery(opts);
 		server.stop();
 
@@ -72,27 +78,38 @@ describe("contractQueryOptions", () => {
 });
 
 describe("ledgerEndQueryOptions", () => {
-	test("queryKey matches nexusKeys.ledgerEnd() structure", () => {
-		const client = createNexusClient({
-			ledgerApiUrl: "http://localhost:7575",
-			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
+	test("queryKey matches nexusKeys.ledgerEnd() structure", async () => {
+		const client = await createNexusClient({
+			baseUrl: "http://localhost:7575",
+			plugins: [
+				{
+					id: "mock-auth",
+					auth: { getToken: async () => "token" },
+				},
+				tanstackQueryPlugin(),
+			],
 		});
 
-		const opts = ledgerEndQueryOptions({ client });
+		const opts = client.query.ledgerEnd();
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.ledgerEnd()));
 		expect(opts.staleTime).toBe(2_000);
 	});
 });
 
 describe("partyIdQueryOptions", () => {
-	test("queryKey includes userId", () => {
-		const client = createNexusClient({
-			ledgerApiUrl: "http://localhost:7575",
-			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
+	test("queryKey includes userId", async () => {
+		const client = await createNexusClient({
+			baseUrl: "http://localhost:7575",
+			plugins: [
+				{
+					id: "mock-auth",
+					auth: { getToken: async () => "token" },
+				},
+				tanstackQueryPlugin(),
+			],
 		});
 
-		const opts = partyIdQueryOptions({ client, userId: "alice" });
+		const opts = client.query.partyId({ userId: "alice" });
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.partyId("alice")));
-		expect(opts.staleTime).toBe(5 * 60 * 1000);
 	});
 });

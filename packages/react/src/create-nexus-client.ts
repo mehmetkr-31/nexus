@@ -86,15 +86,15 @@ export type NexusClientInstance<TActions = TanstackQueryActions> = NexusClient &
  * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
-export function createNexusClient<TActions = TanstackQueryActions>(options: {
+export async function createNexusClient<TActions = TanstackQueryActions>(options: {
 	baseUrl: string;
 	timeoutMs?: number;
 	plugins: AnyPlugin[];
-}): NexusClientInstance<TActions> {
+}): Promise<NexusClientInstance<TActions>> {
 	const serverPlugins = options.plugins.filter((p): p is NexusPlugin => "auth" in p || "init" in p);
 	const clientPlugins = options.plugins.filter((p): p is NexusClientPlugin => "getActions" in p);
 
-	const coreClient = createNexus({
+	const coreClient = await createNexus({
 		ledgerApiUrl: options.baseUrl,
 		timeoutMs: options.timeoutMs,
 		plugins: [
@@ -131,6 +131,8 @@ export function createNexusClient<TActions = TanstackQueryActions>(options: {
 
 	return {
 		...actions,
+		config: coreClient.config,
+		packages: coreClient.packages,
 		http: coreClient.http,
 		auth: coreClient.auth,
 		ledger: coreClient.ledger,

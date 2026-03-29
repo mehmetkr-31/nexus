@@ -1,4 +1,3 @@
-import { prefetchContracts } from "@nexus-framework/react";
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { CreateIouForm } from "../../components/CreateIouForm";
 import { IouList } from "../../components/IouList";
@@ -16,12 +15,12 @@ export default async function ContractsPage() {
 
 	// 2. SSR prefetch — QueryClient is populated before HTML ships to browser
 	const queryClient = new QueryClient();
-	await prefetchContracts(queryClient, {
-		client,
-		templateId: IOU_TEMPLATE_ID,
-		parties: [partyId],
-		staleTime: 5000,
-	});
+	await queryClient.prefetchQuery(
+		client.query.contracts({
+			templateId: IOU_TEMPLATE_ID,
+			parties: [partyId],
+		}),
+	);
 
 	const dehydratedState = dehydrate(queryClient);
 

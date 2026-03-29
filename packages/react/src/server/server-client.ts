@@ -59,18 +59,18 @@ export async function createServerNexusClient(options: {
 		);
 	}
 
-	return createServerNexusClientFromSession(session, config.ledgerApiUrl);
+	return await createServerNexusClientFromSession(session, config.ledgerApiUrl);
 }
 
 /**
  * Create a NexusClient directly from a NexusSession.
  * Useful when you already have the session object (e.g., from middleware).
  */
-export function createServerNexusClientFromSession(
+export async function createServerNexusClientFromSession(
 	session: NexusSession,
 	ledgerApiUrl: string,
-): NexusClient {
-	return createNexus({
+): Promise<NexusClient> {
+	return await createNexus({
 		ledgerApiUrl,
 		plugins: [jwtAuth({ token: session.token })],
 	});
