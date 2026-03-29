@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, spyOn } from "bun:test";
+import { describe, expect, it, spyOn } from "bun:test";
 import { JwtManager } from "../auth/jwt-manager.ts";
 import { provisionSandboxUser } from "./sandbox-provision.ts";
 
@@ -151,7 +151,7 @@ describe("provisionSandboxUser", () => {
 
 	it("should support legacy Canton (partyRecord) responses", async () => {
 		const fetchSpy = spyOn(globalThis, "fetch");
-		const jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
+		const _jwtSpy = spyOn(JwtManager.prototype, "getAdminToken").mockResolvedValue(
 			"mocked-admin-token",
 		);
 

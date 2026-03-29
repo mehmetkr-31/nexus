@@ -365,8 +365,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
 				ledgerEnd: () => ledgerEndQueryOptions({ client }),
-				partyId: (params: PartyIdQueryOptionsParams) =>
-					partyIdQueryOptions({ client, ...params }),
+				partyId: (params: PartyIdQueryOptionsParams) => partyIdQueryOptions({ client, ...params }),
 				synchronizers: () => synchronizersQueryOptions({ client }),
 			},
 		}),

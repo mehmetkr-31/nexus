@@ -6,7 +6,7 @@ import { ContractQuery } from "./ledger/contract-query.ts";
 import { InterfaceQuery } from "./ledger/interface-query.ts";
 import { LedgerIdentity } from "./ledger/ledger-identity.ts";
 import { PackageResolver } from "./ledger/package-resolver.ts";
-import type { AuthConfig, NexusClient } from "./types/index.ts";
+import type { NexusClient } from "./types/index.ts";
 import type { FetchMiddleware, NexusPlugin } from "./types/plugin.ts";
 
 export { PartyIdResolver } from "./auth/party-id-resolver.ts";

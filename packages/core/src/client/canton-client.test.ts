@@ -422,8 +422,8 @@ describe("CantonClient — fetch middleware", () => {
 		server.stop();
 
 		expect(capturedConfig).toBeDefined();
-		expect(capturedConfig!.method).toBe("GET");
-		expect(capturedConfig!.path).toBe("/v2/state/ledger-end");
+		expect(capturedConfig?.method).toBe("GET");
+		expect(capturedConfig?.path).toBe("/v2/state/ledger-end");
 	});
 
 	test("onError hook is called on HTTP error", async () => {
