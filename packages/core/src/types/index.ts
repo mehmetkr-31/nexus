@@ -199,6 +199,13 @@ export interface ActiveInterfacesResponse<
 /** Returned by streaming methods — call close() to stop the stream */
 export interface StreamHandle {
 	close: () => void;
+	/**
+	 * Inject a new bearer token into the active WebSocket stream.
+	 * Use this to keep long-lived streams alive after JWT rotation.
+	 */
+	updateToken: (newToken: string) => void;
+	/** True when the WebSocket connection is open. Distinct from `isLive` (ACS snapshot). */
+	readonly connected: boolean;
 }
 
 export interface StreamHandlers<T = Record<string, unknown>> {

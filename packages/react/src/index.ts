@@ -39,8 +39,11 @@ export { createNexusClient } from "./create-nexus-client.ts";
 
 // ─── Plugins ──────────────────────────────────────────────────────────────────
 export type {
+	MultiStreamContractsState,
+	MultiStreamEntry,
 	StreamContractsState,
 	StreamingActions,
+	UseMultiStreamContractsOptions,
 	UseStreamContractsOptions,
 } from "./plugins/streaming.ts";
 export { streamingPlugin } from "./plugins/streaming.ts";
@@ -57,6 +60,7 @@ export type {
 	UseExerciseChoiceOptions,
 	UseInterfaceOptions,
 	UseLedgerMutationOptions,
+	UseRightsAsResult,
 } from "./plugins/tanstack-query.ts";
 export { tanstackQueryPlugin } from "./plugins/tanstack-query.ts";
 

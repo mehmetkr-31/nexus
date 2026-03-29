@@ -375,7 +375,7 @@ export class CantonClient {
 	 * Open a WebSocket stream for active contract updates.
 	 * Uses the `jwt.token.<TOKEN>` subprotocol for auth (Canton standard).
 	 *
-	 * @returns A cleanup function to close the connection
+	 * @returns A `StreamHandle` with `close()`, `updateToken()`, and `connected` getter.
 	 */
 	async streamActiveContracts<T = Record<string, unknown>>(
 		templateId: string,
@@ -385,51 +385,78 @@ export class CantonClient {
 			onLive?: () => void;
 			onError?: (error: Error) => void;
 			onClose?: () => void;
+			onConnectedChange?: (connected: boolean) => void;
 		},
 		options?: { parties?: string[] },
-	): Promise<() => void> {
+	): Promise<import("../types/index.ts").StreamHandle> {
 		const token = await this.getToken();
 		const wsUrl = this.baseUrl.replace(/^http/, "ws") + "/v2/state/active-contracts/stream";
 
-		const ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
+		let ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
+		let _connected = false;
 
-		ws.onopen = () => {
-			ws.send(
-				JSON.stringify({
-					templateIds: [templateId],
-					parties: options?.parties ?? [],
-				}),
-			);
-		};
+		const subscribe = (socket: WebSocket) => {
+			socket.onopen = () => {
+				_connected = true;
+				handlers.onConnectedChange?.(true);
+				socket.send(
+					JSON.stringify({
+						templateIds: [templateId],
+						parties: options?.parties ?? [],
+					}),
+				);
+			};
 
-		ws.onmessage = (event) => {
-			try {
-				const msg = JSON.parse(event.data as string) as Record<string, unknown>;
-				if ("created" in msg) {
-					handlers.onCreate?.(msg.created as import("../types/index.ts").ActiveContract<T>);
-				} else if ("archived" in msg) {
-					const archived = msg.archived as {
-						contractId: string;
-						templateId: import("../types/index.ts").TemplateId;
-					};
-					handlers.onArchive?.(archived.contractId, archived.templateId);
-				} else if ("live_marker" in msg || msg.type === "live") {
-					handlers.onLive?.();
+			socket.onmessage = (event) => {
+				try {
+					const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+					if ("created" in msg) {
+						handlers.onCreate?.(msg.created as import("../types/index.ts").ActiveContract<T>);
+					} else if ("archived" in msg) {
+						const archived = msg.archived as {
+							contractId: string;
+							templateId: import("../types/index.ts").TemplateId;
+						};
+						handlers.onArchive?.(archived.contractId, archived.templateId);
+					} else if ("live_marker" in msg || msg.type === "live") {
+						handlers.onLive?.();
+					}
+				} catch (err) {
+					handlers.onError?.(err instanceof Error ? err : new Error(String(err)));
 				}
-			} catch (err) {
-				handlers.onError?.(err instanceof Error ? err : new Error(String(err)));
-			}
+			};
+
+			socket.onerror = () => {
+				handlers.onError?.(new Error("WebSocket error"));
+			};
+
+			socket.onclose = () => {
+				_connected = false;
+				handlers.onConnectedChange?.(false);
+				handlers.onClose?.();
+			};
 		};
 
-		ws.onerror = () => {
-			handlers.onError?.(new Error("WebSocket error"));
+		subscribe(ws);
+
+		const handle: import("../types/index.ts").StreamHandle = {
+			close: () => ws.close(),
+			/**
+			 * Re-connect the stream with a new bearer token.
+			 * Closes the current WebSocket and opens a new one — transparent to the caller.
+			 */
+			updateToken: (newToken: string) => {
+				ws.close();
+				const newUrl = this.baseUrl.replace(/^http/, "ws") + "/v2/state/active-contracts/stream";
+				ws = new WebSocket(newUrl, [`jwt.token.${newToken}`, "daml.ws.auth"]);
+				subscribe(ws);
+			},
+			get connected() {
+				return _connected;
+			},
 		};
 
-		ws.onclose = () => {
-			handlers.onClose?.();
-		};
-
-		return () => ws.close();
+		return handle;
 	}
 
 	// ─── Ledger State ──────────────────────────────────────────────────────────

@@ -125,6 +125,33 @@ export interface UseInterfaceOptions<
 	staleTime?: number;
 }
 
+// ─── useRightsAs ─────────────────────────────────────────────────────────────
+
+/**
+ * Result of `nexus.useRightsAs(party)` — a set of hooks pre-bound to the given party.
+ * All contract queries will use `readAs` set to `[party]` unless overridden.
+ */
+export interface UseRightsAsResult {
+	/**
+	 * The effective party this scoped client reads as.
+	 */
+	readAsParty: string;
+	/**
+	 * Scoped contract query — automatically sets parties to [readAsParty].
+	 */
+	useContracts: <T = Record<string, unknown>>(
+		options: Omit<UseContractsOptions<T>, "parties">,
+	) => UseQueryResult<ActiveContractsResponse<T>>;
+	/** Scoped Suspense contract query. */
+	useContractsSuspense: <T = Record<string, unknown>>(
+		options: Omit<UseContractsOptions<T>, "parties">,
+	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
+	/** Scoped interface query. */
+	useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+		options: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
+	) => UseQueryResult<ActiveInterfacesResponse<TView, TPayload>>;
+}
+
 // ─── TanstackQueryActions ─────────────────────────────────────────────────────
 
 export interface TanstackQueryActions extends Record<string, unknown> {
@@ -178,6 +205,20 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	useLedgerEnd: () => UseQueryResult<LedgerEnd>;
 
 	useSynchronizers: () => UseQueryResult<SynchronizerInfo[]>;
+
+	/**
+	 * Returns a scoped set of query hooks pre-bound to the given party as `readAs`.
+	 * Equivalent to @c7-digital/react's `useRightsAs()` — useful for multi-party UIs
+	 * where you want to switch perspective without threading `parties` everywhere.
+	 *
+	 * @example
+	 * ```tsx
+	 * const alice = nexus.useRightsAs("Alice::...");
+	 * const { data } = alice.useContracts({ templateId: "pkg:Iou:Iou" });
+	 * // → Queries with readAs=["Alice::..."]
+	 * ```
+	 */
+	useRightsAs: (party: string) => UseRightsAsResult;
 }
 
 // ─── tanstackQueryPlugin ──────────────────────────────────────────────────────
@@ -321,6 +362,19 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 					onError: opts.onError,
 				});
 			},
+
+			// ─── useRightsAs ──────────────────────────────────────────────────────
+
+			useRightsAs: (party: string): UseRightsAsResult => ({
+				readAsParty: party,
+				useContracts: <T = Record<string, unknown>>(opts: Omit<UseContractsOptions<T>, "parties">) =>
+					useQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				useContractsSuspense: <T = Record<string, unknown>>(opts: Omit<UseContractsOptions<T>, "parties">) =>
+					useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				useInterface: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+					opts: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
+				) => useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts, parties: [party] })),
+			}),
 		}),
 	};
 }
