@@ -1,4 +1,4 @@
-import type { CantonClient } from "../client/canton-client.ts";
+import type { NexusClient } from "./index.ts";
 
 // ─── NexusPlugin ─────────────────────────────────────────────────────────────
 
@@ -21,10 +21,10 @@ export interface NexusPlugin<TContext extends Record<string, unknown> = Record<s
 	id: string;
 
 	/**
-	 * Called once after the CantonClient is created.
+	 * Called once after the NexusClient is created.
 	 * The returned value is available on the Nexus instance context.
 	 */
-	init?: (client: CantonClient) => Promise<TContext> | TContext;
+	init?: (client: NexusClient) => Promise<TContext> | TContext;
 
 	/**
 	 * If provided, this plugin handles authentication by supplying a bearer token.

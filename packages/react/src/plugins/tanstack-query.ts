@@ -5,6 +5,7 @@ import type {
 	ExerciseResult,
 	LedgerEnd,
 	NexusClient,
+	NexusPlugin,
 	SubmitResult,
 	SynchronizerInfo,
 	TemplateDescriptor,
@@ -348,9 +349,27 @@ export interface TanstackQueryActions extends Record<string, unknown> {
  * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
-export function tanstackQueryPlugin(): NexusClientPlugin {
+export function tanstackQueryPlugin(): NexusPlugin<{
+	query: TanstackQueryActions["query"];
+}> &
+	NexusClientPlugin {
 	return {
 		id: "tanstack-query",
+
+		// Core calls this — works on both server and client (React-free)
+		init: (client) => ({
+			query: {
+				contracts: <T = Record<string, unknown>>(params: ContractQueryOptionsParams<T>) =>
+					contractQueryOptions<T>({ client, ...params }),
+				interfaces: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+					params: InterfaceQueryOptionsParams<TView, TPayload>,
+				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
+				ledgerEnd: () => ledgerEndQueryOptions({ client }),
+				partyId: (params: PartyIdQueryOptionsParams) =>
+					partyIdQueryOptions({ client, ...params }),
+				synchronizers: () => synchronizersQueryOptions({ client }),
+			},
+		}),
 
 		getActions: (client): TanstackQueryActions => ({
 			// ─── Contract Queries ────────────────────────────────────────────────

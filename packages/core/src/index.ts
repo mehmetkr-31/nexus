@@ -99,7 +99,7 @@ export async function createNexus<
 	const context: Record<string, unknown> = {};
 	for (const plugin of options.plugins) {
 		if (plugin.init) {
-			Object.assign(context, await plugin.init(http));
+			Object.assign(context, await plugin.init(client));
 		}
 	}
 
