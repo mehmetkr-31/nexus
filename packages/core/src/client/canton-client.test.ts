@@ -48,7 +48,7 @@ const mockLedgerEnd = { offset: "0000000000000042" };
 describe("CantonClient — queryContracts", () => {
 	test("returns parsed contracts on 200", async () => {
 		const server = makeMockServer({
-			"/v2/state/active-contracts": { body: mockContractsResponse },
+			"/v2/state/active-contracts": { body: mockContractsResponse.contracts },
 		});
 
 		const client = new CantonClient({
@@ -89,7 +89,7 @@ describe("CantonClient — queryContracts", () => {
 			port: 0,
 			fetch(req) {
 				receivedAuth = req.headers.get("authorization");
-				return Response.json(mockContractsResponse);
+				return Response.json(mockContractsResponse.contracts);
 			},
 		});
 
@@ -283,7 +283,7 @@ describe("CantonClient — queryByInterface", () => {
 			port: 0,
 			async fetch(req) {
 				receivedBody = await req.json();
-				return Response.json(mockInterfaceResponse);
+				return Response.json(mockInterfaceResponse.contracts);
 			},
 		});
 
@@ -310,7 +310,7 @@ describe("CantonClient — queryByInterface", () => {
 			port: 0,
 			async fetch(req) {
 				receivedBody = (await req.json()) as Record<string, unknown>;
-				return Response.json({ contracts: [], nextPageToken: undefined });
+				return Response.json([])
 			},
 		});
 

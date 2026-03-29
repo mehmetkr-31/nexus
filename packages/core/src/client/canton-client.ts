@@ -27,10 +27,9 @@ const activeContractSchema = z.object({
 	observers: z.array(z.string()),
 });
 
-const activeContractsResponseSchema = z.object({
-	contracts: z.array(activeContractSchema),
-	nextPageToken: z.string().optional(),
-});
+const activeContractsResponseSchema = z.array(activeContractSchema).transform((contracts) => ({
+	contracts,
+}));
 
 const submitResultSchema = z.object({
 	transactionId: z.string(),
@@ -90,10 +89,7 @@ const activeInterfaceSchema = z.object({
 	createdAt: z.string(),
 });
 
-const activeInterfacesResponseSchema = z.object({
-	contracts: z.array(activeInterfaceSchema),
-	nextPageToken: z.string().optional(),
-});
+const activeInterfacesResponseSchema = z.array(activeInterfaceSchema).transform((contracts) => ({ contracts }));
 
 // ─── CantonClient ─────────────────────────────────────────────────────────────
 
@@ -195,12 +191,22 @@ export class CantonClient {
 			pageSize?: number;
 		},
 	): Promise<ActiveContractsResponse<T>> {
+		const filtersByParty =
+			options?.parties?.reduce(
+				(acc, party) => {
+					acc[party] = {};
+					return acc;
+				},
+				{} as Record<string, unknown>,
+			) ?? {};
+
 		const body: Record<string, unknown> = {
 			filter: {
-				filtersByParty: {},
+				filtersByParty,
 				alsoFilterByTemplateId: templateId,
 				...options?.filter,
 			},
+			activeAtOffset: "0",
 		};
 
 		if (options?.parties?.length) {
@@ -322,9 +328,18 @@ export class CantonClient {
 			includeCreateArguments?: boolean;
 		},
 	): Promise<ActiveInterfacesResponse<TView, TPayload>> {
+		const filtersByParty =
+			options?.parties?.reduce(
+				(acc, party) => {
+					acc[party] = {};
+					return acc;
+				},
+				{} as Record<string, unknown>,
+			) ?? {};
+
 		const body: Record<string, unknown> = {
 			filter: {
-				filtersByParty: {},
+				filtersByParty,
 				interfaceFilters: [
 					{
 						interfaceId,
@@ -333,6 +348,7 @@ export class CantonClient {
 					},
 				],
 			},
+			activeAtOffset: "0",
 		};
 
 		if (options?.parties?.length) {

@@ -34,9 +34,7 @@ export interface ProvisionSandboxUserOptions {
  * // => "Alice::122059a10c67ef1bb38e4e7..."
  * ```
  */
-export async function provisionSandboxUser(
-	options: ProvisionSandboxUserOptions,
-): Promise<string> {
+export async function provisionSandboxUser(options: ProvisionSandboxUserOptions): Promise<string> {
 	const { ledgerApiUrl, userId, secret } = options;
 	const manager = new JwtManager({ type: "sandbox", userId, secret });
 	const adminToken = await manager.getAdminToken();
@@ -62,8 +60,9 @@ export async function provisionSandboxUser(
 
 		if (res.ok) {
 			const data = (await res.json()) as Record<string, unknown>;
-			// Canton v2: { partyRecord: { party: "..." } }; older: { result: { partyId } } or { partyId }
+			// Canton v2: { partyDetails: { party: "..." } } or { partyRecord: { party: "..." } }; older: { result: { partyId } } or { partyId }
 			const rawPartyId =
+				((data.partyDetails as Record<string, unknown>)?.party as string | undefined) ??
 				((data.partyRecord as Record<string, unknown>)?.party as string | undefined) ??
 				((data.result as Record<string, unknown>)?.partyId as string | undefined) ??
 				(data.partyId as string | undefined) ??
@@ -85,9 +84,14 @@ export async function provisionSandboxUser(
 			break;
 		}
 
-		if (text.includes("PARTY_ALLOCATION_WITHOUT_CONNECTED_SYNCHRONIZER") && attempt < MAX_ALLOC_RETRIES) {
+		if (
+			text.includes("PARTY_ALLOCATION_WITHOUT_CONNECTED_SYNCHRONIZER") &&
+			attempt < MAX_ALLOC_RETRIES
+		) {
 			// Canton sandbox is still starting up — wait for the synchronizer to connect
-			console.log(`[nexus:provision] Waiting for Canton synchronizer... (attempt ${attempt}/${MAX_ALLOC_RETRIES})`);
+			console.log(
+				`[nexus:provision] Waiting for Canton synchronizer... (attempt ${attempt}/${MAX_ALLOC_RETRIES})`,
+			);
 			await new Promise<void>((resolve) => setTimeout(resolve, ALLOC_RETRY_DELAY_MS));
 			continue;
 		}
@@ -104,26 +108,30 @@ export async function provisionSandboxUser(
 			throw new NexusLedgerError(`Failed to list parties: ${listRes.status}`);
 		}
 		const listData = (await listRes.json()) as unknown;
-		// Canton v2: { partyRecords: [{ party, displayName, ... }] }
+		// Canton v2: { partyDetails: [{ party, ... }] } or { partyRecords: [{ party, ... }] }
 		// Older:     { result: [...] } or [...]
 		type PartyRecord = Record<string, string>;
-		const rawList = (listData as Record<string, unknown>);
-		const parties: PartyRecord[] =
-			Array.isArray(listData) ? listData
-			: Array.isArray(rawList.partyRecords) ? (rawList.partyRecords as PartyRecord[])
-			: Array.isArray(rawList.result) ? (rawList.result as PartyRecord[])
-			: Array.isArray(rawList.parties) ? (rawList.parties as PartyRecord[])
-			: [];
+		const rawList = listData as Record<string, unknown>;
+		const parties: PartyRecord[] = Array.isArray(listData)
+			? listData
+			: Array.isArray(rawList.partyDetails)
+				? (rawList.partyDetails as PartyRecord[])
+				: Array.isArray(rawList.partyRecords)
+					? (rawList.partyRecords as PartyRecord[])
+					: Array.isArray(rawList.result)
+						? (rawList.result as PartyRecord[])
+						: Array.isArray(rawList.parties)
+							? (rawList.parties as PartyRecord[])
+							: [];
 
 		// Resolve whichever field holds the party ID (v2 uses `party`, older uses `partyId`)
 		const getPartyId = (p: PartyRecord) => p.party ?? p.partyId;
 
-		const found =
-			parties.find(
-				(p) =>
-					getPartyId(p)?.toLowerCase().startsWith(`${userId.toLowerCase()}::`) ||
-					p.displayName?.toLowerCase() === userId.toLowerCase(),
-			);
+		const found = parties.find(
+			(p) =>
+				getPartyId(p)?.toLowerCase().startsWith(`${userId.toLowerCase()}::`) ||
+				p.displayName?.toLowerCase() === userId.toLowerCase(),
+		);
 
 		const resolvedId = found ? getPartyId(found) : undefined;
 		if (!resolvedId) {
@@ -136,7 +144,9 @@ export async function provisionSandboxUser(
 	const userRes = await fetch(`${ledgerApiUrl}/v2/users`, {
 		method: "POST",
 		headers: authHeaders,
-		body: JSON.stringify({ user: { id: userId, primaryParty: partyId, isDeactivated: false, identityProviderId: "" } }),
+		body: JSON.stringify({
+			user: { id: userId, primaryParty: partyId, isDeactivated: false, identityProviderId: "" },
+		}),
 	});
 
 	if (!userRes.ok) {
@@ -159,7 +169,9 @@ export async function provisionSandboxUser(
 	});
 
 	if (!partyId) {
-		throw new NexusLedgerError(`Could not resolve party ID for user "${userId}" after provisioning`);
+		throw new NexusLedgerError(
+			`Could not resolve party ID for user "${userId}" after provisioning`,
+		);
 	}
 	return partyId;
 }
