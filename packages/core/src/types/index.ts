@@ -116,6 +116,11 @@ export interface SubmitResult {
 	completedAt: string;
 }
 
+/**
+ * Represents the lifecycle stages of a Canton transaction.
+ */
+export type TransactionStatus = "pending" | "confirmed" | "finalized" | "failed";
+
 // ─── Transaction Events ───────────────────────────────────────────────────────
 
 /**

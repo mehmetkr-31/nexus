@@ -520,12 +520,12 @@ export class CantonClient {
 	 * Polls the `/v2/updates` endpoint until the transactionId appears.
 	 *
 	 * @param transactionId ID from a successful command submission
-	 * @param options Polling configuration (timeout, interval)
+	 * @param options Polling configuration (timeout, interval, signal)
 	 */
 	async waitForTransaction(
 		transactionId: string,
-		options?: { timeoutMs?: number; intervalMs?: number },
-	): Promise<void> {
+		options?: { timeoutMs?: number; intervalMs?: number; signal?: AbortSignal },
+	): Promise<TransactionResult> {
 		const timeout = options?.timeoutMs ?? 30_000;
 		const interval = options?.intervalMs ?? 1_000;
 		const start = Date.now();
@@ -535,19 +535,24 @@ export class CantonClient {
 		let currentOffset = ledgerEnd.offset;
 
 		while (Date.now() - start < timeout) {
+			if (options?.signal?.aborted) {
+				throw new Error("Transaction wait aborted by signal");
+			}
+
 			const { updates, nextOffset } = await this.getUpdates({
 				beginOffset: currentOffset,
 				pageSize: 50,
 			});
 
 			for (const update of updates) {
+				const tx = update as TransactionResult;
 				if (
-					update &&
-					typeof update === "object" &&
-					"transactionId" in update &&
-					update.transactionId === transactionId
+					tx &&
+					typeof tx === "object" &&
+					"transactionId" in tx &&
+					tx.transactionId === transactionId
 				) {
-					return; // Found!
+					return tx; // Found with full result!
 				}
 			}
 
@@ -555,7 +560,13 @@ export class CantonClient {
 				currentOffset = nextOffset;
 			}
 
-			await new Promise((resolve) => setTimeout(resolve, interval));
+			await new Promise((resolve, reject) => {
+				const timer = setTimeout(resolve, interval);
+				options?.signal?.addEventListener("abort", () => {
+					clearTimeout(timer);
+					reject(new Error("Transaction wait aborted by signal during sleep"));
+				});
+			});
 		}
 
 		throw new Error(`Transaction ${transactionId} did not appear on ledger within ${timeout}ms`);

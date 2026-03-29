@@ -9,6 +9,7 @@ import type {
 	SynchronizerInfo,
 	TemplateDescriptor,
 	TemplateId,
+	TransactionStatus,
 } from "@nexus-framework/core";
 import {
 	type InfiniteData,
@@ -250,7 +251,7 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	 *
 	 * @param transactionId Hex ID of the transaction to check
 	 */
-	useTransactionStatus: (transactionId: string | undefined) => UseQueryResult<boolean>;
+	useTransactionStatus: (transactionId: string | undefined) => UseQueryResult<TransactionStatus>;
 
 	/**
 	 * Returns a scoped set of query hooks pre-bound to the given party as `readAs`.
@@ -360,17 +361,22 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 			useTransactionStatus: (transactionId: string | undefined) => {
 				return useQuery({
 					queryKey: nexusKeys.transactionStatus(transactionId ?? ""),
-					queryFn: async () => {
-						if (!transactionId) return false;
+					queryFn: async ({ signal }) => {
+						if (!transactionId) return "pending";
 						try {
-							await client.http.waitForTransaction(transactionId, { timeoutMs: 2000 });
-							return true;
-						} catch {
-							return false;
+							await client.http.waitForTransaction(transactionId, {
+								timeoutMs: 10000,
+								signal,
+							});
+							return "finalized";
+						} catch (err) {
+							if (String(err).includes("aborted")) return "pending";
+							return "failed";
 						}
 					},
 					enabled: !!transactionId,
-					refetchInterval: (query) => (query.state.data === true ? false : 1000),
+					placeholderData: "pending",
+					refetchInterval: (query) => (query.state.data === "finalized" ? false : 1000),
 				});
 			},
 
@@ -391,12 +397,18 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
 							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
 						}
-						return client.ledger.commands.createContract(
+						const result = await client.ledger.commands.createContract(
 							finalTemplateId as string | TemplateId,
 							vars.createArguments,
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
 						);
+
+						if (opts.waitForFinality) {
+							await client.http.waitForTransaction(result.transactionId);
+						}
+
+						return result;
 					},
 					onMutate: async (vars) => {
 						if (!opts.optimisticContract) return;

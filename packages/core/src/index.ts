@@ -61,6 +61,7 @@ export type {
 	TemplateId,
 	TransactionEvent,
 	TransactionResult,
+	TransactionStatus,
 } from "./types/index.ts";
 export { NexusAuthError, NexusError, NexusLedgerError } from "./types/index.ts";
 // Plugin types

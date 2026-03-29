@@ -73,14 +73,15 @@ program
 		const templateDir = path.resolve(__dirname, "../templates/nextjs");
 
 		try {
-			await fs.copy(templateDir, targetDir);
+			// Using native fs.cpSync for more robust recursive copying across Bun/Node
+			fs.cpSync(templateDir, targetDir, { recursive: true });
 
 			// Rename all .template files back to original names recursively
 			const renameRecursive = async (dir: string) => {
 				const files = await fs.readdir(dir);
 				for (const file of files) {
 					const fullPath = path.join(dir, file);
-					const stat = await fs.stat(fullPath);
+					const stat = await fs.lstat(fullPath);
 					if (stat.isDirectory()) {
 						await renameRecursive(fullPath);
 					} else if (file.endsWith(".template")) {
