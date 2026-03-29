@@ -7,7 +7,7 @@ import { InterfaceQuery } from "./ledger/interface-query.ts";
 import { LedgerIdentity } from "./ledger/ledger-identity.ts";
 import { PackageResolver } from "./ledger/package-resolver.ts";
 import type { AuthConfig, NexusClient } from "./types/index.ts";
-import type { NexusPlugin } from "./types/plugin.ts";
+import type { FetchMiddleware, NexusPlugin } from "./types/plugin.ts";
 
 export { PartyIdResolver } from "./auth/party-id-resolver.ts";
 export { type JwtAuthOptions, jwtAuth } from "./auth/plugins/jwt-auth.ts";
@@ -26,14 +26,17 @@ export { LedgerIdentity } from "./ledger/ledger-identity.ts";
 export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin.ts";
 export { PackageResolver } from "./ledger/package-resolver.ts";
 export { provisionSandboxUser } from "./ledger/sandbox-provision.ts";
+export { fetchMiddlewarePlugin } from "./plugins/fetch-middleware-plugin.ts";
 export * from "./types/index.ts";
-export type { NexusPlugin } from "./types/plugin.ts";
+export type {
+	FetchMiddleware,
+	InferNexusPlugins,
+	InferPluginContext,
+	NexusPlugin,
+	RequestConfig,
+} from "./types/plugin.ts";
 
-type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (
-	k: infer I,
-) => void
-	? I
-	: never;
+import type { InferNexusPlugins } from "./types/plugin.ts";
 
 /**
  * Initialize a Nexus client with the given configuration and plugins.
@@ -44,9 +47,7 @@ export async function createNexus<
 	ledgerApiUrl: string;
 	timeoutMs?: number;
 	plugins: TPlugins;
-}): Promise<
-	NexusClient & UnionToIntersection<TPlugins[number] extends NexusPlugin<infer T> ? T : never>
-> {
+}): Promise<NexusClient & InferNexusPlugins<TPlugins>> {
 	const authPlugin = options.plugins.find((p) => p.auth);
 	if (!authPlugin?.auth) {
 		throw new Error(
@@ -58,10 +59,16 @@ export async function createNexus<
 	const getToken = () =>
 		authPlugin.auth?.getToken() ?? Promise.reject(new Error("No auth plugin provided"));
 
+	// Collect middleware from all plugins
+	const middlewares: FetchMiddleware[] = options.plugins
+		.filter((p): p is NexusPlugin & { middleware: FetchMiddleware } => p.middleware != null)
+		.map((p) => p.middleware);
+
 	const http = new CantonClient({
 		baseUrl: options.ledgerApiUrl,
 		getToken,
 		timeoutMs: options.timeoutMs,
+		middlewares,
 	});
 
 	const client: NexusClient = {
@@ -106,5 +113,5 @@ export async function createNexus<
 	return {
 		...client,
 		...context,
-	} as NexusClient & UnionToIntersection<TPlugins[number] extends NexusPlugin<infer T> ? T : never>;
+	} as NexusClient & InferNexusPlugins<TPlugins>;
 }

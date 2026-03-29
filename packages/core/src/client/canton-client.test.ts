@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { NexusLedgerError } from "../types/index.ts";
+import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
 import { CantonClient } from "./canton-client.ts";
 
 // ─── Mock Canton Server ───────────────────────────────────────────────────────
@@ -364,5 +365,125 @@ describe("CantonClient — timeout", () => {
 
 		await expect(client.getLedgerEnd()).rejects.toThrow();
 		server.stop();
+	});
+});
+
+// ─── Fetch Middleware Tests ───────────────────────────────────────────────────
+
+describe("CantonClient — fetch middleware", () => {
+	test("onRequest hook can add custom headers", async () => {
+		let receivedHeaders: Record<string, string> = {};
+		const server = Bun.serve({
+			port: 0,
+			fetch(req) {
+				receivedHeaders = Object.fromEntries(req.headers.entries());
+				return Response.json({ offset: "1" });
+			},
+		});
+
+		const middleware: FetchMiddleware = {
+			onRequest: (config) => ({
+				...config,
+				headers: { ...config.headers, "X-Custom": "hello" },
+			}),
+		};
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+			middlewares: [middleware],
+		});
+
+		await client.getLedgerEnd();
+		server.stop();
+
+		expect(receivedHeaders["x-custom"]).toBe("hello");
+	});
+
+	test("onResponse hook is called on success", async () => {
+		const server = makeMockServer({
+			"/v2/state/ledger-end": { body: { offset: "42" } },
+		});
+
+		let capturedConfig: RequestConfig | undefined;
+		const middleware: FetchMiddleware = {
+			onResponse: async (_response, config) => {
+				capturedConfig = config;
+			},
+		};
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+			middlewares: [middleware],
+		});
+
+		await client.getLedgerEnd();
+		server.stop();
+
+		expect(capturedConfig).toBeDefined();
+		expect(capturedConfig!.method).toBe("GET");
+		expect(capturedConfig!.path).toBe("/v2/state/ledger-end");
+	});
+
+	test("onError hook is called on HTTP error", async () => {
+		const server = makeMockServer({
+			"/v2/state/ledger-end": { status: 500, body: { message: "Internal" } },
+		});
+
+		let capturedError: NexusLedgerError | undefined;
+		const middleware: FetchMiddleware = {
+			onError: async (error) => {
+				capturedError = error;
+			},
+		};
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+			middlewares: [middleware],
+		});
+
+		await expect(client.getLedgerEnd()).rejects.toBeInstanceOf(NexusLedgerError);
+		server.stop();
+
+		expect(capturedError).toBeInstanceOf(NexusLedgerError);
+	});
+
+	test("multiple middlewares run in order", async () => {
+		const order: string[] = [];
+		const server = makeMockServer({
+			"/v2/state/ledger-end": { body: { offset: "1" } },
+		});
+
+		const mw1: FetchMiddleware = {
+			onRequest: (config) => {
+				order.push("mw1-request");
+				return config;
+			},
+			onResponse: async () => {
+				order.push("mw1-response");
+			},
+		};
+		const mw2: FetchMiddleware = {
+			onRequest: (config) => {
+				order.push("mw2-request");
+				return config;
+			},
+			onResponse: async () => {
+				order.push("mw2-response");
+			},
+		};
+
+		const client = new CantonClient({
+			baseUrl: `http://localhost:${server.port}`,
+			getToken: async () => "test-token",
+			middlewares: [mw1, mw2],
+		});
+
+		await client.getLedgerEnd();
+		server.stop();
+
+		expect(order).toEqual(["mw1-request", "mw2-request", "mw1-response", "mw2-response"]);
 	});
 });

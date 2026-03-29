@@ -1,4 +1,36 @@
-import type { NexusClient } from "./index.ts";
+import type { NexusClient, NexusLedgerError } from "./index.ts";
+
+// ─── Fetch Middleware ─────────────────────────────────────────────────────────
+
+export interface RequestConfig {
+	method: string;
+	url: string;
+	path: string;
+	headers: Record<string, string>;
+	body?: unknown;
+}
+
+export interface FetchMiddleware {
+	onRequest?: (config: RequestConfig) => RequestConfig | Promise<RequestConfig>;
+	onResponse?: (response: Response, config: RequestConfig) => void | Promise<void>;
+	onError?: (error: NexusLedgerError, config: RequestConfig) => void | Promise<void>;
+}
+
+// ─── Type Helpers ─────────────────────────────────────────────────────────────
+
+type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (
+	k: infer I,
+) => void
+	? I
+	: never;
+
+/** Extract the context type contributed by a single plugin. */
+export type InferPluginContext<P> = P extends NexusPlugin<infer T> ? T : Record<string, never>;
+
+/** Merge all plugin contexts from an array into one intersection type. */
+export type InferNexusPlugins<P extends readonly NexusPlugin[]> = UnionToIntersection<
+	InferPluginContext<P[number]>
+>;
 
 // ─── NexusPlugin ─────────────────────────────────────────────────────────────
 
@@ -46,6 +78,9 @@ export interface NexusPlugin<TContext extends Record<string, unknown> = Record<s
 	 */
 	setRefreshDispatcher?: (dispatch: (newToken: string) => void) => void;
 
+	/** Fetch middleware hooks for intercepting HTTP requests. */
+	middleware?: FetchMiddleware;
+
 	/** Type inference marker — mirrors the better-auth $Infer pattern */
-	$Infer?: Record<string, unknown>;
+	$Infer?: TContext;
 }

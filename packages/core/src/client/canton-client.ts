@@ -10,6 +10,7 @@ import {
 	type TemplateId,
 	type TransactionResult,
 } from "../types/index.ts";
+import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
 
 // ─── Zod Schemas ─────────────────────────────────────────────────────────────
 
@@ -120,17 +121,20 @@ export interface CantonClientOptions {
 	baseUrl: string;
 	getToken: () => Promise<string>;
 	timeoutMs?: number;
+	middlewares?: FetchMiddleware[];
 }
 
 export class CantonClient {
 	public readonly baseUrl: string;
 	public readonly getToken: () => Promise<string>;
 	private readonly timeoutMs: number;
+	private readonly middlewares: FetchMiddleware[];
 
 	constructor(options: CantonClientOptions) {
 		this.baseUrl = options.baseUrl.replace(/\/$/, "");
 		this.getToken = options.getToken;
 		this.timeoutMs = options.timeoutMs ?? 30_000;
+		this.middlewares = options.middlewares ?? [];
 	}
 
 	// ─── Core fetch helper ─────────────────────────────────────────────────────
@@ -146,26 +150,47 @@ export class CantonClient {
 		const token = await this.getToken();
 		const url = `${this.baseUrl}${path}`;
 
+		// Build initial request config and run onRequest middlewares
+		let config: RequestConfig = {
+			method,
+			url,
+			path,
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token}`,
+			},
+			body,
+		};
+
+		for (const mw of this.middlewares) {
+			if (mw.onRequest) {
+				config = await mw.onRequest(config);
+			}
+		}
+
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
 		let response: Response;
 		try {
-			response = await fetch(url, {
-				method,
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token}`,
-				},
-				body: body !== undefined ? JSON.stringify(body) : undefined,
+			response = await fetch(config.url, {
+				method: config.method,
+				headers: config.headers,
+				body: config.body !== undefined ? JSON.stringify(config.body) : undefined,
 				signal: controller.signal,
 			});
 		} catch (err) {
-			throw new NexusLedgerError(
+			const error = new NexusLedgerError(
 				`Network error calling ${method} ${path}: ${String(err)}`,
 				undefined,
 				err,
 			);
+			for (const mw of this.middlewares) {
+				if (mw.onError) {
+					await mw.onError(error, config);
+				}
+			}
+			throw error;
 		} finally {
 			clearTimeout(timer);
 		}
@@ -185,7 +210,20 @@ export class CantonClient {
 				typeof (details as Record<string, unknown>).message === "string"
 					? (details as Record<string, unknown>).message
 					: `Canton API error: ${response.status} ${response.statusText}`;
-			throw new NexusLedgerError(String(message), response.status, details);
+			const error = new NexusLedgerError(String(message), response.status, details);
+			for (const mw of this.middlewares) {
+				if (mw.onError) {
+					await mw.onError(error, config);
+				}
+			}
+			throw error;
+		}
+
+		// Run onResponse middlewares
+		for (const mw of this.middlewares) {
+			if (mw.onResponse) {
+				await mw.onResponse(response, config);
+			}
 		}
 
 		const json = await response.json();
