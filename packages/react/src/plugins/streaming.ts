@@ -140,7 +140,10 @@ export interface StreamingActions extends Record<string, unknown> {
  * });
  * ```
  */
-export function streamingPlugin(): NexusClientPlugin {
+export function streamingPlugin(): NexusClientPlugin<{
+	useStreamContracts: StreamingActions["useStreamContracts"];
+	useMultiStreamContracts: StreamingActions["useMultiStreamContracts"];
+}> {
 	const activeHandles = new Set<import("@nexus-framework/core").StreamHandle>();
 
 	return {

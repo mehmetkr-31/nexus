@@ -147,10 +147,13 @@ function rollbackOptimisticUpdate(
  * `getActions` receives the `NexusClient` instance directly — hooks
  * close over it, no React Context needed.
  */
-export interface NexusClientPlugin {
+export interface NexusClientPlugin<
+	TContext extends Record<string, unknown> = Record<string, unknown>,
+> {
 	id: string;
 	getActions?: (client: NexusClient) => Record<string, unknown>;
 	onTokenRefreshed?: (newToken: string) => void | Promise<void>;
+	$Infer?: TContext;
 }
 
 // ─── TanstackQueryActions ─────────────────────────────────────────────────────
@@ -352,7 +355,15 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 export function tanstackQueryPlugin(): NexusPlugin<{
 	query: TanstackQueryActions["query"];
 }> &
-	NexusClientPlugin {
+	NexusClientPlugin<{
+		useContracts: TanstackQueryActions["useContracts"];
+		useContractsSuspense: TanstackQueryActions["useContractsSuspense"];
+		usePagedContracts: TanstackQueryActions["usePagedContracts"];
+		useCreateContract: TanstackQueryActions["useCreateContract"];
+		useExerciseChoice: TanstackQueryActions["useExerciseChoice"];
+		useExerciseAndGetResult: TanstackQueryActions["useExerciseAndGetResult"];
+		useRightsAsResult: TanstackQueryActions["useRightsAsResult"];
+	}> {
 	return {
 		id: "tanstack-query",
 

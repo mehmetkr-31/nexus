@@ -23,6 +23,18 @@ export function createDefaultQueryClient(): QueryClient {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) extends (
+	k: infer I,
+) => void
+	? I
+	: never;
+
+type ExtractPluginContext<P> = P extends { $Infer?: infer T } ? T : Record<string, never>;
+
+export type InferPluginContext<P extends AnyPlugin[]> = UnionToIntersection<
+	ExtractPluginContext<P[number]>
+>;
+
 export type AnyPlugin = NexusPlugin | NexusClientPlugin;
 
 export interface NexusProviderComponentProps {
@@ -86,11 +98,11 @@ export type NexusClientInstance<TActions = TanstackQueryActions> = NexusClient &
  * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
-export async function createNexusClient<TActions = TanstackQueryActions>(options: {
+export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 	baseUrl: string;
 	timeoutMs?: number;
-	plugins: AnyPlugin[];
-}): Promise<NexusClientInstance<TActions>> {
+	plugins: TPlugins;
+}): Promise<NexusClientInstance<InferPluginContext<TPlugins> & TanstackQueryActions>> {
 	const serverPlugins = options.plugins.filter((p): p is NexusPlugin => "auth" in p || "init" in p);
 	const clientPlugins = options.plugins.filter((p): p is NexusClientPlugin => "getActions" in p);
 
@@ -115,7 +127,7 @@ export async function createNexusClient<TActions = TanstackQueryActions>(options
 	const actions = Object.assign(
 		{},
 		...clientPlugins.map((p) => (p.getActions ? p.getActions(coreClient) : {})),
-	) as TActions;
+	) as InferPluginContext<TPlugins> & TanstackQueryActions;
 
 	// Only QueryClientProvider — NexusContext not needed
 	function BoundNexusProvider({

@@ -22,6 +22,7 @@ export type {
 
 // Auth plugins (re-exported from core for convenience)
 export {
+	fetchMiddlewarePlugin,
 	jwtAuth,
 	NexusAuthError,
 	NexusError,
