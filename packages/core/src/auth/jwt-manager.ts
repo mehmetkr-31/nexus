@@ -94,9 +94,12 @@ async function createSandboxToken(
 
 export class JwtManager {
 	private cachedToken: string | null = null;
+	private pendingToken: string | null = null;
+	private refreshPromise: Promise<string> | null = null;
 	private readonly config: AuthConfig;
 	private refreshTimer?: ReturnType<typeof setTimeout>;
 	private onTokenRefreshed?: (newToken: string) => void;
+	private static readonly GRACE_PERIOD_MS = 10_000;
 
 	constructor(config: AuthConfig, onTokenRefreshed?: (newToken: string) => void) {
 		this.config = config;
@@ -108,10 +111,52 @@ export class JwtManager {
 			return this.cachedToken;
 		}
 
-		const token = await this.fetchFreshToken();
-		this.cachedToken = token;
-		this.scheduleRefresh(token);
-		return token;
+		if (this.refreshPromise) {
+			if (this.pendingToken && this.isWithinGracePeriod(this.pendingToken)) {
+				return this.pendingToken;
+			}
+			return this.refreshPromise;
+		}
+
+		this.refreshPromise = (async () => {
+			try {
+				const token = await this.fetchFreshToken();
+				this.pendingToken = this.cachedToken;
+				this.cachedToken = token;
+				this.scheduleRefresh(token);
+				return token;
+			} finally {
+				this.refreshPromise = null;
+				setTimeout(() => {
+					this.pendingToken = null;
+				}, JwtManager.GRACE_PERIOD_MS);
+			}
+		})();
+
+		return this.refreshPromise;
+	}
+
+	private isWithinGracePeriod(token: string): boolean {
+		try {
+			const payload = decodeJwtPayload(token);
+			if (!payload.exp) return false;
+			const expiryMs = payload.exp * 1000;
+			return Date.now() < expiryMs && expiryMs - Date.now() < JwtManager.GRACE_PERIOD_MS * 2;
+		} catch {
+			return false;
+		}
+	}
+
+	/**
+	 * Clean up any active timers and reset internal state.
+	 */
+	destroy(): void {
+		if (this.refreshTimer) {
+			clearTimeout(this.refreshTimer);
+			this.refreshTimer = undefined;
+		}
+		this.cachedToken = null;
+		this.refreshPromise = null;
 	}
 
 	/** Generate an administrative token for sandbox mode */

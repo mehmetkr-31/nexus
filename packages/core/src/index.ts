@@ -71,21 +71,23 @@ export async function createNexus<
 		middlewares,
 	});
 
+	const packages = new PackageResolver(http);
+
 	const client: NexusClient = {
 		config: {
 			ledgerApiUrl: options.ledgerApiUrl,
 			timeoutMs: options.timeoutMs,
 		},
-		packages: new PackageResolver(http),
+		packages,
 		http,
 		auth: {
 			partyId: new PartyIdResolver(http),
 			session: new SessionManager({}),
 		},
 		ledger: {
-			contracts: new ContractQuery(http),
-			interfaces: new InterfaceQuery(http),
-			commands: new CommandSubmitter(http),
+			contracts: new ContractQuery(http, packages),
+			interfaces: new InterfaceQuery(http, packages),
+			commands: new CommandSubmitter(http, packages),
 			identity: new LedgerIdentity(http),
 		},
 		getToken,

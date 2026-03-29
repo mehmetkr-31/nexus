@@ -35,10 +35,7 @@ import {
 	partyIdQueryOptions,
 	synchronizersQueryOptions,
 } from "../query/query-options.ts";
-
-function isTemplateId(t: unknown): t is TemplateId {
-	return !!t && typeof t === "object" && "packageId" in t;
-}
+import { isTemplateId } from "../utils/template-utils.ts";
 
 export interface UseContractsOptions<_T = Record<string, unknown>> {
 	templateId: string | TemplateDescriptor;
@@ -234,6 +231,15 @@ export interface UseRightsAsResult {
 // ─── TanstackQueryActions ─────────────────────────────────────────────────────
 
 export interface TanstackQueryActions extends Record<string, unknown> {
+	optimistic?: {
+		getUpdate: (
+			templateId: string | TemplateId,
+			choice: string,
+			argument: unknown,
+			contract: ActiveContract,
+		) => Partial<ActiveContract> | null;
+	};
+
 	useContracts: <T = Record<string, unknown>>(
 		options: UseContractsOptions<T>,
 	) => UseQueryResult<ActiveContractsResponse<T>>;
@@ -403,17 +409,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						pageSize: opts.pageSize,
 					}),
 					queryFn: async ({ pageParam }) => {
-						let finalTemplateId = opts.templateId;
-						if (
-							typeof finalTemplateId !== "string" &&
-							!("packageId" in finalTemplateId) &&
-							client.packages
-						) {
-							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
-							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-						}
 						return client.ledger.contracts.fetchActiveContracts<T>({
-							templateId: finalTemplateId as string | TemplateId,
+							templateId: opts.templateId,
 							parties: opts.parties,
 							filter: opts.filter,
 							pageSize: opts.pageSize ?? 50,
@@ -475,17 +472,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				const queryClient = useQueryClient();
 				return useMutation({
 					mutationFn: async (vars: CreateContractVariables<T>) => {
-						let finalTemplateId = vars.templateId;
-						if (
-							typeof finalTemplateId !== "string" &&
-							!("packageId" in finalTemplateId) &&
-							client.packages
-						) {
-							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
-							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-						}
 						const result = await client.ledger.commands.createContract(
-							finalTemplateId as string | TemplateId,
+							vars.templateId,
 							vars.createArguments,
 							vars.actAs,
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
@@ -568,17 +556,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				const queryClient = useQueryClient();
 				return useMutation({
 					mutationFn: async (vars: ExerciseChoiceVariables) => {
-						let finalTemplateId = vars.templateId;
-						if (
-							typeof finalTemplateId !== "string" &&
-							!("packageId" in finalTemplateId) &&
-							client.packages
-						) {
-							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
-							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-						}
 						return client.ledger.commands.exerciseChoice(
-							finalTemplateId as string | TemplateId,
+							vars.templateId,
 							vars.contractId,
 							vars.choice,
 							vars.choiceArgument,
@@ -587,7 +566,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						);
 					},
 					onMutate: async (vars) => {
-						if (!opts.optimistic) return;
+						if (opts.optimistic === false) return;
 
 						const stableTemplateId =
 							typeof vars.templateId === "string"
@@ -600,15 +579,10 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						const queryKey = nexusKeys.contractsQuery(stableTemplateId, { parties });
 
 						const previousData = await applyOptimisticUpdate(queryClient, queryKey, (prev) => {
-							// For archive (Consuming choice), we remove the contract
-							if (vars.choice.toLowerCase().includes("archive")) {
-								return {
-									...prev,
-									contracts: prev.contracts.filter((c) => c.contractId !== vars.contractId),
-								};
-							}
+							const contract = prev.contracts.find((c) => c.contractId === vars.contractId);
+							if (!contract) return prev;
 
-							// For non-consuming updates, we can apply custom update function
+							// 1. Explicit inline function takes precedence
 							if (typeof opts.optimistic === "function") {
 								const update = opts.optimistic(vars);
 								return {
@@ -617,6 +591,37 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 										c.contractId === vars.contractId ? { ...c, ...update, isOptimistic: true } : c,
 									),
 								};
+							}
+
+							// 2. Archive auto-logic
+							if (vars.choice.toLowerCase().includes("archive")) {
+								return {
+									...prev,
+									contracts: prev.contracts.filter((c) => c.contractId !== vars.contractId),
+								};
+							}
+
+							// 3. Declarative plugin logic (optimisticUiPlugin)
+							const clientWithOptimistic = client as NexusClient & {
+								optimistic?: TanstackQueryActions["optimistic"];
+							};
+							if (clientWithOptimistic.optimistic) {
+								const pluginUpdate = clientWithOptimistic.optimistic.getUpdate(
+									stableTemplateId,
+									vars.choice,
+									vars.choiceArgument,
+									contract,
+								);
+								if (pluginUpdate) {
+									return {
+										...prev,
+										contracts: prev.contracts.map((c) =>
+											c.contractId === vars.contractId
+												? { ...c, ...pluginUpdate, isOptimistic: true }
+												: c,
+										),
+									};
+								}
 							}
 
 							return prev;
@@ -665,13 +670,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				const queryClient = useQueryClient();
 				return useMutation({
 					mutationFn: async (vars: ExerciseAndGetResultVariables<TArg>) => {
-						let finalTemplateId = vars.templateId;
-						if (typeof finalTemplateId !== "string" && client.packages) {
-							const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
-							finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-						}
 						return client.ledger.commands.exerciseAndGetResult<TArg, TResult>(
-							finalTemplateId as string | TemplateId,
+							vars.templateId,
 							vars.contractId,
 							vars.choice,
 							vars.choiceArgument,
@@ -747,17 +747,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 							pageSize: opts.pageSize,
 						}),
 						queryFn: async ({ pageParam }) => {
-							let finalTemplateId = opts.templateId;
-							if (
-								typeof finalTemplateId !== "string" &&
-								!("packageId" in finalTemplateId) &&
-								client.packages
-							) {
-								const resolver = client.packages as import("@nexus-framework/core").PackageResolver;
-								finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-							}
 							return client.ledger.contracts.fetchActiveContracts<T>({
-								templateId: finalTemplateId as string | TemplateId,
+								templateId: opts.templateId,
 								parties: [party],
 								filter: opts.filter,
 								pageSize: opts.pageSize ?? 50,

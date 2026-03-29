@@ -3,7 +3,7 @@
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement, type ReactNode, useMemo } from "react";
-import type { NexusClientPlugin, TanstackQueryActions } from "./plugins/tanstack-query.ts";
+import type { NexusClientPlugin } from "./plugins/tanstack-query.ts";
 
 export function createDefaultQueryClient(): QueryClient {
 	return new QueryClient({
@@ -29,10 +29,23 @@ type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) exten
 	? I
 	: never;
 
-type ExtractPluginContext<P> = P extends { $Infer?: infer T } ? T : Record<string, never>;
+/** Extract the context type contributed by a single plugin ($Infer or init return). */
+export type ExtractPluginContext<P> = P extends { $Infer?: infer T }
+	? T
+	: P extends { init?: (client: NexusClient) => infer T }
+		? T extends Promise<infer R>
+			? R
+			: T
+		: Record<string, never>;
 
-export type InferPluginContext<P extends AnyPlugin[]> = UnionToIntersection<
-	ExtractPluginContext<P[number]>
+/** Extract the actions contributed by a single React plugin. */
+export type ExtractPluginActions<P> = P extends { getActions?: (client: NexusClient) => infer T }
+	? T
+	: Record<string, never>;
+
+/** Merge all plugin contexts and actions from an array into one intersection type. */
+export type InferNexusPlugins<P extends readonly AnyPlugin[]> = UnionToIntersection<
+	ExtractPluginContext<P[number]> & ExtractPluginActions<P[number]>
 >;
 
 export type AnyPlugin = NexusPlugin | NexusClientPlugin;
@@ -48,8 +61,8 @@ export interface NexusProviderComponentProps {
  * Combines the core `NexusClient` with hooks from client plugins
  * and a pre-configured `NexusProvider` component.
  */
-export type NexusClientInstance<TActions = TanstackQueryActions> = NexusClient &
-	TActions & {
+export type NexusClientInstance<TPluginContext = Record<string, never>> = NexusClient &
+	TPluginContext & {
 		/**
 		 * A React provider component pre-configured for this client.
 		 * Only wraps `QueryClientProvider` — no NexusContext needed since
@@ -102,8 +115,10 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 	baseUrl: string;
 	timeoutMs?: number;
 	plugins: TPlugins;
-}): Promise<NexusClientInstance<InferPluginContext<TPlugins> & TanstackQueryActions>> {
-	const serverPlugins = options.plugins.filter((p): p is NexusPlugin => "auth" in p || "init" in p);
+}): Promise<NexusClientInstance<InferNexusPlugins<TPlugins>>> {
+	const serverPlugins = options.plugins.filter(
+		(p): p is NexusPlugin<Record<string, unknown>> => "auth" in p || "init" in p,
+	);
 	const clientPlugins = options.plugins.filter((p): p is NexusClientPlugin => "getActions" in p);
 
 	const coreClient = await createNexus({
@@ -123,17 +138,38 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 		],
 	});
 
-	// Actions close over coreClient — no context involved
+	// First pass: collect all plugin actions so they can reference each other
+	const allActions: Record<string, unknown>[] = [];
+	for (const p of clientPlugins) {
+		if (p.getActions) {
+			allActions.push(p.getActions(coreClient));
+		}
+	}
+
+	// Merge all actions into a single object
+	const mergedActions = Object.assign({}, ...allActions) as InferNexusPlugins<TPlugins> &
+		Record<string, unknown>;
+
+	// Now replace each plugin's client with one that has access to all merged actions
+	// This allows tanstackQueryPlugin to access optimistic plugin's actions
 	const actions = Object.assign(
 		{},
-		...clientPlugins.map((p) => (p.getActions ? p.getActions(coreClient) : {})),
-	) as InferPluginContext<TPlugins> & TanstackQueryActions;
+		...clientPlugins.map((p) => {
+			if (!p.getActions) return {};
+			const pluginActions = p.getActions({
+				...coreClient,
+				...mergedActions,
+			} as NexusClient);
+			return pluginActions;
+		}),
+	) as InferNexusPlugins<TPlugins> & Record<string, unknown>;
 
 	// Only QueryClientProvider — NexusContext not needed
 	function BoundNexusProvider({
 		children,
 		queryClient: externalQueryClient,
 	}: NexusProviderComponentProps): ReactNode {
+		// Stability is key for SSR hydration — use the provided client or a single lazy instance
 		const queryClient = useMemo(
 			() => externalQueryClient ?? createDefaultQueryClient(),
 			[externalQueryClient],

@@ -161,3 +161,29 @@ describe("JwtManager — oidc", () => {
 		server.stop();
 	});
 });
+describe("JwtManager — concurrency", () => {
+	test("deduplicates parallel getToken calls", async () => {
+		let fetchCount = 0;
+		const manager = new JwtManager({
+			type: "jwt",
+			token: "initial-token",
+			refreshToken: async () => {
+				fetchCount++;
+				await new Promise((r) => setTimeout(r, 50)); // Simulating network lag
+				return `new-token-${fetchCount}`;
+			},
+		});
+
+		// Force it to see the initial token as expiring
+		(manager as unknown as { cachedToken: string | null }).cachedToken = "initial-token";
+
+		// Trigger 10 parallel calls
+		const promises = Array.from({ length: 10 }, () => manager.getToken());
+		const results = await Promise.all(promises);
+
+		// All should get the same new token
+		expect(results.every((r) => r === "new-token-1")).toBe(true);
+		// fetchCount should be exactly 1
+		expect(fetchCount).toBe(1);
+	});
+});

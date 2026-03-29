@@ -1,11 +1,27 @@
 import type { CantonClient } from "../client/canton-client.ts";
-import type { ActivateInterfaceOptions, ActiveInterfacesResponse } from "../types/index.ts";
+import type {
+	ActivateInterfaceOptions,
+	ActiveInterfacesResponse,
+	TemplateDescriptor,
+	TemplateId,
+} from "../types/index.ts";
+import type { PackageResolver } from "./package-resolver.ts";
 
 /**
  * Provides methods for querying active contracts through a Daml interface.
  */
 export class InterfaceQuery {
-	constructor(private readonly client: CantonClient) {}
+	constructor(
+		private readonly client: CantonClient,
+		private readonly packages?: PackageResolver,
+	) {}
+
+	private async resolve(t: string | TemplateId | TemplateDescriptor): Promise<string | TemplateId> {
+		if (this.packages && typeof t === "object" && "packageName" in t) {
+			return this.packages.resolveTemplateId(t);
+		}
+		return t as string | TemplateId;
+	}
 
 	/**
 	 * Lists active contracts matching a Daml interface.
@@ -14,7 +30,8 @@ export class InterfaceQuery {
 	async fetchActiveInterfaces<TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
 		options: ActivateInterfaceOptions,
 	): Promise<ActiveInterfacesResponse<TView, TPayload>> {
-		return this.client.queryByInterface<TView, TPayload>(options.interfaceId, options);
+		const interfaceId = await this.resolve(options.interfaceId);
+		return this.client.queryByInterface<TView, TPayload>(interfaceId, options);
 	}
 
 	/**

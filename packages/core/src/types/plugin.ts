@@ -13,6 +13,11 @@ export interface RequestConfig {
 export interface FetchMiddleware {
 	onRequest?: (config: RequestConfig) => RequestConfig | Promise<RequestConfig>;
 	onResponse?: (response: Response, config: RequestConfig) => void | Promise<void>;
+	/**
+	 * Called after the response JSON is decoded, but BEFORE Zod schema validation.
+	 * Plugins can use this to transform the raw ledger data.
+	 */
+	onAfterResponse?: (json: unknown, config: RequestConfig) => unknown | Promise<unknown>;
 	onError?: (error: NexusLedgerError, config: RequestConfig) => void | Promise<void>;
 }
 

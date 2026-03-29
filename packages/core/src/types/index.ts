@@ -87,13 +87,13 @@ export interface ActiveContractsResponse<T = Record<string, unknown>> {
 
 export interface CreateCommand<T = Record<string, unknown>> {
 	type: "create";
-	templateId: string | TemplateId;
+	templateId: string | TemplateId | TemplateDescriptor;
 	createArguments: T;
 }
 
 export interface ExerciseCommand<T = Record<string, unknown>> {
 	type: "exercise";
-	templateId: string | TemplateId;
+	templateId: string | TemplateId | TemplateDescriptor;
 	contractId: string;
 	choice: string;
 	choiceArgument: T;
@@ -212,7 +212,7 @@ export interface ActiveInterface<
 }
 
 export interface ActivateInterfaceOptions {
-	interfaceId: string | TemplateId;
+	interfaceId: string | TemplateId | TemplateDescriptor;
 	parties?: string[];
 	pageToken?: string;
 	pageSize?: number;
@@ -320,55 +320,10 @@ export interface NexusConfig {
 	timeoutMs?: number;
 }
 
-/**
- * The core Nexus client instance.
- * Provides access to all ledger and auth services.
- */
 export interface NexusClient {
 	config: NexusConfig;
 	http: CantonClient;
 	packages?: PackageResolver;
-	auth: {
-		partyId: PartyIdResolver;
-		session: SessionManager;
-	};
-	ledger: {
-		contracts: ContractQuery;
-		interfaces: InterfaceQuery;
-		commands: CommandSubmitter;
-		identity: LedgerIdentity;
-	};
-	getToken: () => Promise<string>;
-}
-
-/**
- * The core Nexus client instance.
- * Provides access to all ledger and auth services.
- */
-export interface NexusClient {
-	config: NexusConfig;
-	http: CantonClient;
-	packages?: PackageResolver;
-	auth: {
-		partyId: PartyIdResolver;
-		session: SessionManager;
-	};
-	ledger: {
-		contracts: ContractQuery;
-		interfaces: InterfaceQuery;
-		commands: CommandSubmitter;
-		identity: LedgerIdentity;
-	};
-	getToken: () => Promise<string>;
-}
-
-/**
- * The core Nexus client instance.
- * Provides access to all ledger and auth services.
- */
-export interface NexusClient {
-	config: NexusConfig;
-	http: CantonClient;
 	auth: {
 		partyId: PartyIdResolver;
 		session: SessionManager;

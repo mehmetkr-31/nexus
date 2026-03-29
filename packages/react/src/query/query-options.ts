@@ -59,27 +59,16 @@ export function contractQueryOptions<T = Record<string, unknown>>(
 	return queryOptions<ActiveContractsResponse<T>>({
 		queryKey: nexusKeys.contractsQuery(stableId, filters),
 		queryFn: async () => {
-			let finalTemplateId = input.templateId;
-
-			// If we have a descriptor and the package-discovery plugin is active, resolve it
-			if (typeof finalTemplateId !== "string" && input.client.packages) {
-				const resolver = input.client.packages as import("@nexus-framework/core").PackageResolver;
-				finalTemplateId = await resolver.resolveTemplateId(finalTemplateId);
-			} else if (typeof finalTemplateId !== "string") {
-				// Fallback if plugin missing
-				finalTemplateId = `${finalTemplateId.packageName}:${finalTemplateId.moduleName}:${finalTemplateId.entityName}`;
-			}
-
 			if (input.fetchAll) {
 				const contracts = await input.client.ledger.contracts.fetchAllActiveContracts<T>({
-					templateId: finalTemplateId,
+					templateId: input.templateId,
 					parties: input.parties,
 					filter: input.filter,
 				});
 				return { contracts, nextPageToken: undefined };
 			}
 			return input.client.ledger.contracts.fetchActiveContracts<T>({
-				templateId: finalTemplateId,
+				templateId: input.templateId,
 				parties: input.parties,
 				filter: input.filter,
 			});
@@ -176,28 +165,19 @@ export function interfaceQueryOptions<
 	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
 		queryKey: nexusKeys.interfaceQuery(stableId, { parties: input.parties }),
 		queryFn: async () => {
-			let finalInterfaceId = input.interfaceId;
-
-			if (typeof finalInterfaceId !== "string" && input.client.packages) {
-				const resolver = input.client.packages as import("@nexus-framework/core").PackageResolver;
-				finalInterfaceId = await resolver.resolveTemplateId(finalInterfaceId);
-			} else if (typeof finalInterfaceId !== "string") {
-				finalInterfaceId = `${finalInterfaceId.packageName}:${finalInterfaceId.moduleName}:${finalInterfaceId.entityName}`;
-			}
-
 			if (input.fetchAll) {
 				const interfaces = await input.client.ledger.interfaces.fetchAllActiveInterfaces<
 					TView,
 					TPayload
 				>({
-					interfaceId: finalInterfaceId,
+					interfaceId: input.interfaceId,
 					parties: input.parties,
 					includeCreateArguments: input.includeCreateArguments,
 				});
 				return { interfaces, nextPageToken: undefined };
 			}
 			return input.client.ledger.interfaces.fetchActiveInterfaces<TView, TPayload>({
-				interfaceId: finalInterfaceId,
+				interfaceId: input.interfaceId,
 				parties: input.parties,
 				includeCreateArguments: input.includeCreateArguments,
 			});

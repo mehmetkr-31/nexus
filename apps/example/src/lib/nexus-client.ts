@@ -1,6 +1,7 @@
 import {
 	createNexusClient,
 	fetchMiddlewarePlugin,
+	optimisticUiPlugin,
 	packageDiscoveryPlugin,
 	sandboxAuth,
 	streamingPlugin,
@@ -30,6 +31,19 @@ export const nexus = await createNexusClient({
 			onResponse: (response, config) => {
 				console.log(`[${config.method}] ${config.url} → ${response.status}`);
 			},
+		}),
+		optimisticUiPlugin({
+			updates: [
+				{
+					templateId: "Iou:Iou",
+					onChoice: (choice, _arg, _contract) => {
+						if (choice.toLowerCase().includes("archive")) {
+							return null;
+						}
+						return null;
+					},
+				},
+			],
 		}),
 		packageDiscoveryPlugin(),
 		tanstackQueryPlugin(),

@@ -129,6 +129,7 @@ export class CantonClient {
 	public readonly getToken: () => Promise<string>;
 	private readonly timeoutMs: number;
 	private readonly middlewares: FetchMiddleware[];
+	private readonly apiBase = "/v2";
 
 	constructor(options: CantonClientOptions) {
 		this.baseUrl = options.baseUrl.replace(/\/$/, "");
@@ -226,7 +227,14 @@ export class CantonClient {
 			}
 		}
 
-		const json = await response.json();
+		let json = await response.json();
+
+		// Run onAfterResponse middlewares — allows data transformation
+		for (const mw of this.middlewares) {
+			if (mw.onAfterResponse) {
+				json = await mw.onAfterResponse(json, config);
+			}
+		}
 
 		if (!schema) {
 			return json as T;
@@ -267,7 +275,16 @@ export class CantonClient {
 			filter: {
 				filtersByParty,
 				alsoFilterByTemplateId:
-					typeof templateId === "string" ? templateId : formatTemplateId(templateId),
+					typeof templateId === "string"
+						? templateId
+						: "packageId" in templateId
+							? formatTemplateId(templateId)
+							: (() => {
+									throw new Error(
+										"CantonClient: Received unresolved TemplateDescriptor. " +
+											"Ensure PackageResolver is initialized and used in higher-level services.",
+									);
+								})(),
 				...options?.filter,
 			},
 			activeAtOffset: "0",
@@ -285,7 +302,7 @@ export class CantonClient {
 
 		return this.request<ActiveContractsResponse<T>>(
 			"POST",
-			"/v2/state/active-contracts",
+			`${this.apiBase}/state/active-contracts`,
 			body,
 			activeContractsResponseSchema as z.ZodType<ActiveContractsResponse<T>>,
 		);
@@ -302,7 +319,13 @@ export class CantonClient {
 							templateId:
 								typeof cmd.templateId === "string"
 									? cmd.templateId
-									: formatTemplateId(cmd.templateId),
+									: "packageId" in cmd.templateId
+										? formatTemplateId(cmd.templateId)
+										: (() => {
+												throw new Error(
+													"CantonClient: Received unresolved TemplateDescriptor in CreateCommand",
+												);
+											})(),
 							createArguments: cmd.createArguments,
 						},
 					};
@@ -312,7 +335,13 @@ export class CantonClient {
 						templateId:
 							typeof cmd.templateId === "string"
 								? cmd.templateId
-								: formatTemplateId(cmd.templateId),
+								: "packageId" in cmd.templateId
+									? formatTemplateId(cmd.templateId)
+									: (() => {
+											throw new Error(
+												"CantonClient: Received unresolved TemplateDescriptor in ExerciseCommand",
+											);
+										})(),
 						contractId: cmd.contractId,
 						choice: cmd.choice,
 						choiceArgument: cmd.choiceArgument,
@@ -327,7 +356,7 @@ export class CantonClient {
 
 		return this.request<SubmitResult>(
 			"POST",
-			"/v2/commands/submit-and-wait",
+			`${this.apiBase}/commands/submit-and-wait`,
 			body,
 			submitResultSchema,
 		);
@@ -346,7 +375,13 @@ export class CantonClient {
 							templateId:
 								typeof cmd.templateId === "string"
 									? cmd.templateId
-									: formatTemplateId(cmd.templateId),
+									: "packageId" in cmd.templateId
+										? formatTemplateId(cmd.templateId)
+										: (() => {
+												throw new Error(
+													"CantonClient: Received unresolved TemplateDescriptor in CreateCommand",
+												);
+											})(),
 							createArguments: cmd.createArguments,
 						},
 					};
@@ -356,7 +391,13 @@ export class CantonClient {
 						templateId:
 							typeof cmd.templateId === "string"
 								? cmd.templateId
-								: formatTemplateId(cmd.templateId),
+								: "packageId" in cmd.templateId
+									? formatTemplateId(cmd.templateId)
+									: (() => {
+											throw new Error(
+												"CantonClient: Received unresolved TemplateDescriptor in ExerciseCommand",
+											);
+										})(),
 						contractId: cmd.contractId,
 						choice: cmd.choice,
 						choiceArgument: cmd.choiceArgument,
@@ -371,7 +412,7 @@ export class CantonClient {
 
 		return this.request<TransactionResult>(
 			"POST",
-			"/v2/commands/submit-and-wait-for-transaction",
+			`${this.apiBase}/commands/submit-and-wait-for-transaction`,
 			body,
 			transactionResultSchema as z.ZodType<TransactionResult>,
 		);
@@ -402,7 +443,15 @@ export class CantonClient {
 			) ?? {};
 
 		const finalInterfaceId =
-			typeof interfaceId === "string" ? interfaceId : formatTemplateId(interfaceId);
+			typeof interfaceId === "string"
+				? interfaceId
+				: "packageId" in interfaceId
+					? formatTemplateId(interfaceId)
+					: (() => {
+							throw new Error(
+								"CantonClient: Received unresolved TemplateDescriptor in queryByInterface",
+							);
+						})();
 
 		const body: Record<string, unknown> = {
 			filter: {
@@ -430,7 +479,7 @@ export class CantonClient {
 
 		return this.request<ActiveInterfacesResponse<TView, TPayload>>(
 			"POST",
-			"/v2/state/active-contracts",
+			`${this.apiBase}/state/active-contracts`,
 			body,
 			activeInterfacesResponseSchema as z.ZodType<ActiveInterfacesResponse<TView, TPayload>>,
 		);
@@ -457,7 +506,7 @@ export class CantonClient {
 		options?: { parties?: string[] },
 	): Promise<import("../types/index.ts").StreamHandle> {
 		const token = await this.getToken();
-		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}/v2/state/active-contracts/stream`;
+		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/state/active-contracts/stream`;
 
 		let ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
 		let _connected = false;
@@ -514,7 +563,7 @@ export class CantonClient {
 			 */
 			updateToken: (newToken: string) => {
 				ws.close();
-				const newUrl = `${this.baseUrl.replace(/^http/, "ws")}/v2/state/active-contracts/stream`;
+				const newUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/state/active-contracts/stream`;
 				ws = new WebSocket(newUrl, [`jwt.token.${newToken}`, "daml.ws.auth"]);
 				subscribe(ws);
 			},
@@ -534,7 +583,10 @@ export class CantonClient {
 	 * @returns Array of package identifiers (hex strings)
 	 */
 	async listPackages(): Promise<string[]> {
-		const response = await this.request<{ packageIds: string[] }>("GET", "/v2/packages");
+		const response = await this.request<{ packageIds: string[] }>(
+			"GET",
+			`${this.apiBase}/packages`,
+		);
 		return response.packageIds ?? [];
 	}
 
@@ -545,19 +597,24 @@ export class CantonClient {
 	 * @param packageId Hex identifier of the package
 	 */
 	async getPackage(packageId: string): Promise<Record<string, unknown>> {
-		return this.request("GET", `/v2/packages/${packageId}`);
+		return this.request("GET", `${this.apiBase}/packages/${packageId}`);
 	}
 
 	// ─── Ledger State ──────────────────────────────────────────────────────────
 
 	async getLedgerEnd(): Promise<LedgerEnd> {
-		return this.request<LedgerEnd>("GET", "/v2/state/ledger-end", undefined, ledgerEndSchema);
+		return this.request<LedgerEnd>(
+			"GET",
+			`${this.apiBase}/state/ledger-end`,
+			undefined,
+			ledgerEndSchema,
+		);
 	}
 
 	async getConnectedSynchronizers(): Promise<SynchronizerInfo[]> {
 		const response = await this.request<{ synchronizers: unknown[] }>(
 			"GET",
-			"/v2/state/connected-synchronizers",
+			`${this.apiBase}/state/connected-synchronizers`,
 		);
 		return z.array(synchronizerInfoSchema).parse(response.synchronizers ?? []);
 	}
@@ -575,7 +632,7 @@ export class CantonClient {
 		if (options?.pageSize) params.set("pageSize", String(options.pageSize));
 
 		const qs = params.toString() ? `?${params.toString()}` : "";
-		return this.request("GET", `/v2/updates${qs}`);
+		return this.request("GET", `${this.apiBase}/updates${qs}`);
 	}
 
 	/**

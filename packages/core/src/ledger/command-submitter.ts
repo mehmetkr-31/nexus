@@ -1,23 +1,41 @@
 import type { CantonClient } from "../client/canton-client.ts";
 import type {
+	Command,
 	CreateCommand,
 	ExerciseCommand,
 	ExerciseResult,
 	SubmitResult,
+	TemplateDescriptor,
 	TemplateId,
 	TransactionResult,
 } from "../types/index.ts";
+import type { PackageResolver } from "./package-resolver.ts";
 
 // ─── CommandSubmitter ─────────────────────────────────────────────────────────
 
 export class CommandSubmitter {
-	constructor(private readonly client: CantonClient) {}
+	constructor(
+		private readonly client: CantonClient,
+		private readonly packages?: PackageResolver,
+	) {}
+
+	private async resolve(t: string | TemplateId | TemplateDescriptor): Promise<string | TemplateId> {
+		if (this.packages && typeof t === "object" && "packageName" in t) {
+			return this.packages.resolveTemplateId(t);
+		}
+		return t as string | TemplateId;
+	}
+
+	private async resolveCommand(cmd: Command): Promise<Command> {
+		const resolvedTId = await this.resolve(cmd.templateId);
+		return { ...cmd, templateId: resolvedTId } as Command;
+	}
 
 	/**
 	 * Create a new Daml contract on the ledger.
 	 */
-	async createContract<T extends Record<string, unknown> = Record<string, unknown>>(
-		templateId: string | TemplateId,
+	async createContract<T extends Record<string, unknown>>(
+		templateId: string | TemplateId | TemplateDescriptor,
 		createArguments: T,
 		actAs: string[],
 		options?: {
@@ -26,9 +44,10 @@ export class CommandSubmitter {
 			workflowId?: string;
 		},
 	): Promise<SubmitResult> {
+		const resolvedTId = await this.resolve(templateId);
 		const command: CreateCommand<T> = {
 			type: "create",
-			templateId,
+			templateId: resolvedTId,
 			createArguments,
 		};
 
@@ -44,8 +63,8 @@ export class CommandSubmitter {
 	/**
 	 * Exercise a choice on an existing Daml contract.
 	 */
-	async exerciseChoice<TArg extends Record<string, unknown> = Record<string, unknown>>(
-		templateId: string | TemplateId,
+	async exerciseChoice<TArg extends Record<string, unknown>>(
+		templateId: string | TemplateId | TemplateDescriptor,
 		contractId: string,
 		choice: string,
 		choiceArgument: TArg,
@@ -56,9 +75,10 @@ export class CommandSubmitter {
 			workflowId?: string;
 		},
 	): Promise<SubmitResult> {
+		const resolvedTId = await this.resolve(templateId);
 		const command: ExerciseCommand<TArg> = {
 			type: "exercise",
-			templateId,
+			templateId: resolvedTId,
 			contractId,
 			choice,
 			choiceArgument,
@@ -79,11 +99,8 @@ export class CommandSubmitter {
 	 *
 	 * Use this when you need the `exerciseResult` from the choice.
 	 */
-	async exerciseAndGetResult<
-		TArg extends Record<string, unknown> = Record<string, unknown>,
-		TResult = unknown,
-	>(
-		templateId: string | TemplateId,
+	async exerciseAndGetResult<TArg extends Record<string, unknown>, TResult = unknown>(
+		templateId: string | TemplateId | TemplateDescriptor,
 		contractId: string,
 		choice: string,
 		choiceArgument: TArg,
@@ -94,9 +111,10 @@ export class CommandSubmitter {
 			workflowId?: string;
 		},
 	): Promise<ExerciseResult<TResult>> {
+		const resolvedTId = await this.resolve(templateId);
 		const command: ExerciseCommand<TArg> = {
 			type: "exercise",
-			templateId,
+			templateId: resolvedTId,
 			contractId,
 			choice,
 			choiceArgument,
@@ -136,8 +154,9 @@ export class CommandSubmitter {
 			workflowId?: string;
 		},
 	): Promise<SubmitResult> {
+		const resolvedCommands = await Promise.all(commands.map((cmd) => this.resolveCommand(cmd)));
 		return this.client.submitAndWait({
-			commands,
+			commands: resolvedCommands,
 			actAs,
 			readAs: options?.readAs,
 			commandId: options?.commandId,

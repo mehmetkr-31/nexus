@@ -39,7 +39,11 @@ export type {
 	NexusProviderComponentProps,
 } from "./create-nexus-client.ts";
 export { createNexusClient } from "./create-nexus-client.ts";
-
+export {
+	type OptimisticUiPluginOptions,
+	type OptimisticUpdateConfig,
+	optimisticUiPlugin,
+} from "./plugins/optimistic-ui-plugin.ts";
 // ─── Plugins ──────────────────────────────────────────────────────────────────
 export type {
 	MultiStreamContractsState,
@@ -50,7 +54,6 @@ export type {
 	UseStreamContractsOptions,
 } from "./plugins/streaming.ts";
 export { streamingPlugin } from "./plugins/streaming.ts";
-
 export type {
 	CreateContractVariables,
 	ExerciseAndGetResultVariables,

@@ -1,9 +1,15 @@
 import type { CantonClient } from "../client/canton-client.ts";
-import type { ActiveContract, ActiveContractsResponse, TemplateId } from "../types/index.ts";
+import type {
+	ActiveContract,
+	ActiveContractsResponse,
+	TemplateDescriptor,
+	TemplateId,
+} from "../types/index.ts";
+import type { PackageResolver } from "./package-resolver.ts";
 
 export interface ContractQueryOptions<_T = Record<string, unknown>> {
-	/** Daml template ID — either "packageId:Module:Entity" or TemplateId object */
-	templateId: string | TemplateId;
+	/** Daml template ID — "packageId:Module:Entity", TemplateId object, or TemplateDescriptor */
+	templateId: string | TemplateId | TemplateDescriptor;
 	/** Party IDs to query as */
 	parties?: string[];
 	/** Optional payload-level filter */
@@ -17,7 +23,17 @@ export interface ContractQueryOptions<_T = Record<string, unknown>> {
 // ─── ContractQuery ────────────────────────────────────────────────────────────
 
 export class ContractQuery {
-	constructor(private readonly client: CantonClient) {}
+	constructor(
+		private readonly client: CantonClient,
+		private readonly packages?: PackageResolver,
+	) {}
+
+	private async resolve(t: string | TemplateId | TemplateDescriptor): Promise<string | TemplateId> {
+		if (this.packages && typeof t === "object" && "packageName" in t) {
+			return this.packages.resolveTemplateId(t);
+		}
+		return t as string | TemplateId;
+	}
 
 	/**
 	 * Fetch a page of active contracts matching the given template.
@@ -25,7 +41,8 @@ export class ContractQuery {
 	async fetchActiveContracts<T = Record<string, unknown>>(
 		options: ContractQueryOptions<T>,
 	): Promise<ActiveContractsResponse<T>> {
-		return this.client.queryContracts<T>(options.templateId, {
+		const templateId = await this.resolve(options.templateId);
+		return this.client.queryContracts<T>(templateId, {
 			parties: options.parties,
 			filter: options.filter,
 			pageSize: options.pageSize,
@@ -42,9 +59,10 @@ export class ContractQuery {
 	): Promise<ActiveContract<T>[]> {
 		const contracts: ActiveContract<T>[] = [];
 		let pageToken: string | undefined;
+		const templateId = await this.resolve(options.templateId);
 
 		do {
-			const page = await this.client.queryContracts<T>(options.templateId, {
+			const page = await this.client.queryContracts<T>(templateId, {
 				parties: options.parties,
 				filter: options.filter,
 				pageSize: options.pageSize ?? 100,
@@ -62,11 +80,12 @@ export class ContractQuery {
 	 * Returns undefined if not found.
 	 */
 	async fetchContractById<T = Record<string, unknown>>(
-		templateId: string,
+		templateId: string | TemplateDescriptor | TemplateId,
 		contractId: string,
 		parties?: string[],
 	): Promise<ActiveContract<T> | undefined> {
-		const result = await this.client.queryContracts<T>(templateId, {
+		const resolvedId = await this.resolve(templateId);
+		const result = await this.client.queryContracts<T>(resolvedId, {
 			parties,
 			pageSize: 1000,
 		});
@@ -79,7 +98,7 @@ export class ContractQuery {
 	 * Returns undefined if not found.
 	 */
 	async fetchContractByKey<T = Record<string, unknown>>(
-		templateId: string,
+		templateId: string | TemplateDescriptor | TemplateId,
 		keyPredicate: (payload: T) => boolean,
 		parties?: string[],
 	): Promise<ActiveContract<T> | undefined> {
