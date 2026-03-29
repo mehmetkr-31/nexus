@@ -42,6 +42,7 @@ describe("contractQueryOptions", () => {
 		});
 		server.stop();
 
+		if (!client.query) throw new Error("query undefined");
 		const opts = client.query.contracts({
 			templateId: "pkg:Mod:Iou",
 			parties: ["Alice::abc"],
@@ -68,6 +69,7 @@ describe("contractQueryOptions", () => {
 		});
 
 		const qc = new QueryClient();
+		if (!client.query) throw new Error("query undefined");
 		const opts = client.query.contracts({ templateId: "pkg:Mod:Iou" });
 		const result = await qc.fetchQuery(opts);
 		server.stop();
@@ -90,6 +92,7 @@ describe("ledgerEndQueryOptions", () => {
 			],
 		});
 
+		if (!client.query) throw new Error("query undefined");
 		const opts = client.query.ledgerEnd();
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.ledgerEnd()));
 		expect(opts.staleTime).toBe(2_000);
@@ -109,6 +112,7 @@ describe("partyIdQueryOptions", () => {
 			],
 		});
 
+		if (!client.query) throw new Error("query undefined");
 		const opts = client.query.partyId({ userId: "alice" });
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.partyId("alice")));
 	});

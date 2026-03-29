@@ -35,6 +35,9 @@ export type {
 	NexusPlugin,
 	RequestConfig,
 } from "./types/plugin.ts";
+export * from "./types/plugin.ts";
+export * from "./utils/jwt.ts";
+export * from "./utils/template.ts";
 
 import type { InferNexusPlugins } from "./types/plugin.ts";
 
@@ -94,6 +97,7 @@ export async function createNexus<
 			identity: new LedgerIdentity(http),
 		},
 		getToken,
+		getCachedToken: () => authPlugin?.auth?.getCachedToken?.() ?? null,
 	};
 
 	const dispatchRefresh = (newToken: string) => {

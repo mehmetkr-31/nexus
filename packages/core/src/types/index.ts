@@ -340,4 +340,5 @@ export interface NexusClient {
 		identity: LedgerIdentity;
 	};
 	getToken: () => Promise<string>;
+	getCachedToken: () => string | null;
 }

@@ -4,6 +4,7 @@ import type {
 	NexusClient,
 	TemplateDescriptor,
 } from "@nexus-framework/core";
+import { toStableTemplateId } from "@nexus-framework/core";
 import { queryOptions } from "@tanstack/react-query";
 import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
@@ -51,10 +52,7 @@ export function contractQueryOptions<T = Record<string, unknown>>(
 		filter: input.filter,
 	};
 
-	const stableId =
-		typeof input.templateId === "string"
-			? input.templateId
-			: `${input.templateId.packageName}:${input.templateId.moduleName}:${input.templateId.entityName}`;
+	const stableId = toStableTemplateId(input.templateId);
 
 	return queryOptions<ActiveContractsResponse<T>>({
 		queryKey: nexusKeys.contractsQuery(stableId, filters),
@@ -157,10 +155,7 @@ export function interfaceQueryOptions<
 	TView = Record<string, unknown>,
 	TPayload = Record<string, unknown>,
 >(input: InterfaceQueryOptionsInput<TView, TPayload>) {
-	const stableId =
-		typeof input.interfaceId === "string"
-			? input.interfaceId
-			: `${input.interfaceId.packageName}:${input.interfaceId.moduleName}:${input.interfaceId.entityName}`;
+	const stableId = toStableTemplateId(input.interfaceId);
 
 	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
 		queryKey: nexusKeys.interfaceQuery(stableId, { parties: input.parties }),
@@ -182,6 +177,55 @@ export function interfaceQueryOptions<
 				includeCreateArguments: input.includeCreateArguments,
 			});
 		},
+		enabled: input.enabled,
+		staleTime: input.staleTime,
+	});
+}
+
+// ─── Single Fetch queryOptions ────────────────────────────────────────────────
+
+export function fetchByIdOptions<T = Record<string, unknown>>(input: {
+	client: NexusClient;
+	templateId: string | TemplateDescriptor;
+	contractId: string;
+	parties?: string[];
+	enabled?: boolean;
+	staleTime?: number;
+}) {
+	const stableId = toStableTemplateId(input.templateId);
+
+	return queryOptions({
+		queryKey: nexusKeys.contractById(stableId, input.contractId, input.parties),
+		queryFn: () =>
+			input.client.ledger.contracts.fetchContractById<T>(
+				input.templateId,
+				input.contractId,
+				input.parties,
+			),
+		enabled: input.enabled,
+		staleTime: input.staleTime,
+	});
+}
+
+export function fetchByKeyOptions<T = Record<string, unknown>, K = unknown>(input: {
+	client: NexusClient;
+	templateId: string | TemplateDescriptor;
+	key: K;
+	keyPredicate: (payload: T) => boolean;
+	parties?: string[];
+	enabled?: boolean;
+	staleTime?: number;
+}) {
+	const stableId = toStableTemplateId(input.templateId);
+
+	return queryOptions({
+		queryKey: nexusKeys.contractByKey(stableId, input.key, input.parties),
+		queryFn: () =>
+			input.client.ledger.contracts.fetchContractByKey<T>(
+				input.templateId,
+				input.keyPredicate,
+				input.parties,
+			),
 		enabled: input.enabled,
 		staleTime: input.staleTime,
 	});

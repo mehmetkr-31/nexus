@@ -38,7 +38,10 @@ export function oidcAuth(
 	});
 	return {
 		id: "oidc-auth",
-		auth: { getToken: () => manager.getToken() },
+		auth: {
+			getToken: () => manager.getToken(),
+			getCachedToken: () => manager.getCachedToken(),
+		},
 		setRefreshDispatcher: (cb: (t: string) => void) => {
 			dispatcher = cb;
 		},

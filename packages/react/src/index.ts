@@ -40,6 +40,10 @@ export type {
 } from "./create-nexus-client.ts";
 export { createNexusClient } from "./create-nexus-client.ts";
 export {
+	type IdentityActions,
+	identityPlugin,
+} from "./plugins/identity.ts";
+export {
 	type OptimisticUiPluginOptions,
 	type OptimisticUpdateConfig,
 	optimisticUiPlugin,
@@ -47,10 +51,10 @@ export {
 // ─── Plugins ──────────────────────────────────────────────────────────────────
 export type {
 	MultiStreamContractsState,
-	MultiStreamEntry,
+	MultiStreamMapping,
 	StreamContractsState,
 	StreamingActions,
-	UseMultiStreamContractsOptions,
+	UseMultiStreamOptions,
 	UseStreamContractsOptions,
 } from "./plugins/streaming.ts";
 export { streamingPlugin } from "./plugins/streaming.ts";

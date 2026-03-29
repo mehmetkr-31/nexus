@@ -69,6 +69,7 @@ export interface NexusPlugin<TContext extends Record<string, unknown> = Record<s
 	 */
 	auth?: {
 		getToken: () => Promise<string>;
+		getCachedToken?: () => string | null;
 	};
 
 	/**

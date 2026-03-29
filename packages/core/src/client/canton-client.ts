@@ -7,10 +7,12 @@ import {
 	type SubmitRequest,
 	type SubmitResult,
 	type SynchronizerInfo,
+	type TemplateDescriptor,
 	type TemplateId,
 	type TransactionResult,
 } from "../types/index.ts";
 import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
+import { toStableTemplateId } from "../utils/template.ts";
 
 // ─── Zod Schemas ─────────────────────────────────────────────────────────────
 
@@ -280,17 +282,7 @@ export class CantonClient {
 		const body: Record<string, unknown> = {
 			filter: {
 				filtersByParty,
-				alsoFilterByTemplateId:
-					typeof templateId === "string"
-						? templateId
-						: "packageId" in templateId
-							? formatTemplateId(templateId)
-							: (() => {
-									throw new Error(
-										"CantonClient: Received unresolved TemplateDescriptor. " +
-											"Ensure PackageResolver is initialized and used in higher-level services.",
-									);
-								})(),
+				alsoFilterByTemplateId: toStableTemplateId(templateId),
 				...options?.filter,
 			},
 			activeAtOffset: "0",
@@ -322,32 +314,14 @@ export class CantonClient {
 				if (cmd.type === "create") {
 					return {
 						CreateCommand: {
-							templateId:
-								typeof cmd.templateId === "string"
-									? cmd.templateId
-									: "packageId" in cmd.templateId
-										? formatTemplateId(cmd.templateId)
-										: (() => {
-												throw new Error(
-													"CantonClient: Received unresolved TemplateDescriptor in CreateCommand",
-												);
-											})(),
+							templateId: toStableTemplateId(cmd.templateId),
 							createArguments: cmd.createArguments,
 						},
 					};
 				}
 				return {
 					ExerciseCommand: {
-						templateId:
-							typeof cmd.templateId === "string"
-								? cmd.templateId
-								: "packageId" in cmd.templateId
-									? formatTemplateId(cmd.templateId)
-									: (() => {
-											throw new Error(
-												"CantonClient: Received unresolved TemplateDescriptor in ExerciseCommand",
-											);
-										})(),
+						templateId: toStableTemplateId(cmd.templateId),
 						contractId: cmd.contractId,
 						choice: cmd.choice,
 						choiceArgument: cmd.choiceArgument,
@@ -378,32 +352,14 @@ export class CantonClient {
 				if (cmd.type === "create") {
 					return {
 						CreateCommand: {
-							templateId:
-								typeof cmd.templateId === "string"
-									? cmd.templateId
-									: "packageId" in cmd.templateId
-										? formatTemplateId(cmd.templateId)
-										: (() => {
-												throw new Error(
-													"CantonClient: Received unresolved TemplateDescriptor in CreateCommand",
-												);
-											})(),
+							templateId: toStableTemplateId(cmd.templateId),
 							createArguments: cmd.createArguments,
 						},
 					};
 				}
 				return {
 					ExerciseCommand: {
-						templateId:
-							typeof cmd.templateId === "string"
-								? cmd.templateId
-								: "packageId" in cmd.templateId
-									? formatTemplateId(cmd.templateId)
-									: (() => {
-											throw new Error(
-												"CantonClient: Received unresolved TemplateDescriptor in ExerciseCommand",
-											);
-										})(),
+						templateId: toStableTemplateId(cmd.templateId),
 						contractId: cmd.contractId,
 						choice: cmd.choice,
 						choiceArgument: cmd.choiceArgument,
@@ -448,16 +404,7 @@ export class CantonClient {
 				{} as Record<string, unknown>,
 			) ?? {};
 
-		const finalInterfaceId =
-			typeof interfaceId === "string"
-				? interfaceId
-				: "packageId" in interfaceId
-					? formatTemplateId(interfaceId)
-					: (() => {
-							throw new Error(
-								"CantonClient: Received unresolved TemplateDescriptor in queryByInterface",
-							);
-						})();
+		const finalInterfaceId = toStableTemplateId(interfaceId);
 
 		const body: Record<string, unknown> = {
 			filter: {
@@ -500,7 +447,7 @@ export class CantonClient {
 	 * @returns A `StreamHandle` with `close()`, `updateToken()`, and `connected` getter.
 	 */
 	async streamActiveContracts<T = Record<string, unknown>>(
-		templateId: string,
+		templateId: string | TemplateId | TemplateDescriptor,
 		handlers: {
 			onCreate?: (contract: import("../types/index.ts").ActiveContract<T>) => void;
 			onArchive?: (contractId: string, templateId: import("../types/index.ts").TemplateId) => void;
@@ -512,6 +459,7 @@ export class CantonClient {
 		options?: { parties?: string[] },
 	): Promise<import("../types/index.ts").StreamHandle> {
 		const token = await this.getToken();
+		const stableId = toStableTemplateId(templateId);
 		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/state/active-contracts/stream`;
 
 		let ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
@@ -523,7 +471,7 @@ export class CantonClient {
 				handlers.onConnectedChange?.(true);
 				socket.send(
 					JSON.stringify({
-						templateIds: [templateId],
+						templateIds: [stableId],
 						parties: options?.parties ?? [],
 					}),
 				);
@@ -700,14 +648,6 @@ export class CantonClient {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatTemplateId(t: {
-	packageId: string;
-	moduleName: string;
-	entityName: string;
-}): string {
-	return `${t.packageId}:${t.moduleName}:${t.entityName}`;
-}
 
 function generateCommandId(): string {
 	return `nexus-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

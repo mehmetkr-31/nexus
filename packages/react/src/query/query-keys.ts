@@ -41,6 +41,14 @@ export const nexusKeys = {
 	contractsQuery: (templateId: string, filters?: ContractQueryFilters) =>
 		["nexus", "contracts", templateId, filters ?? {}] as const,
 
+	/** A single contract query by ID */
+	contractById: (templateId: string, contractId: string, parties?: string[]) =>
+		["nexus", "contracts", templateId, "id", contractId, { parties: parties ?? [] }] as const,
+
+	/** A single contract query by key */
+	contractByKey: (templateId: string, key: unknown, parties?: string[]) =>
+		["nexus", "contracts", templateId, "key", key, { parties: parties ?? [] }] as const,
+
 	/** All interface queries */
 	interfaces: () => ["nexus", "interfaces"] as const,
 

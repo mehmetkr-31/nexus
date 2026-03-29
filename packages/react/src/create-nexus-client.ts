@@ -187,6 +187,7 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 		auth: coreClient.auth,
 		ledger: coreClient.ledger,
 		getToken: () => coreClient.getToken(),
+		getCachedToken: () => coreClient.getCachedToken(),
 		NexusProvider: BoundNexusProvider,
 	};
 }

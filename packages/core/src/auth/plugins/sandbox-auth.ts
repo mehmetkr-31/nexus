@@ -52,7 +52,10 @@ export function sandboxAuth(
 	});
 	return {
 		id: "sandbox-auth",
-		auth: { getToken: () => manager.getToken() },
+		auth: {
+			getToken: () => manager.getToken(),
+			getCachedToken: () => manager.getCachedToken(),
+		},
 		getAdminToken: () => manager.getAdminToken(),
 		setRefreshDispatcher: (cb: (t: string) => void) => {
 			dispatcher = cb;
