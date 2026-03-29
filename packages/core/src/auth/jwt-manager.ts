@@ -39,8 +39,9 @@ function isExpiringSoon(payload: JwtPayload, bufferMs = 30_000): boolean {
  */
 async function createSandboxToken(
 	userId: string,
-	partyId: string,
+	partyId: string | undefined,
 	secret: string,
+	admin = false,
 ): Promise<string> {
 	const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }))
 		.replace(/=/g, "")
@@ -50,13 +51,18 @@ async function createSandboxToken(
 	const now = Math.floor(Date.now() / 1000);
 	const claims: JwtPayload = {
 		sub: userId,
-		aud: `https://daml.com/jwt/aud/participant/sandbox`,
+		aud: admin
+			? "https://daml.com/jwt/aud/participant/admin"
+			: `https://daml.com/jwt/aud/participant/sandbox`,
 		scope: "daml_ledger_api",
 		iat: now,
 		exp: now + 86400, // 24h for sandbox
 	};
-	// Include actAs party in payload per Canton sandbox convention
-	const payloadObj = { ...claims, "https://daml.com/ledger-api": { actAs: [partyId], readAs: [] } };
+	// Include actAs party in payload per Canton sandbox convention if provided
+	const payloadObj = {
+		...claims,
+		...(!admin && partyId ? { "https://daml.com/ledger-api": { actAs: [partyId], readAs: [] } } : {}),
+	};
 	const payload = btoa(JSON.stringify(payloadObj))
 		.replace(/=/g, "")
 		.replace(/\+/g, "-")
@@ -100,6 +106,15 @@ export class JwtManager {
 		const token = await this.fetchFreshToken();
 		this.cachedToken = token;
 		return token;
+	}
+
+	/** Generate an administrative token for sandbox mode */
+	async getAdminToken(): Promise<string> {
+		const config = this.config;
+		if (config.type !== "sandbox") {
+			throw new Error("Admin tokens only supported in sandbox mode");
+		}
+		return createSandboxToken(config.userId, undefined, config.secret, true);
 	}
 
 	/** Force-refresh: useful after a 401 response */

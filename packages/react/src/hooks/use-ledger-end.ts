@@ -6,6 +6,8 @@ import { ledgerEndQueryOptions, synchronizersQueryOptions } from "../query/query
 /**
  * Returns the current ledger end offset.
  * Refreshes every 2 seconds by default (staleTime: 2000).
+ *
+ * @deprecated Prefer `nexus.useLedgerEnd` from `createNexusClient()`.
  */
 export function useLedgerEnd(): UseQueryResult<LedgerEnd> {
 	const client = useNexusClient();
@@ -15,6 +17,8 @@ export function useLedgerEnd(): UseQueryResult<LedgerEnd> {
 /**
  * Returns the list of connected Canton synchronizers.
  * Useful for health checks and multi-domain scenarios.
+ *
+ * @deprecated Prefer `nexus.useSynchronizers` from `createNexusClient()`.
  */
 export function useSynchronizers(): UseQueryResult<SynchronizerInfo[]> {
 	const client = useNexusClient();

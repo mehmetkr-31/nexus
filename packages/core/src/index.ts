@@ -17,7 +17,7 @@ export type { JwtAuthOptions } from "./auth/plugins/jwt-auth.ts";
 export { jwtAuth } from "./auth/plugins/jwt-auth.ts";
 export type { OidcAuthOptions } from "./auth/plugins/oidc-auth.ts";
 export { oidcAuth } from "./auth/plugins/oidc-auth.ts";
-export type { SandboxAuthOptions } from "./auth/plugins/sandbox-auth.ts";
+export type { SandboxAuthOptions, SandboxAuthPlugin } from "./auth/plugins/sandbox-auth.ts";
 // Auth plugins
 export { sandboxAuth } from "./auth/plugins/sandbox-auth.ts";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
@@ -25,6 +25,8 @@ export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
 export { LedgerIdentity } from "./ledger/ledger-identity.ts";
+export type { ProvisionSandboxUserOptions } from "./ledger/sandbox-provision.ts";
+export { provisionSandboxUser } from "./ledger/sandbox-provision.ts";
 // Domain types
 // Legacy auth config types (for createNexusClient compat shim)
 export type {
@@ -120,7 +122,8 @@ export function createNexus(options: {
 		);
 	}
 
-	const getToken = () => authPlugin.auth!.getToken();
+	const getToken = () =>
+		authPlugin.auth?.getToken() ?? Promise.reject(new Error("No auth plugin provided"));
 
 	const http = new CantonClient({
 		baseUrl: options.ledgerApiUrl,

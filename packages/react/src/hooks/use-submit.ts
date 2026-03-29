@@ -28,6 +28,8 @@ export interface UseCreateContractOptions {
  * Mutation hook for creating a new Daml contract.
  * Automatically invalidates related TanStack Query caches on success.
  *
+ * @deprecated Prefer `nexus.useCreateContract` from `createNexusClient()`.
+ *
  * @example
  * ```tsx
  * const { mutate, isPending } = useCreateContract({ invalidateTemplates: ["pkg:Mod:Iou"] });
@@ -90,6 +92,8 @@ export interface UseExerciseChoiceOptions {
 /**
  * Mutation hook for exercising a choice on a Daml contract.
  * Automatically invalidates related query caches on success.
+ *
+ * @deprecated Prefer `nexus.useExerciseChoice` from `createNexusClient()`.
  *
  * @example
  * ```tsx

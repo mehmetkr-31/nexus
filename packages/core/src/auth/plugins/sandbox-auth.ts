@@ -9,7 +9,16 @@ export interface SandboxAuthOptions {
 	/** HMAC-256 secret used for token signing in Canton Sandbox dev mode */
 	secret: string;
 	/** Canton party ID for this user, e.g. "Alice::122059a10c67ef1bb..." */
-	partyId: string;
+	partyId?: string;
+}
+
+/**
+ * Extended plugin returned by `sandboxAuth()`.
+ * Includes `getAdminToken()` for provisioning operations (party allocation, user creation).
+ */
+export interface SandboxAuthPlugin extends NexusPlugin {
+	/** Get an administrative token for sandbox provisioning operations. NOT for production use. */
+	getAdminToken(): Promise<string>;
 }
 
 // ─── sandboxAuth ──────────────────────────────────────────────────────────────
@@ -34,10 +43,11 @@ export interface SandboxAuthOptions {
  * });
  * ```
  */
-export function sandboxAuth(options: SandboxAuthOptions): NexusPlugin {
+export function sandboxAuth(options: SandboxAuthOptions): SandboxAuthPlugin {
 	const manager = new JwtManager({ type: "sandbox", ...options });
 	return {
 		id: "sandbox-auth",
 		auth: { getToken: () => manager.getToken() },
+		getAdminToken: () => manager.getAdminToken(),
 	};
 }

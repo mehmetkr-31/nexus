@@ -1,4 +1,6 @@
-import type { ActiveContract, NexusClient, TemplateId } from "@nexus-framework/core";
+"use client";
+
+import type { ActiveContract, TemplateId } from "@nexus-framework/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NexusClientPlugin } from "./tanstack-query.ts";
 
@@ -15,7 +17,7 @@ export interface StreamContractsState<T = Record<string, unknown>> {
 	close: () => void;
 }
 
-export interface UseStreamContractsOptions<T = Record<string, unknown>> {
+export interface UseStreamContractsOptions<_T = Record<string, unknown>> {
 	templateId: string;
 	/**
 	 * Party IDs to query as. Pass a stable reference (useMemo / module-level const)
@@ -156,7 +158,7 @@ export function streamingPlugin(): NexusClientPlugin {
 						closeRef.current?.();
 						closeRef.current = null;
 					};
-				}, [opts.templateId, opts.parties, enabled]);
+				}, [opts.templateId, opts.parties?.join(","), enabled]);
 
 				const close = useCallback(() => {
 					closeRef.current?.();

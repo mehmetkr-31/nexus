@@ -55,7 +55,7 @@ const errorResponseSchema = z.object({
 	details: z.array(z.unknown()).optional(),
 });
 
-const exercisedEventSchema = z.object({
+const _exercisedEventSchema = z.object({
 	nodeId: z.number(),
 	offset: z.number(),
 	contractId: z.string(),

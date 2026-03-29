@@ -20,6 +20,9 @@ export interface UseContractsOptions<_T = Record<string, unknown>> {
 /**
  * Fetch active Daml contracts with TanStack Query.
  *
+ * @deprecated Prefer `nexus.useContracts` from `createNexusClient()` — no context required.
+ * This hook requires a `<NexusProvider client={...}>` ancestor.
+ *
  * @example
  * ```tsx
  * const { data, isLoading } = useContracts<IouPayload>({
@@ -40,6 +43,8 @@ export function useContracts<T = Record<string, unknown>>(
 /**
  * Suspense variant of useContracts.
  * Throws a promise while loading — wrap in React `<Suspense>`.
+ *
+ * @deprecated Prefer `nexus.useContractsSuspense` from `createNexusClient()`.
  */
 export function useContractsSuspense<T = Record<string, unknown>>(
 	options: UseContractsOptions<T>,

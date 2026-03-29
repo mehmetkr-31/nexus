@@ -103,13 +103,9 @@ describe("CommandSubmitter — exerciseChoice", () => {
 		const { client, server } = makeClient(() => Response.json(mockSubmitResult));
 		const submitter = new CommandSubmitter(client);
 
-		const result = await submitter.exerciseChoice(
-			"pkg:Mod:Iou",
-			"contract-1",
-			"Archive",
-			{},
-			["Alice::abc"],
-		);
+		const result = await submitter.exerciseChoice("pkg:Mod:Iou", "contract-1", "Archive", {}, [
+			"Alice::abc",
+		]);
 		server.stop();
 
 		expect(result.transactionId).toBe("txn-1");
@@ -167,13 +163,9 @@ describe("CommandSubmitter — exerciseAndGetResult", () => {
 		});
 		const submitter = new CommandSubmitter(client);
 
-		await submitter.exerciseAndGetResult(
-			"pkg:Mod:Iou",
-			"contract-1",
-			"Archive",
-			{},
-			["Alice::abc"],
-		);
+		await submitter.exerciseAndGetResult("pkg:Mod:Iou", "contract-1", "Archive", {}, [
+			"Alice::abc",
+		]);
 		server.stop();
 
 		expect(requestPath).toBe("/v2/commands/submit-and-wait-for-transaction");

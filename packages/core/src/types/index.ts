@@ -7,7 +7,7 @@ export interface SandboxAuthConfig {
 	/** HMAC256 secret used in Canton Sandbox dev mode */
 	secret: string;
 	userId: string;
-	partyId: string;
+	partyId?: string;
 }
 
 export interface JwtAuthConfig {

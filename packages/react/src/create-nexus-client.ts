@@ -2,7 +2,7 @@
 
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createElement, type ReactNode } from "react";
+import { createElement, type ReactNode, useMemo } from "react";
 import { createDefaultQueryClient } from "./context/nexus-provider.tsx";
 import type { NexusClientPlugin, TanstackQueryActions } from "./plugins/tanstack-query.ts";
 
@@ -21,25 +21,26 @@ export interface NexusProviderComponentProps {
  * Combines the core `NexusClient` with hooks from client plugins
  * and a pre-configured `NexusProvider` component.
  */
-export interface NexusClientInstance extends NexusClient, TanstackQueryActions {
-	/**
-	 * A React provider component pre-configured for this client.
-	 * Only wraps `QueryClientProvider` — no NexusContext needed since
-	 * hooks close over the client instance directly.
-	 *
-	 * @example
-	 * ```tsx
-	 * export function App() {
-	 *   return (
-	 *     <nexus.NexusProvider>
-	 *       <MyPage />
-	 *     </nexus.NexusProvider>
-	 *   );
-	 * }
-	 * ```
-	 */
-	NexusProvider: (props: NexusProviderComponentProps) => ReactNode;
-}
+export type NexusClientInstance<TActions = TanstackQueryActions> = NexusClient &
+	TActions & {
+		/**
+		 * A React provider component pre-configured for this client.
+		 * Only wraps `QueryClientProvider` — no NexusContext needed since
+		 * hooks close over the client instance directly.
+		 *
+		 * @example
+		 * ```tsx
+		 * export function App() {
+		 *   return (
+		 *     <nexus.NexusProvider>
+		 *       <MyPage />
+		 *     </nexus.NexusProvider>
+		 *   );
+		 * }
+		 * ```
+		 */
+		NexusProvider: (props: NexusProviderComponentProps) => ReactNode;
+	};
 
 // ─── createNexusClient ────────────────────────────────────────────────────────
 
@@ -70,11 +71,11 @@ export interface NexusClientInstance extends NexusClient, TanstackQueryActions {
  * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
-export function createNexusClient(options: {
+export function createNexusClient<TActions = TanstackQueryActions>(options: {
 	baseUrl: string;
 	timeoutMs?: number;
 	plugins: AnyPlugin[];
-}): NexusClientInstance {
+}): NexusClientInstance<TActions> {
 	const serverPlugins = options.plugins.filter((p): p is NexusPlugin => "auth" in p || "init" in p);
 	const clientPlugins = options.plugins.filter((p): p is NexusClientPlugin => "getActions" in p);
 
@@ -88,12 +89,18 @@ export function createNexusClient(options: {
 	const actions = Object.assign(
 		{},
 		...clientPlugins.map((p) => (p.getActions ? p.getActions(coreClient) : {})),
-	) as TanstackQueryActions;
+	) as TActions;
 
 	// Only QueryClientProvider — NexusContext not needed
-	function BoundNexusProvider({ children, queryClient }: NexusProviderComponentProps): ReactNode {
-		const qc = queryClient ?? createDefaultQueryClient();
-		return createElement(QueryClientProvider, { client: qc }, children);
+	function BoundNexusProvider({
+		children,
+		queryClient: externalQueryClient,
+	}: NexusProviderComponentProps): ReactNode {
+		const queryClient = useMemo(
+			() => externalQueryClient ?? createDefaultQueryClient(),
+			[externalQueryClient],
+		);
+		return createElement(QueryClientProvider, { client: queryClient }, children);
 	}
 
 	return {

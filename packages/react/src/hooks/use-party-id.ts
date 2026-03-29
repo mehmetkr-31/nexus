@@ -6,6 +6,8 @@ import { partyIdQueryOptions } from "../query/query-options.ts";
  * Resolves a userId to its Canton Party ID using TanStack Query.
  * Cached for 5 minutes (matching the PartyIdResolver in-memory cache).
  *
+ * @deprecated Prefer `nexus.usePartyId` from `createNexusClient()`.
+ *
  * @example
  * ```tsx
  * const { data: partyId } = usePartyId("alice");

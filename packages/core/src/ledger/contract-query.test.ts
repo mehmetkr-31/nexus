@@ -130,10 +130,7 @@ describe("ContractQuery", () => {
 		});
 		const query = new ContractQuery(client);
 		type Payload = { owner: string; amount: string };
-		const contract = await query.fetchContractByKey<Payload>(
-			"pkg:Mod:T",
-			(p) => p.owner === "Bob",
-		);
+		const contract = await query.fetchContractByKey<Payload>("pkg:Mod:T", (p) => p.owner === "Bob");
 		server.stop();
 
 		expect(contract?.contractId).toBe("c2");
@@ -144,9 +141,7 @@ describe("ContractQuery", () => {
 		const server = Bun.serve({
 			port: 0,
 			fetch() {
-				return Response.json(
-					makeContractPage([{ contractId: "c1", payload: { owner: "Alice" } }]),
-				);
+				return Response.json(makeContractPage([{ contractId: "c1", payload: { owner: "Alice" } }]));
 			},
 		});
 
