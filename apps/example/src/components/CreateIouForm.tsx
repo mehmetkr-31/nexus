@@ -26,6 +26,7 @@ export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 
 	const { mutate, isPending, error } = nexus.useCreateContract<IouPayload>({
 		waitForFinality: true,
+		optimistic: true,
 		optimisticContract: (vars) => ({
 			payload: vars.createArguments,
 		}),

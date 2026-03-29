@@ -25,9 +25,12 @@ import {
 } from "@tanstack/react-query";
 import { invalidateContractQueries, nexusKeys } from "../query/query-keys.ts";
 import {
+	type ContractQueryOptionsParams,
 	contractQueryOptions,
+	type InterfaceQueryOptionsParams,
 	interfaceQueryOptions,
 	ledgerEndQueryOptions,
+	type PartyIdQueryOptionsParams,
 	partyIdQueryOptions,
 	synchronizersQueryOptions,
 } from "../query/query-options.ts";
@@ -64,6 +67,10 @@ export interface UseCreateContractOptions<
 	 * This contract will be added to the cache immediately when the mutation starts.
 	 */
 	optimisticContract?: (vars: CreateContractVariables<T>) => Partial<ActiveContract<T>>;
+	/**
+	 * Enable automatic optimistic UI updates.
+	 */
+	optimistic?: boolean;
 	/** If true, wait for the transaction to be committed to the ledger before resolving. */
 	waitForFinality?: boolean;
 }
@@ -84,6 +91,14 @@ export interface UseExerciseChoiceOptions {
 	onError?: (error: Error) => void;
 	/** If true, wait for the transaction to be committed to the ledger before resolving. */
 	waitForFinality?: boolean;
+	/**
+	 * Enable automatic optimistic UI updates.
+	 * If true, Nexus will guess the update (e.g. remove on consuming archive).
+	 * If a function is provided, it can return the partial contract update.
+	 */
+	optimistic?:
+		| boolean
+		| ((vars: ExerciseChoiceVariables) => Partial<ActiveContract<Record<string, unknown>>>);
 }
 
 export interface UseLedgerMutationOptions<TVariables = void> {
@@ -93,6 +108,33 @@ export interface UseLedgerMutationOptions<TVariables = void> {
 	onError?: (error: Error) => void;
 	/** If true, wait for the transaction to be committed to the ledger before resolving. */
 	waitForFinality?: boolean;
+}
+
+// ─── Optimistic Updates Helpers ───────────────────────────────────────────
+
+async function applyOptimisticUpdate<T = Record<string, unknown>>(
+	queryClient: ReturnType<typeof useQueryClient>,
+	queryKey: readonly unknown[],
+	update: (prev: ActiveContractsResponse<T>) => ActiveContractsResponse<T>,
+) {
+	await queryClient.cancelQueries({ queryKey });
+	const previousData = queryClient.getQueryData<ActiveContractsResponse<T>>(queryKey);
+
+	if (previousData) {
+		queryClient.setQueryData<ActiveContractsResponse<T>>(queryKey, update(previousData));
+	}
+
+	return previousData;
+}
+
+function rollbackOptimisticUpdate(
+	queryClient: ReturnType<typeof useQueryClient>,
+	queryKey: readonly unknown[] | undefined,
+	previousData: unknown,
+) {
+	if (queryKey && previousData) {
+		queryClient.setQueryData(queryKey as unknown[], previousData);
+	}
 }
 
 // ─── NexusClientPlugin ────────────────────────────────────────────────────────
@@ -266,6 +308,22 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	 * ```
 	 */
 	useRightsAs: (party: string) => UseRightsAsResult;
+
+	/**
+	 * Modern Query Options API (TRPC-style).
+	 * Returns TanStack Query `queryOptions` objects for use with `useQuery`, `prefetchQuery`, etc.
+	 */
+	query: {
+		contracts: <T = Record<string, unknown>>(
+			params: ContractQueryOptionsParams<T>,
+		) => ReturnType<typeof contractQueryOptions<T>>;
+		interfaces: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+			params: InterfaceQueryOptionsParams<TView, TPayload>,
+		) => ReturnType<typeof interfaceQueryOptions<TView, TPayload>>;
+		ledgerEnd: () => ReturnType<typeof ledgerEndQueryOptions>;
+		partyId: (params: PartyIdQueryOptionsParams) => ReturnType<typeof partyIdQueryOptions>;
+		synchronizers: () => ReturnType<typeof synchronizersQueryOptions>;
+	};
 }
 
 // ─── tanstackQueryPlugin ──────────────────────────────────────────────────────
@@ -350,12 +408,12 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 
 			// ─── Ledger State ────────────────────────────────────────────────────
 
-			usePartyId: (userId: string) => useQuery(partyIdQueryOptions(client, userId)),
+			usePartyId: (userId: string) => useQuery(partyIdQueryOptions({ client, userId })),
 
-			useLedgerEnd: () => useQuery(ledgerEndQueryOptions(client)),
+			useLedgerEnd: () => useQuery(ledgerEndQueryOptions({ client })),
 
 			useSynchronizers: () => {
-				return useQuery(synchronizersQueryOptions(client));
+				return useQuery(synchronizersQueryOptions({ client }));
 			},
 
 			useTransactionStatus: (transactionId: string | undefined) => {
@@ -411,7 +469,7 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 						return result;
 					},
 					onMutate: async (vars) => {
-						if (!opts.optimisticContract) return;
+						if (!opts.optimistic && !opts.optimisticContract) return;
 
 						const stableTemplateId =
 							typeof vars.templateId === "string"
@@ -423,35 +481,31 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 						const parties = [...vars.actAs, ...(vars.readAs ?? [])];
 						const queryKey = nexusKeys.contractsQuery(stableTemplateId, { parties });
 
-						await queryClient.cancelQueries({ queryKey });
-						const previousData = queryClient.getQueryData<ActiveContractsResponse<T>>(queryKey);
-
-						if (previousData) {
-							const optimistic = opts.optimisticContract(vars);
-							queryClient.setQueryData<ActiveContractsResponse<T>>(queryKey, {
-								...previousData,
+						const previousData = await applyOptimisticUpdate<T>(queryClient, queryKey, (prev) => {
+							const optimisticSub = opts.optimisticContract?.(vars) ?? {};
+							return {
+								...prev,
 								contracts: [
 									{
 										contractId: `optimistic-${Date.now()}`,
-										templateId: vars.templateId as TemplateId, // cast for type-safety in cache
+										templateId: vars.templateId as TemplateId,
 										signatories: vars.actAs,
 										observers: vars.readAs ?? [],
 										createdAt: new Date().toISOString(),
 										isOptimistic: true,
 										payload: vars.createArguments as unknown as T,
-										...optimistic,
+										...optimisticSub,
 									} as ActiveContract<T>,
-									...previousData.contracts,
+									...prev.contracts,
 								],
-							});
-						}
+							};
+						});
 
 						return { previousData, queryKey };
 					},
 					onError: (err, _vars, context) => {
-						if (context?.queryKey && context.previousData) {
-							queryClient.setQueryData(context.queryKey, context.previousData);
-						}
+						const ctx = context as { queryKey?: readonly unknown[]; previousData?: unknown };
+						rollbackOptimisticUpdate(queryClient, ctx?.queryKey, ctx?.previousData);
 						opts.onError?.(err);
 					},
 					onSuccess: async (result, vars) => {
@@ -503,6 +557,44 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 							{ readAs: vars.readAs, workflowId: vars.workflowId },
 						);
 					},
+					onMutate: async (vars) => {
+						if (!opts.optimistic) return;
+
+						const stableTemplateId =
+							typeof vars.templateId === "string"
+								? vars.templateId
+								: isTemplateId(vars.templateId)
+									? `${vars.templateId.packageId}:${vars.templateId.moduleName}:${vars.templateId.entityName}`
+									: `${(vars.templateId as TemplateDescriptor).packageName}:${vars.templateId.moduleName}:${vars.templateId.entityName}`;
+
+						const parties = [...vars.actAs, ...(vars.readAs ?? [])];
+						const queryKey = nexusKeys.contractsQuery(stableTemplateId, { parties });
+
+						const previousData = await applyOptimisticUpdate(queryClient, queryKey, (prev) => {
+							// For archive (Consuming choice), we remove the contract
+							if (vars.choice.toLowerCase().includes("archive")) {
+								return {
+									...prev,
+									contracts: prev.contracts.filter((c) => c.contractId !== vars.contractId),
+								};
+							}
+
+							// For non-consuming updates, we can apply custom update function
+							if (typeof opts.optimistic === "function") {
+								const update = opts.optimistic(vars);
+								return {
+									...prev,
+									contracts: prev.contracts.map((c) =>
+										c.contractId === vars.contractId ? { ...c, ...update, isOptimistic: true } : c,
+									),
+								};
+							}
+
+							return prev;
+						});
+
+						return { previousData, queryKey };
+					},
 					onSuccess: async (result, vars) => {
 						if (opts.waitForFinality) {
 							await client.http.waitForTransaction(result.transactionId);
@@ -527,7 +619,11 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 						await invalidateContractQueries(queryClient, stableTemplates);
 						await opts.onSuccess?.(result);
 					},
-					onError: opts.onError,
+					onError: (err, _vars, context) => {
+						const ctx = context as { queryKey?: readonly unknown[]; previousData?: unknown };
+						rollbackOptimisticUpdate(queryClient, ctx?.queryKey, ctx?.previousData);
+						opts.onError?.(err);
+					},
 				});
 			},
 
@@ -648,6 +744,17 @@ export function tanstackQueryPlugin(): NexusClientPlugin {
 				) =>
 					useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts, parties: [party] })),
 			}),
+
+			query: {
+				contracts: <T = Record<string, unknown>>(params: ContractQueryOptionsParams<T>) =>
+					contractQueryOptions<T>({ client, ...params }),
+				interfaces: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+					params: InterfaceQueryOptionsParams<TView, TPayload>,
+				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
+				ledgerEnd: () => ledgerEndQueryOptions({ client }),
+				partyId: (params: PartyIdQueryOptionsParams) => partyIdQueryOptions({ client, ...params }),
+				synchronizers: () => synchronizersQueryOptions({ client }),
+			},
 		}),
 	};
 }

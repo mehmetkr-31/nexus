@@ -78,7 +78,7 @@ describe("ledgerEndQueryOptions", () => {
 			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
 		});
 
-		const opts = ledgerEndQueryOptions(client);
+		const opts = ledgerEndQueryOptions({ client });
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.ledgerEnd()));
 		expect(opts.staleTime).toBe(2_000);
 	});
@@ -91,7 +91,7 @@ describe("partyIdQueryOptions", () => {
 			auth: { type: "sandbox", secret: "s", userId: "alice", partyId: "Alice::abc" },
 		});
 
-		const opts = partyIdQueryOptions(client, "alice");
+		const opts = partyIdQueryOptions({ client, userId: "alice" });
 		expect(Array.from(opts.queryKey)).toEqual(Array.from(nexusKeys.partyId("alice")));
 		expect(opts.staleTime).toBe(5 * 60 * 1000);
 	});

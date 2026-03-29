@@ -20,17 +20,12 @@ interface CacheEntry {
 export class PartyIdResolver {
 	private readonly cache = new Map<string, CacheEntry>();
 	private readonly cacheTtlMs: number;
-	private readonly baseUrl: string;
-	private readonly getToken: () => Promise<string>;
 
-	constructor(options: {
-		baseUrl: string;
-		getToken: () => Promise<string>;
-		cacheTtlMs?: number;
-	}) {
-		this.baseUrl = options.baseUrl.replace(/\/$/, "");
-		this.getToken = options.getToken;
-		this.cacheTtlMs = options.cacheTtlMs ?? 5 * 60 * 1000; // 5 min default
+	constructor(
+		private readonly client: import("../client/canton-client.ts").CantonClient,
+		options?: { cacheTtlMs?: number },
+	) {
+		this.cacheTtlMs = options?.cacheTtlMs ?? 5 * 60 * 1000; // 5 min default
 	}
 
 	/**
@@ -72,8 +67,8 @@ export class PartyIdResolver {
 	// ─── Private ───────────────────────────────────────────────────────────────
 
 	private async fetchPartyId(userId: string): Promise<string> {
-		const token = await this.getToken();
-		const res = await fetch(`${this.baseUrl}/v2/users/${encodeURIComponent(userId)}`, {
+		const token = await this.client.getToken();
+		const res = await fetch(`${this.client.baseUrl}/v2/users/${encodeURIComponent(userId)}`, {
 			headers: { Authorization: `Bearer ${token}` },
 		});
 
@@ -104,10 +99,13 @@ export class PartyIdResolver {
 	}
 
 	private async fetchUserRights(userId: string): Promise<UserRightsResponse> {
-		const token = await this.getToken();
-		const res = await fetch(`${this.baseUrl}/v2/users/${encodeURIComponent(userId)}/rights`, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+		const token = await this.client.getToken();
+		const res = await fetch(
+			`${this.client.baseUrl}/v2/users/${encodeURIComponent(userId)}/rights`,
+			{
+				headers: { Authorization: `Bearer ${token}` },
+			},
+		);
 
 		if (!res.ok) {
 			throw new NexusAuthError(

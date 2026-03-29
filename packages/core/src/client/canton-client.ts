@@ -92,7 +92,7 @@ const activeInterfaceSchema = z.object({
 
 const activeInterfacesResponseSchema = z
 	.array(activeInterfaceSchema)
-	.transform((contracts) => ({ contracts }));
+	.transform((interfaces) => ({ interfaces }));
 
 // ─── CantonClient ─────────────────────────────────────────────────────────────
 
@@ -103,8 +103,8 @@ export interface CantonClientOptions {
 }
 
 export class CantonClient {
-	private readonly baseUrl: string;
-	private readonly getToken: () => Promise<string>;
+	public readonly baseUrl: string;
+	public readonly getToken: () => Promise<string>;
 	private readonly timeoutMs: number;
 
 	constructor(options: CantonClientOptions) {
@@ -114,8 +114,10 @@ export class CantonClient {
 	}
 
 	// ─── Core fetch helper ─────────────────────────────────────────────────────
-
-	private async request<T>(
+	/**
+	 * @internal
+	 */
+	public async request<T>(
 		method: string,
 		path: string,
 		body?: unknown,
@@ -324,7 +326,7 @@ export class CantonClient {
 	 * Returns contracts with their decoded interface views.
 	 */
 	async queryByInterface<TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
-		interfaceId: string,
+		interfaceId: string | TemplateId,
 		options?: {
 			parties?: string[];
 			pageToken?: string;
@@ -341,12 +343,15 @@ export class CantonClient {
 				{} as Record<string, unknown>,
 			) ?? {};
 
+		const finalInterfaceId =
+			typeof interfaceId === "string" ? interfaceId : formatTemplateId(interfaceId);
+
 		const body: Record<string, unknown> = {
 			filter: {
 				filtersByParty,
 				interfaceFilters: [
 					{
-						interfaceId,
+						interfaceId: finalInterfaceId,
 						includeInterfaceView: true,
 						includeCreateArguments: options?.includeCreateArguments ?? false,
 					},

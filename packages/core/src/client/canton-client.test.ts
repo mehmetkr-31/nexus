@@ -262,7 +262,7 @@ describe("CantonClient — submitAndWaitForTransaction", () => {
 
 describe("CantonClient — queryByInterface", () => {
 	const mockInterfaceResponse = {
-		contracts: [
+		interfaces: [
 			{
 				contractId: "contract-1",
 				templateId: { packageId: "pkg", moduleName: "Mod", entityName: "T" },
@@ -283,7 +283,7 @@ describe("CantonClient — queryByInterface", () => {
 			port: 0,
 			async fetch(req) {
 				_receivedBody = await req.json();
-				return Response.json(mockInterfaceResponse.contracts);
+				return Response.json(mockInterfaceResponse.interfaces);
 			},
 		});
 
@@ -298,10 +298,10 @@ describe("CantonClient — queryByInterface", () => {
 		);
 		server.stop();
 
-		expect(result.contracts).toHaveLength(1);
-		expect(result.contracts[0]?.interfaceId).toBe("pkg:Iface:IAsset");
-		expect(result.contracts[0]?.interfaceView.assetName).toBe("Gold");
-		expect(result.contracts[0]?.interfaceView.amount).toBe(100);
+		expect(result.interfaces).toHaveLength(1);
+		expect(result.interfaces[0]?.interfaceId).toBe("pkg:Iface:IAsset");
+		expect(result.interfaces[0]?.interfaceView.assetName).toBe("Gold");
+		expect(result.interfaces[0]?.interfaceView.amount).toBe(100);
 	});
 
 	test("sends interfaceFilters with includeInterfaceView: true", async () => {

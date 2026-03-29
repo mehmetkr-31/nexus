@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { CantonClient } from "../client/canton-client.ts";
 import { NexusAuthError } from "../types/index.ts";
 import { PartyIdResolver } from "./party-id-resolver.ts";
 
@@ -23,10 +24,12 @@ describe("PartyIdResolver", () => {
 			"/v2/users/alice": { primaryParty: "Alice::abc123", isDeactivated: false },
 		});
 
-		const resolver = new PartyIdResolver({
-			baseUrl: `http://localhost:${server.port}`,
-			getToken: async () => "test-token",
-		});
+		const resolver = new PartyIdResolver(
+			new CantonClient({
+				baseUrl: `http://localhost:${server.port}`,
+				getToken: async () => "test-token",
+			}),
+		);
 
 		const partyId = await resolver.resolvePartyId("alice");
 		server.stop();
@@ -40,10 +43,12 @@ describe("PartyIdResolver", () => {
 			"/v2/users/alice/rights": { canActAs: ["Alice::fallback123"], canReadAs: [] },
 		});
 
-		const resolver = new PartyIdResolver({
-			baseUrl: `http://localhost:${server.port}`,
-			getToken: async () => "test-token",
-		});
+		const resolver = new PartyIdResolver(
+			new CantonClient({
+				baseUrl: `http://localhost:${server.port}`,
+				getToken: async () => "test-token",
+			}),
+		);
 
 		const partyId = await resolver.resolvePartyId("alice");
 		server.stop();
@@ -64,11 +69,13 @@ describe("PartyIdResolver", () => {
 			},
 		});
 
-		const resolver = new PartyIdResolver({
-			baseUrl: `http://localhost:${server.port}`,
-			getToken: async () => "test-token",
-			cacheTtlMs: 60_000,
-		});
+		const resolver = new PartyIdResolver(
+			new CantonClient({
+				baseUrl: `http://localhost:${server.port}`,
+				getToken: async () => "test-token",
+			}),
+			{ cacheTtlMs: 60_000 },
+		);
 
 		await resolver.resolvePartyId("alice");
 		await resolver.resolvePartyId("alice");
@@ -91,11 +98,13 @@ describe("PartyIdResolver", () => {
 			},
 		});
 
-		const resolver = new PartyIdResolver({
-			baseUrl: `http://localhost:${server.port}`,
-			getToken: async () => "test-token",
-			cacheTtlMs: 60_000,
-		});
+		const resolver = new PartyIdResolver(
+			new CantonClient({
+				baseUrl: `http://localhost:${server.port}`,
+				getToken: async () => "test-token",
+			}),
+			{ cacheTtlMs: 60_000 },
+		);
 
 		await resolver.resolvePartyId("alice");
 		resolver.invalidate("alice");
@@ -111,10 +120,12 @@ describe("PartyIdResolver", () => {
 			"/v2/users/nobody/rights": { canActAs: [], canReadAs: [] },
 		});
 
-		const resolver = new PartyIdResolver({
-			baseUrl: `http://localhost:${server.port}`,
-			getToken: async () => "test-token",
-		});
+		const resolver = new PartyIdResolver(
+			new CantonClient({
+				baseUrl: `http://localhost:${server.port}`,
+				getToken: async () => "test-token",
+			}),
+		);
 
 		await expect(resolver.resolvePartyId("nobody")).rejects.toBeInstanceOf(NexusAuthError);
 		server.stop();

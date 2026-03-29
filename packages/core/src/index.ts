@@ -4,6 +4,7 @@ import { SessionManager } from "./auth/session-manager.ts";
 import { CantonClient } from "./client/canton-client.ts";
 import { CommandSubmitter } from "./ledger/command-submitter.ts";
 import { ContractQuery } from "./ledger/contract-query.ts";
+import { InterfaceQuery } from "./ledger/interface-query.ts";
 import { LedgerIdentity } from "./ledger/ledger-identity.ts";
 import type { NexusConfig } from "./types/index.ts";
 import type { NexusPlugin } from "./types/plugin.ts";
@@ -24,6 +25,7 @@ export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts
 export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
+export { InterfaceQuery } from "./ledger/interface-query.ts";
 export { LedgerIdentity } from "./ledger/ledger-identity.ts";
 export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin.ts";
 export { PackageResolver } from "./ledger/package-resolver.ts";
@@ -80,6 +82,7 @@ export interface NexusClient extends Record<string, unknown> {
 	/** Ledger operations */
 	readonly ledger: {
 		readonly contracts: ContractQuery;
+		readonly interfaces: InterfaceQuery;
 		readonly commands: CommandSubmitter;
 		readonly identity: LedgerIdentity;
 	};
@@ -135,21 +138,18 @@ export function createNexus(options: {
 		timeoutMs: options.timeoutMs,
 	});
 
-	const partyId = new PartyIdResolver({
-		baseUrl: options.ledgerApiUrl,
-		getToken,
-	});
-
+	const partyId = new PartyIdResolver(http);
 	const session = new SessionManager();
-
-	const contracts = new ContractQuery(http);
-	const commands = new CommandSubmitter(http);
-	const identity = new LedgerIdentity(http);
 
 	const client: NexusClient = {
 		http,
 		auth: { partyId, session },
-		ledger: { contracts, commands, identity },
+		ledger: {
+			contracts: new ContractQuery(http),
+			interfaces: new InterfaceQuery(http),
+			commands: new CommandSubmitter(http),
+			identity: new LedgerIdentity(http),
+		},
 		getToken,
 	};
 

@@ -9,8 +9,7 @@ import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
 // ─── Contract queryOptions factory ───────────────────────────────────────────
 
-export interface ContractQueryOptionsInput<_T = Record<string, unknown>> {
-	client: NexusClient;
+export interface ContractQueryOptionsParams<_T = Record<string, unknown>> {
 	templateId: string | TemplateDescriptor;
 	parties?: string[];
 	filter?: Record<string, unknown>;
@@ -22,6 +21,11 @@ export interface ContractQueryOptionsInput<_T = Record<string, unknown>> {
 	/** Passed through to TanStack Query */
 	enabled?: boolean;
 	staleTime?: number;
+}
+
+export interface ContractQueryOptionsInput<T = Record<string, unknown>>
+	extends ContractQueryOptionsParams<T> {
+	client: NexusClient;
 }
 
 /**
@@ -87,47 +91,73 @@ export function contractQueryOptions<T = Record<string, unknown>>(
 
 // ─── Ledger end queryOptions ──────────────────────────────────────────────────
 
-export function ledgerEndQueryOptions(client: NexusClient) {
+export interface LedgerEndQueryOptionsInput {
+	client: NexusClient;
+}
+
+export function ledgerEndQueryOptions(input: LedgerEndQueryOptionsInput) {
 	return queryOptions({
 		queryKey: nexusKeys.ledgerEnd(),
-		queryFn: () => client.ledger.identity.getLedgerEnd(),
+		queryFn: () => input.client.ledger.identity.getLedgerEnd(),
 		staleTime: 2_000,
 	});
 }
 
 // ─── Synchronizers queryOptions ───────────────────────────────────────────────
 
-export function synchronizersQueryOptions(client: NexusClient) {
+export interface SynchronizersQueryOptionsInput {
+	client: NexusClient;
+}
+
+export function synchronizersQueryOptions(input: SynchronizersQueryOptionsInput) {
 	return queryOptions({
 		queryKey: nexusKeys.synchronizers(),
-		queryFn: () => client.ledger.identity.getConnectedSynchronizers(),
+		queryFn: () => input.client.ledger.identity.getConnectedSynchronizers(),
 		staleTime: 30_000,
 	});
 }
 
 // ─── Party ID queryOptions ────────────────────────────────────────────────────
 
-export function partyIdQueryOptions(client: NexusClient, userId: string) {
+export interface PartyIdQueryOptionsParams {
+	userId: string;
+}
+
+export interface PartyIdQueryOptionsInput extends PartyIdQueryOptionsParams {
+	client: NexusClient;
+}
+
+export function partyIdQueryOptions(input: PartyIdQueryOptionsInput) {
 	return queryOptions({
-		queryKey: nexusKeys.partyId(userId),
-		queryFn: () => client.auth.partyId.resolvePartyId(userId),
-		staleTime: 5 * 60 * 1000, // 5 minutes — matches PartyIdResolver cache TTL
+		queryKey: nexusKeys.partyId(input.userId),
+		queryFn: () => input.client.auth.partyId.resolvePartyId(input.userId),
+		staleTime: Infinity,
 	});
 }
 
 // ─── Interface queryOptions factory ──────────────────────────────────────────
 
-export interface InterfaceQueryOptionsInput<
+export interface InterfaceQueryOptionsParams<
 	_TView = Record<string, unknown>,
 	_TPayload = Record<string, unknown>,
 > {
-	client: NexusClient;
 	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
+	/**
+	 * If true, fetch all pages automatically.
+	 * Default: false — fetches first page only.
+	 */
 	fetchAll?: boolean;
+	/** If true, the response will include createArguments (payload) for each contract. */
 	includeCreateArguments?: boolean;
+	/** Passed through to TanStack Query */
 	enabled?: boolean;
 	staleTime?: number;
+}
+
+export interface InterfaceQueryOptionsInput<TView, TPayload>
+	extends InterfaceQueryOptionsParams<TView, TPayload> {
+	client: NexusClient;
 }
 
 /**
@@ -138,15 +168,13 @@ export function interfaceQueryOptions<
 	TView = Record<string, unknown>,
 	TPayload = Record<string, unknown>,
 >(input: InterfaceQueryOptionsInput<TView, TPayload>) {
-	const filters: ContractQueryFilters = { parties: input.parties };
-
 	const stableId =
 		typeof input.interfaceId === "string"
 			? input.interfaceId
 			: `${input.interfaceId.packageName}:${input.interfaceId.moduleName}:${input.interfaceId.entityName}`;
 
 	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
-		queryKey: nexusKeys.interfaceQuery(stableId, filters),
+		queryKey: nexusKeys.interfaceQuery(stableId, { parties: input.parties }),
 		queryFn: async () => {
 			let finalInterfaceId = input.interfaceId;
 
@@ -158,7 +186,7 @@ export function interfaceQueryOptions<
 			}
 
 			if (input.fetchAll) {
-				const contracts = await input.client.ledger.contracts.fetchAllActiveInterfaces<
+				const interfaces = await input.client.ledger.interfaces.fetchAllActiveInterfaces<
 					TView,
 					TPayload
 				>({
@@ -166,9 +194,9 @@ export function interfaceQueryOptions<
 					parties: input.parties,
 					includeCreateArguments: input.includeCreateArguments,
 				});
-				return { contracts, nextPageToken: undefined };
+				return { interfaces, nextPageToken: undefined };
 			}
-			return input.client.ledger.contracts.fetchActiveInterfaces<TView, TPayload>({
+			return input.client.ledger.interfaces.fetchActiveInterfaces<TView, TPayload>({
 				interfaceId: finalInterfaceId,
 				parties: input.parties,
 				includeCreateArguments: input.includeCreateArguments,

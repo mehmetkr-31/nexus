@@ -211,11 +211,19 @@ export interface ActiveInterface<
 	isOptimistic?: boolean;
 }
 
+export interface ActivateInterfaceOptions {
+	interfaceId: string | TemplateId;
+	parties?: string[];
+	pageToken?: string;
+	pageSize?: number;
+	includeCreateArguments?: boolean;
+}
+
 export interface ActiveInterfacesResponse<
 	TView = Record<string, unknown>,
 	TPayload = Record<string, unknown>,
 > {
-	contracts: ActiveInterface<TView, TPayload>[];
+	interfaces: ActiveInterface<TView, TPayload>[];
 	nextPageToken?: string;
 }
 

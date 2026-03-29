@@ -1,11 +1,5 @@
 import type { CantonClient } from "../client/canton-client.ts";
-import type {
-	ActiveContract,
-	ActiveContractsResponse,
-	ActiveInterface,
-	ActiveInterfacesResponse,
-	TemplateId,
-} from "../types/index.ts";
+import type { ActiveContract, ActiveContractsResponse, TemplateId } from "../types/index.ts";
 
 export interface ContractQueryOptions<_T = Record<string, unknown>> {
 	/** Daml template ID — either "packageId:Module:Entity" or TemplateId object */
@@ -72,8 +66,6 @@ export class ContractQuery {
 		contractId: string,
 		parties?: string[],
 	): Promise<ActiveContract<T> | undefined> {
-		// Canton JSON API doesn't have a direct "get by contractId" endpoint in v2;
-		// query and filter client-side within the page results.
 		const result = await this.client.queryContracts<T>(templateId, {
 			parties,
 			pageSize: 1000,
@@ -85,10 +77,6 @@ export class ContractQuery {
 	 * Fetch a contract by its Daml contract key.
 	 * Fetches all contracts for the template and finds the one matching the key.
 	 * Returns undefined if not found.
-	 *
-	 * @param templateId - Daml template ID
-	 * @param keyPredicate - Function to test if a contract's payload matches the desired key
-	 * @param parties - Party IDs to query as
 	 */
 	async fetchContractByKey<T = Record<string, unknown>>(
 		templateId: string,
@@ -97,55 +85,5 @@ export class ContractQuery {
 	): Promise<ActiveContract<T> | undefined> {
 		const all = await this.fetchAllActiveContracts<T>({ templateId, parties });
 		return all.find((c) => keyPredicate(c.payload));
-	}
-
-	/**
-	 * Fetch a page of active contracts viewed through a Daml interface.
-	 */
-	async fetchActiveInterfaces<
-		TView = Record<string, unknown>,
-		TPayload = Record<string, unknown>,
-	>(options: {
-		interfaceId: string;
-		parties?: string[];
-		pageSize?: number;
-		pageToken?: string;
-		includeCreateArguments?: boolean;
-	}): Promise<ActiveInterfacesResponse<TView, TPayload>> {
-		return this.client.queryByInterface<TView, TPayload>(options.interfaceId, {
-			parties: options.parties,
-			pageSize: options.pageSize,
-			pageToken: options.pageToken,
-			includeCreateArguments: options.includeCreateArguments,
-		});
-	}
-
-	/**
-	 * Fetch ALL active interfaces by following pagination cursors.
-	 */
-	async fetchAllActiveInterfaces<
-		TView = Record<string, unknown>,
-		TPayload = Record<string, unknown>,
-	>(options: {
-		interfaceId: string;
-		parties?: string[];
-		pageSize?: number;
-		includeCreateArguments?: boolean;
-	}): Promise<ActiveInterface<TView, TPayload>[]> {
-		const contracts: ActiveInterface<TView, TPayload>[] = [];
-		let pageToken: string | undefined;
-
-		do {
-			const page = await this.client.queryByInterface<TView, TPayload>(options.interfaceId, {
-				parties: options.parties,
-				pageSize: options.pageSize ?? 100,
-				pageToken,
-				includeCreateArguments: options.includeCreateArguments,
-			});
-			contracts.push(...page.contracts);
-			pageToken = page.nextPageToken;
-		} while (pageToken);
-
-		return contracts;
 	}
 }

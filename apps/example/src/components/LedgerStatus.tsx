@@ -1,13 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Activity, Database, Users } from "lucide-react";
 import { NEXUS_USER_ID, nexus } from "../lib/nexus-client";
 
 export function LedgerStatus({ partyId: initialPartyId }: { partyId: string }) {
-	const { data: resolvedPartyId } = nexus.usePartyId(NEXUS_USER_ID);
+	const { data: resolvedPartyId } = useQuery(nexus.query.partyId({ userId: NEXUS_USER_ID }));
 	const partyId = resolvedPartyId ?? initialPartyId;
-	const { data: ledgerEnd } = nexus.useLedgerEnd();
-	const { data: synchronizers } = nexus.useSynchronizers();
+	const { data: ledgerEnd } = useQuery(nexus.query.ledgerEnd());
+	const { data: synchronizers } = useQuery(nexus.query.synchronizers());
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
