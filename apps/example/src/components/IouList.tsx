@@ -22,7 +22,7 @@ export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
 	const { data, isLoading } = useQuery(
-		nexus.query.contracts<IouPayload>({
+		nexus.query!.contracts<IouPayload>({
 			templateId: IOU_TEMPLATE,
 			parties,
 		}),

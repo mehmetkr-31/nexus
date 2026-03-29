@@ -29,23 +29,26 @@ type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) exten
 	? I
 	: never;
 
-/** Extract the context type contributed by a single plugin ($Infer or init return). */
-export type ExtractPluginContext<P> = P extends { $Infer?: infer T }
+type ExtractCorePluginContext<P> = P extends { init?: (client: NexusClient) => infer T }
+	? T extends Promise<infer R>
+		? R
+		: T
+	: Record<string, never>;
+
+type ExtractReactPluginContext<P> = P extends { $Infer?: infer T }
 	? T
-	: P extends { init?: (client: NexusClient) => infer T }
-		? T extends Promise<infer R>
-			? R
-			: T
+	: P extends { getActions?: (client: NexusClient) => infer T }
+		? T
 		: Record<string, never>;
 
-/** Extract the actions contributed by a single React plugin. */
-export type ExtractPluginActions<P> = P extends { getActions?: (client: NexusClient) => infer T }
+type ExtractGetActionsContext<P> = P extends { getActions?: (client: NexusClient) => infer T }
 	? T
 	: Record<string, never>;
 
-/** Merge all plugin contexts and actions from an array into one intersection type. */
-export type InferNexusPlugins<P extends readonly AnyPlugin[]> = UnionToIntersection<
-	ExtractPluginContext<P[number]> & ExtractPluginActions<P[number]>
+export type InferNexusPlugins<P extends AnyPlugin[]> = UnionToIntersection<
+	| ExtractCorePluginContext<P[number]>
+	| ExtractReactPluginContext<P[number]>
+	| ExtractGetActionsContext<P[number]>
 >;
 
 export type AnyPlugin = NexusPlugin | NexusClientPlugin;
@@ -166,28 +169,20 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 		}),
 	) as InferNexusPlugins<TPlugins> & Record<string, unknown>;
 
-	// Only QueryClientProvider — NexusContext not needed
-	function BoundNexusProvider({
-		children,
-		queryClient: externalQueryClient,
-	}: NexusProviderComponentProps): ReactNode {
-		// Stability is key for SSR hydration — use the provided client or a single lazy instance
-		const queryClient = useMemo(
-			() => externalQueryClient ?? createDefaultQueryClient(),
-			[externalQueryClient],
-		);
-		return createElement(QueryClientProvider, { client: queryClient }, children);
-	}
-
-	return {
+	const finalClient = {
+		...coreClient,
 		...actions,
-		config: coreClient.config,
-		packages: coreClient.packages,
-		http: coreClient.http,
-		auth: coreClient.auth,
-		ledger: coreClient.ledger,
-		getToken: () => coreClient.getToken(),
-		getCachedToken: () => coreClient.getCachedToken(),
-		NexusProvider: BoundNexusProvider,
+	} as NexusClientInstance<InferNexusPlugins<TPlugins>>;
+
+	const BoundNexusProvider = (props: NexusProviderComponentProps) => {
+		const queryClient = useMemo(
+			() => props.queryClient ?? createDefaultQueryClient(),
+			[props.queryClient],
+		);
+		return createElement(QueryClientProvider, { client: queryClient }, props.children);
 	};
+
+	finalClient.NexusProvider = BoundNexusProvider;
+
+	return finalClient;
 }

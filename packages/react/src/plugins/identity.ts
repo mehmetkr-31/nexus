@@ -1,3 +1,5 @@
+"use client";
+
 import { decodeJwtPayload, type JwtPayload, type NexusClient } from "@nexus-framework/core";
 import { useEffect, useState } from "react";
 import type { NexusClientPlugin } from "./tanstack-query.ts";

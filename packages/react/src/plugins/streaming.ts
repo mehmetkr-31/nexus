@@ -1,3 +1,5 @@
+"use client";
+
 import type { ActiveContract, StreamHandle, TemplateId } from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
 import { useCallback, useEffect, useRef, useState } from "react";

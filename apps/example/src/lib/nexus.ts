@@ -1,5 +1,5 @@
 import { createNexus, provisionSandboxUser, sandboxAuth } from "@nexus-framework/core";
-import { tanstackQueryPlugin } from "@nexus-framework/react";
+import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 import { cookies } from "next/headers";
 
 export const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";

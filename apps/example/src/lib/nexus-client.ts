@@ -1,6 +1,7 @@
 import {
 	createNexusClient,
 	fetchMiddlewarePlugin,
+	identityPlugin,
 	optimisticUiPlugin,
 	packageDiscoveryPlugin,
 	sandboxAuth,
@@ -46,7 +47,9 @@ export const nexus = await createNexusClient({
 			],
 		}),
 		packageDiscoveryPlugin(),
+		identityPlugin(),
 		tanstackQueryPlugin(),
 		streamingPlugin(),
 	],
 });
+

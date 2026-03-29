@@ -5,6 +5,7 @@ import { LedgerStatus } from "../../components/LedgerStatus";
 import { PagedIouList } from "../../components/PagedIouList";
 import { StreamIouList } from "../../components/StreamIouList";
 import { SuspenseIouList } from "../../components/SuspenseIouList";
+import { UserInfo } from "../../components/UserInfo";
 import { IOU_TEMPLATE_ID, resolveServerSession } from "../../lib/nexus";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +16,14 @@ export default async function ContractsPage() {
 
 	// 2. SSR prefetch — QueryClient is populated before HTML ships to browser
 	const queryClient = new QueryClient();
-	await queryClient.prefetchQuery(
-		client.query.contracts({
-			templateId: IOU_TEMPLATE_ID,
-			parties: [partyId],
-		}),
-	);
+	if (client.query) {
+		await queryClient.prefetchQuery(
+			client.query.contracts({
+				templateId: IOU_TEMPLATE_ID,
+				parties: [partyId],
+			}),
+		);
+	}
 
 	const dehydratedState = dehydrate(queryClient);
 
@@ -103,6 +106,7 @@ export default async function ContractsPage() {
 
 					{/* Creation Sidebar */}
 					<aside className="lg:sticky lg:top-12 space-y-8">
+						<UserInfo />
 						<CreateIouForm partyId={partyId} />
 
 						{/* Info Card */}
