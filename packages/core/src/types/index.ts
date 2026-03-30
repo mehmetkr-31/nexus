@@ -110,10 +110,8 @@ export interface SubmitRequest {
 }
 
 export interface SubmitResult {
-	transactionId: string;
-	commandId: string;
-	offset: string;
-	completedAt: string;
+	updateId: string;
+	completionOffset: number;
 }
 
 /**

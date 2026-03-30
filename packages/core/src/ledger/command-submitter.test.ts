@@ -15,10 +15,8 @@ function makeClient(handler: (req: Request) => Response | Promise<Response>) {
 }
 
 const mockSubmitResult = {
-	transactionId: "txn-1",
-	commandId: "cmd-1",
-	offset: "0000000000000001",
-	completedAt: "2026-01-01T00:00:05Z",
+	updateId: "txn-1",
+	completionOffset: 1,
 };
 
 const mockTxResult = {
@@ -61,8 +59,8 @@ describe("CommandSubmitter — createContract", () => {
 		);
 		server.stop();
 
-		expect(result.transactionId).toBe("txn-1");
-		expect(result.offset).toBe("0000000000000001");
+		expect(result.updateId).toBe("txn-1");
+		expect(result.completionOffset).toBe(1);
 	});
 
 	test("sends CreateCommand structure in request body", async () => {
@@ -108,7 +106,7 @@ describe("CommandSubmitter — exerciseChoice", () => {
 		]);
 		server.stop();
 
-		expect(result.transactionId).toBe("txn-1");
+		expect(result.updateId).toBe("txn-1");
 	});
 
 	test("sends ExerciseCommand structure in request body", async () => {

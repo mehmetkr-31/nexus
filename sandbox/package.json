@@ -2,7 +2,9 @@
 	"name": "canton-sandbox",
 	"private": true,
 	"scripts": {
-		"dev": "JAVA_TOOL_OPTIONS=\"-Duser.language=en -Duser.country=US\" ~/.daml/bin/daml sandbox --json-api-port 7575",
+		"build": "~/.daml/bin/daml build",
+		"upload": "~/.daml/bin/daml ledger upload-dar --host localhost --port 6865 .daml/dist/nexus-example-0.0.1.dar",
+		"dev": "./start.sh",
 		"dev:docker": "docker compose up"
 	}
 }

@@ -15,10 +15,8 @@ function makeMockCanton(submitBody: unknown, status = 200) {
 describe("withLedgerAction", () => {
 	test("returns success result when action resolves", async () => {
 		const submitResult = {
-			transactionId: "txn-1",
-			commandId: "cmd-1",
-			offset: "00000001",
-			completedAt: "2026-01-01T00:00:05Z",
+			updateId: "txn-1",
+			completionOffset: 1,
 		};
 		const server = makeMockCanton(submitResult);
 		const client = await createNexusClient({
@@ -39,7 +37,7 @@ describe("withLedgerAction", () => {
 
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.transactionId).toBe("txn-1");
+			expect(result.data.updateId).toBe("txn-1");
 		}
 	});
 

@@ -12,6 +12,7 @@ import {
 	type TransactionResult,
 } from "../types/index.ts";
 import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
+import { decodeJwtPayload } from "../utils/jwt.ts";
 import { toStableTemplateId } from "../utils/template.ts";
 
 // ─── Zod Schemas ─────────────────────────────────────────────────────────────
@@ -46,10 +47,8 @@ const activeContractsResponseSchema = z.union([
 ]);
 
 const submitResultSchema = z.object({
-	transactionId: z.string(),
-	commandId: z.string(),
-	offset: z.string(),
-	completedAt: z.string(),
+	updateId: z.string(),
+	completionOffset: z.number(),
 });
 
 const ledgerEndSchema = z.object({
@@ -212,13 +211,13 @@ export class CantonClient {
 			} catch {
 				details = await response.text().catch(() => undefined);
 			}
+			const d = details as Record<string, unknown>;
 			const message =
-				typeof details === "object" &&
-				details !== null &&
-				"message" in details &&
-				typeof (details as Record<string, unknown>).message === "string"
-					? (details as Record<string, unknown>).message
-					: `Canton API error: ${response.status} ${response.statusText}`;
+				typeof details === "object" && details !== null && (
+					typeof d.message === "string" ? d.message :
+					typeof d.cause === "string" ? d.cause :
+					null
+				) || `Canton API error: ${response.status} ${response.statusText}`;
 			const error = new NexusLedgerError(String(message), response.status, details);
 			for (const mw of this.middlewares) {
 				if (mw.onError) {
@@ -233,6 +232,16 @@ export class CantonClient {
 			if (mw.onResponse) {
 				await mw.onResponse(response, config);
 			}
+		}
+
+		// Check if response is JSON before parsing
+		const contentType = response.headers.get("Content-Type");
+		if (!contentType?.includes("application/json")) {
+			throw new NexusLedgerError(
+				`Expected JSON response but received ${contentType ?? "unknown content"}. ` +
+					`Canton API at ${path} may be returning binary data (e.g. .dalf).`,
+				response.status,
+			);
 		}
 
 		let json = await response.json();
@@ -308,8 +317,18 @@ export class CantonClient {
 
 	// ─── Command Submission ────────────────────────────────────────────────────
 
-	async submitAndWait(request: SubmitRequest): Promise<SubmitResult> {
-		const body = {
+	/** Extract the user ID (sub claim) from the current token for use as userId in commands. */
+	private async getUserId(): Promise<string | undefined> {
+		try {
+			const token = await this.getToken();
+			return decodeJwtPayload(token).sub;
+		} catch {
+			return undefined;
+		}
+	}
+
+	private buildCommandBody(request: SubmitRequest, userId: string | undefined) {
+		return {
 			commands: request.commands.map((cmd) => {
 				if (cmd.type === "create") {
 					return {
@@ -332,7 +351,13 @@ export class CantonClient {
 			readAs: request.readAs ?? [],
 			commandId: request.commandId ?? generateCommandId(),
 			workflowId: request.workflowId,
+			...(userId ? { userId } : {}),
 		};
+	}
+
+	async submitAndWait(request: SubmitRequest): Promise<SubmitResult> {
+		const userId = await this.getUserId();
+		const body = this.buildCommandBody(request, userId);
 
 		return this.request<SubmitResult>(
 			"POST",
@@ -347,30 +372,8 @@ export class CantonClient {
 	 * exercised events with their Daml return values.
 	 */
 	async submitAndWaitForTransaction(request: SubmitRequest): Promise<TransactionResult> {
-		const body = {
-			commands: request.commands.map((cmd) => {
-				if (cmd.type === "create") {
-					return {
-						CreateCommand: {
-							templateId: toStableTemplateId(cmd.templateId),
-							createArguments: cmd.createArguments,
-						},
-					};
-				}
-				return {
-					ExerciseCommand: {
-						templateId: toStableTemplateId(cmd.templateId),
-						contractId: cmd.contractId,
-						choice: cmd.choice,
-						choiceArgument: cmd.choiceArgument,
-					},
-				};
-			}),
-			actAs: request.actAs,
-			readAs: request.readAs ?? [],
-			commandId: request.commandId ?? generateCommandId(),
-			workflowId: request.workflowId,
-		};
+		const userId = await this.getUserId();
+		const body = this.buildCommandBody(request, userId);
 
 		return this.request<TransactionResult>(
 			"POST",
@@ -545,13 +548,22 @@ export class CantonClient {
 	}
 
 	/**
-	 * Get metadata for a specific package.
-	 * Includes information about templates, choices, and views.
+	 * Download the raw DALF bytes for a specific package.
+	 * The binary contains the package name encoded in protobuf format.
 	 *
 	 * @param packageId Hex identifier of the package
 	 */
-	async getPackage(packageId: string): Promise<Record<string, unknown>> {
-		return this.request("GET", `${this.apiBase}/packages/${packageId}`);
+	async getPackageBytes(packageId: string): Promise<Uint8Array> {
+		const token = await this.getToken();
+		const url = `${this.baseUrl}${this.apiBase}/packages/${packageId}`;
+		const response = await fetch(url, {
+			headers: { Authorization: `Bearer ${token}` },
+			signal: AbortSignal.timeout(this.timeoutMs),
+		});
+		if (!response.ok) {
+			throw new NexusLedgerError(`Package not found: ${packageId}`, response.status);
+		}
+		return new Uint8Array(await response.arrayBuffer());
 	}
 
 	// ─── Ledger State ──────────────────────────────────────────────────────────

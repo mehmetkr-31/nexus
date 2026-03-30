@@ -1,0 +1,11 @@
+module Iou where
+
+template Iou
+  with
+    owner : Party
+    amount : Text
+    currency : Text
+    observers : [Party]
+  where
+    signatory owner
+    observer observers

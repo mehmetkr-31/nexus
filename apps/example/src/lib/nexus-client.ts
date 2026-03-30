@@ -18,7 +18,11 @@ export const NEXUS_USER_ID = process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? "alice";
  * All React hooks are attached to this instance.
  */
 export const nexus = await createNexusClient({
-	baseUrl: process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575",
+	// Use the Next.js proxy in the browser to bypass CORS, fall back to direct URL on server
+	baseUrl:
+		typeof window !== "undefined"
+			? "/api/ledger"
+			: (process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575"),
 	plugins: [
 		sandboxAuth({
 			secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? "secret",
@@ -36,12 +40,19 @@ export const nexus = await createNexusClient({
 		optimisticUiPlugin({
 			updates: [
 				{
-					templateId: "Iou:Iou",
-					onChoice: (choice, _arg, _contract) => {
+					// Matches the template ID (can be partial or full)
+					templateId: "Iou",
+					onChoice: (choice, _arg, contract) => {
+						// Consuming choices (like Archive) return null to remove from cache
 						if (choice.toLowerCase().includes("archive")) {
 							return null;
 						}
-						return null;
+
+						// Non-consuming choices can return partial payload updates
+						// Example: if we had a 'Rename' choice:
+						// if (choice === 'Rename') return { description: _arg.newName };
+
+						return contract.payload;
 					},
 				},
 			],
@@ -52,4 +63,3 @@ export const nexus = await createNexusClient({
 		streamingPlugin(),
 	],
 });
-

@@ -20,8 +20,8 @@ export class CommandSubmitter {
 	) {}
 
 	private async resolve(t: string | TemplateId | TemplateDescriptor): Promise<string | TemplateId> {
-		if (this.packages && typeof t === "object" && "packageName" in t) {
-			return this.packages.resolveTemplateId(t);
+		if (this.packages && (typeof t === "string" || (typeof t === "object" && "packageName" in t))) {
+			return this.packages.resolveTemplateId(t as string | TemplateDescriptor);
 		}
 		return t as string | TemplateId;
 	}

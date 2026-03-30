@@ -38,6 +38,34 @@ export class PackageResolver {
 	}
 
 	/**
+	 * Extracts the package name from raw DALF bytes using protobuf scanning.
+	 * Canton encodes the package name as: 0x12 <varint len> <name bytes> 0x12 <varint len> <semver bytes>
+	 * We scan for a UTF-8 string that looks like a package name followed by a semver version.
+	 */
+	private extractPackageName(bytes: Uint8Array): string | null {
+		const semverRe = /^\d+\.\d+\.\d+$/;
+		// Scan for 0x12 <len> <name> 0x12 <len> <semver>
+		for (let i = 0; i < bytes.length - 4; i++) {
+			if (bytes[i] !== 0x12) continue;
+			const nameLen = bytes[i + 1];
+			if (!nameLen || nameLen > 128 || i + 2 + nameLen >= bytes.length) continue;
+			const nameBytes = bytes.slice(i + 2, i + 2 + nameLen);
+			// Must be printable ASCII (package names are alphanumeric + hyphens/dots)
+			const name = String.fromCharCode(...nameBytes);
+			if (!/^[a-zA-Z0-9][\w.-]*$/.test(name)) continue;
+			// Next field must also be 0x12 <len> <semver>
+			const j = i + 2 + nameLen;
+			if (bytes[j] !== 0x12) continue;
+			const verLen = bytes[j + 1];
+			if (!verLen || verLen > 32 || j + 2 + verLen > bytes.length) continue;
+			const verBytes = bytes.slice(j + 2, j + 2 + verLen);
+			const ver = String.fromCharCode(...verBytes);
+			if (semverRe.test(ver)) return name;
+		}
+		return null;
+	}
+
+	/**
 	 * The actual initialization logic with full error handling and retries.
 	 * Ensured to never reject to prevent 'unhandledRejection' in browsers.
 	 */
@@ -51,34 +79,19 @@ export class PackageResolver {
 
 				for (const pkgId of packageIds) {
 					try {
-						const metadata = (await this.client.getPackage(pkgId)) as {
-							package_name?: string;
-							name?: string;
-							modules?: Array<{
-								name: string;
-								templates: Array<{ name: string }>;
-							}>;
-						};
-						const packageName = metadata.package_name || metadata.name;
+						const dalf = await this.client.getPackageBytes(pkgId);
+						const packageName = this.extractPackageName(dalf) ?? pkgId;
 
-						if (packageName) {
-							const existing = this.packageCache.get(packageName) || [];
+						const existing = this.packageCache.get(packageName) || [];
+						if (!existing.includes(pkgId)) {
 							this.packageCache.set(packageName, [...existing, pkgId]);
 						}
 
-						// Index templates in this package
-						const modules = metadata.modules || [];
-						for (const mod of modules) {
-							const modName = mod.name;
-							const templates = mod.templates || [];
-							for (const tmpl of templates) {
-								const tmplName = tmpl.name;
-								const key = `${packageName}:${modName}:${tmplName}`;
-								this.templateCache.set(key, `${pkgId}:${modName}:${tmplName}`);
-							}
-						}
+						// We can't extract template names from DALF binary cheaply,
+						// but we can build a prefix cache: "pkgName:*" -> pkgId
+						// resolveTemplateId handles the suffix passthrough.
 					} catch (err) {
-						console.warn(`[Nexus] Failed to fetch metadata for package ${pkgId}:`, err);
+						console.warn(`[Nexus] Failed to fetch DALF for package ${pkgId.slice(0, 8)}...:`, err);
 					}
 				}
 
@@ -114,28 +127,45 @@ export class PackageResolver {
 	 * Falls back to the name as-is if no resolution is found.
 	 */
 	async resolveTemplateId(descriptor: TemplateDescriptor | string): Promise<string> {
-		if (typeof descriptor === "string") {
-			// If it's already a full ID (contains a colon and is 64 chars long hex + others), return it
-			if (descriptor.includes(":") && (descriptor.split(":")[0]?.length ?? 0) >= 64) {
-				return descriptor;
-			}
-			return descriptor;
-		}
-
 		if (!this.isInitialized) {
 			await this.init();
 		}
 
-		const { packageName, moduleName, entityName } = descriptor;
-		const key = `${packageName}:${moduleName}:${entityName}`;
-		const resolved = this.templateCache.get(key);
-
-		if (!resolved) {
-			console.debug(`[Nexus] Could not resolve template: ${key}. Using name only.`);
-			return `${packageName}:${moduleName}:${entityName}`;
+		if (typeof descriptor === "string") {
+			// Already a full hex ID (64+ char package ID prefix)
+			if (descriptor.includes(":") && (descriptor.split(":")[0]?.length ?? 0) >= 64) {
+				return descriptor;
+			}
+			// Try to resolve "packageName:Module:Entity" -> "hexId:Module:Entity"
+			const parts = descriptor.split(":");
+			if (parts.length === 3) {
+				const [pkgName, mod, entity] = parts;
+				const ids = pkgName ? this.packageCache.get(pkgName) : undefined;
+				if (ids && ids.length > 0) {
+					// Use the most recently uploaded version (last in list)
+					return `${ids[ids.length - 1]}:${mod}:${entity}`;
+				}
+			}
+			return descriptor;
 		}
 
-		return resolved;
+		const { packageName, moduleName, entityName } = descriptor;
+		const ids = this.packageCache.get(packageName);
+		if (ids && ids.length > 0) {
+			return `${ids[ids.length - 1]}:${moduleName}:${entityName}`;
+		}
+
+		console.debug(`[Nexus] Could not resolve template: ${packageName}:${moduleName}:${entityName}. Using name only.`);
+		return `${packageName}:${moduleName}:${entityName}`;
+	}
+
+	/** Returns all discovered templates as a mapping of Human Readable Name -> Package ID Name */
+	getAllTemplates(): Record<string, string> {
+		const result: Record<string, string> = {};
+		for (const [key, value] of this.templateCache.entries()) {
+			result[key] = value;
+		}
+		return result;
 	}
 
 	/** Clear caches and force a re-fetch on next use */

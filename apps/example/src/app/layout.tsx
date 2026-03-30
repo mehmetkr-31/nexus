@@ -1,20 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import { NexusProvider } from "../components/NexusProvider";
+import { Sidebar } from "../components/Sidebar";
 import "./globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
-	subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-	variable: "--font-geist-mono",
-	subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-	title: "Nexus Hub - Canton Demo",
+	title: "Nexus Hub | Ledger Playground",
 	description: "Canton Ledger integration powered by @nexus-framework/react",
 };
 
@@ -24,9 +14,20 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-			<body className="min-h-full flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
-				<NexusProvider>{children}</NexusProvider>
+		<html lang="en" className="h-full">
+			<body className="min-h-full bg-background text-foreground transition-colors duration-300">
+				<NexusProvider>
+					<div className="flex">
+						<Sidebar />
+						<main className="flex-1 lg:ml-72 min-h-screen relative overflow-hidden">
+							{/* Background Decorative Elements */}
+							<div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full -z-10 animate-pulse" />
+							<div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 blur-[120px] rounded-full -z-10 animate-float" />
+
+							<div className="relative z-0">{children}</div>
+						</main>
+					</div>
+				</NexusProvider>
 			</body>
 		</html>
 	);

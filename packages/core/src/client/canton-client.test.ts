@@ -36,10 +36,8 @@ const mockContractsResponse = {
 };
 
 const mockSubmitResult = {
-	transactionId: "txn-123",
-	commandId: "cmd-456",
-	offset: "0000000000000001",
-	completedAt: "2026-01-01T00:00:05Z",
+	updateId: "txn-123",
+	completionOffset: 1,
 };
 
 const mockLedgerEnd = { offset: "0000000000000042" };
@@ -129,8 +127,8 @@ describe("CantonClient — submitAndWait", () => {
 		});
 		server.stop();
 
-		expect(result.transactionId).toBe("txn-123");
-		expect(result.offset).toBe("0000000000000001");
+		expect(result.updateId).toBe("txn-123");
+		expect(result.completionOffset).toBe(1);
 	});
 
 	test("throws NexusLedgerError on command rejection (400)", async () => {

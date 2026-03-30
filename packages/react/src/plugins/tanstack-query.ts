@@ -503,7 +503,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						);
 
 						if (opts.waitForFinality) {
-							await client.http.waitForTransaction(result.transactionId);
+							await client.http.waitForTransaction(result.updateId);
 						}
 
 						return result;
@@ -545,7 +545,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					},
 					onSuccess: async (result, vars) => {
 						if (opts.waitForFinality) {
-							await client.http.waitForTransaction(result.transactionId);
+							await client.http.waitForTransaction(result.updateId);
 						}
 
 						const templateId = toStableTemplateId(vars.templateId);
@@ -633,7 +633,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					},
 					onSuccess: async (result, vars) => {
 						if (opts.waitForFinality) {
-							await client.http.waitForTransaction(result.transactionId);
+							await client.http.waitForTransaction(result.updateId);
 						}
 
 						const templateId = toStableTemplateId(vars.templateId);
@@ -688,7 +688,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					mutationFn: (vars: TVariables) => opts.mutationFn(client, vars),
 					onSuccess: async (result, _vars) => {
 						if (opts.waitForFinality) {
-							await client.http.waitForTransaction(result.transactionId);
+							await client.http.waitForTransaction(result.updateId);
 						}
 
 						if (opts.invalidateTemplates && opts.invalidateTemplates.length > 0) {
