@@ -1,5 +1,10 @@
 {
-  "name": "@my-better-t-app/config",
-  "version": "0.0.0",
-  "private": true
+	"name": "@nexus-framework/config",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"typecheck": "echo 'no typcheck for config'",
+		"lint": "biome lint .",
+		"build": "echo 'no build for config'"
+	}
 }

@@ -6,7 +6,16 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": true
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!!**/node_modules",
+			"!!**/.next",
+			"!!**/.turbo",
+			"!!**/dist",
+			"!!**/.agents",
+			"!**/*.md"
+		]
 	},
 	"formatter": {
 		"enabled": true,

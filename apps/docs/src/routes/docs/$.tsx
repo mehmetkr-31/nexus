@@ -66,7 +66,6 @@ const clientLoader = browserCollections.docs.createClientLoader({
 					/>
 				</div>
 				<DocsBody>
-					{/* biome-ignore lint/correctness/useHookAtTopLevel: fumadocs clientLoader component is a render function */}
 					<MDX components={useMDXComponents()} />
 				</DocsBody>
 			</DocsPage>

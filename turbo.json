@@ -8,16 +8,19 @@
 		},
 		"build": {
 			"dependsOn": ["^build"],
-			"outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**"]
+			"outputs": [".next/**", "!.next/cache/**", "dist/**", ".output/**", "build/**"]
 		},
 		"test": {
-			"dependsOn": []
+			"dependsOn": ["^build"]
 		},
 		"typecheck": {
 			"dependsOn": ["^typecheck"]
 		},
 		"lint": {
-			"dependsOn": []
+			"dependsOn": ["^lint"]
+		},
+		"check": {
+			"dependsOn": ["build", "lint", "typecheck", "test"]
 		}
 	}
 }

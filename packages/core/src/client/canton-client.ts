@@ -619,13 +619,13 @@ export class CantonClient {
 	// ─── Updates / Event Streaming ────────────────────────────────────────────
 
 	async getUpdates(options?: {
-		beginOffset?: string;
-		endOffset?: string;
+		beginOffset?: string | number;
+		endOffset?: string | number;
 		pageSize?: number;
 	}): Promise<{ updates: unknown[]; nextOffset?: string }> {
 		const params = new URLSearchParams();
-		if (options?.beginOffset) params.set("beginOffset", options.beginOffset);
-		if (options?.endOffset) params.set("endOffset", options.endOffset);
+		if (options?.beginOffset) params.set("beginOffset", String(options.beginOffset));
+		if (options?.endOffset) params.set("endOffset", String(options.endOffset));
 		if (options?.pageSize) params.set("pageSize", String(options.pageSize));
 
 		const qs = params.toString() ? `?${params.toString()}` : "";

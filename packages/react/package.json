@@ -21,8 +21,9 @@
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
-		"@types/react": "^19.0.0",
-		"@tanstack/react-query": "^5.83.0",
-		"react": "^19.1.0"
+		"@types/react": "catalog:",
+		"@tanstack/react-query": "catalog:",
+		"react": "catalog:",
+		"typescript": "catalog:"
 	}
 }

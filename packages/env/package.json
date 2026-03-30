@@ -1,21 +1,26 @@
 {
-  "name": "@my-better-t-app/env",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": {
-    "./server": "./src/server.ts",
-    "./web": "./src/web.ts",
-    "./native": "./src/native.ts"
-  },
-  "dependencies": {
-    "@t3-oss/env-core": "^0.13.1",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@my-better-t-app/config": "workspace:*",
-    "@types/node": "^22.13.14",
-    "typescript": "^5"
-  }
+	"name": "@nexus-framework/env",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./server": "./src/server.ts",
+		"./web": "./src/web.ts",
+		"./native": "./src/native.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint .",
+		"build": "tsc"
+	},
+	"dependencies": {
+		"@t3-oss/env-core": "^0.13.1",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@nexus-framework/config": "workspace:*",
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
 }

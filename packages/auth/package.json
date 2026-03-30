@@ -1,25 +1,31 @@
 {
-  "name": "@my-better-t-app/auth",
-  "type": "module",
-  "exports": {
-    ".": {
-      "default": "./src/index.ts"
-    },
-    "./*": {
-      "default": "./src/*.ts"
-    }
-  },
-  "scripts": {},
-  "dependencies": {
-    "@better-auth/expo": "catalog:",
-    "@my-better-t-app/db": "workspace:*",
-    "@my-better-t-app/env": "workspace:*",
-    "better-auth": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@my-better-t-app/config": "workspace:*",
-    "typescript": "^5"
-  }
+	"name": "@nexus-framework/auth",
+	"type": "module",
+	"version": "0.1.0",
+	"exports": {
+		".": {
+			"default": "./src/index.ts"
+		},
+		"./*": {
+			"default": "./src/*.ts"
+		}
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint .",
+		"build": "tsc"
+	},
+	"dependencies": {
+		"@better-auth/expo": "catalog:",
+		"@nexus-framework/db": "workspace:*",
+		"@nexus-framework/env": "workspace:*",
+		"better-auth": "catalog:",
+		"dotenv": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@nexus-framework/config": "workspace:*",
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
 }

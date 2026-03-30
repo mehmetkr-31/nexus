@@ -1,11 +1,11 @@
-import { auth } from "@my-better-t-app/auth";
+import { auth } from "@nexus-framework/auth";
 import { createMiddleware } from "@tanstack/react-start";
 
 export const authMiddleware = createMiddleware().server(async ({ next, request }) => {
-  const session = await auth.api.getSession({
-    headers: request.headers,
-  });
-  return next({
-    context: { session },
-  });
+	const session = await auth.api.getSession({
+		headers: request.headers,
+	});
+	return next({
+		context: { session },
+	});
 });

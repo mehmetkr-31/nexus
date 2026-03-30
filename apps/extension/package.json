@@ -1,28 +1,29 @@
 {
-  "name": "extension",
-  "version": "0.0.0",
-  "private": true,
-  "description": "manifest.json description",
-  "type": "module",
-  "scripts": {
-    "dev": "wxt --port 5555",
-    "dev:firefox": "wxt -b firefox",
-    "build": "wxt build",
-    "build:firefox": "wxt build -b firefox",
-    "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
-    "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
-  },
-  "dependencies": {
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@wxt-dev/module-react": "^1.1.5",
-    "typescript": "^5.9.3",
-    "wxt": "^0.20.20"
-  }
+	"name": "@nexus/extension",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Nexus Browser Extension",
+	"type": "module",
+	"scripts": {
+		"dev": "wxt --port 5555",
+		"dev:firefox": "wxt -b firefox",
+		"build": "wxt build",
+		"build:firefox": "wxt build -b firefox",
+		"zip": "wxt zip",
+		"zip:firefox": "wxt zip -b firefox",
+		"typecheck": "tsc --noEmit",
+		"lint": "biome lint .",
+		"postinstall": "wxt prepare"
+	},
+	"dependencies": {
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"devDependencies": {
+		"@types/react": "catalog:",
+		"@types/react-dom": "catalog:",
+		"@wxt-dev/module-react": "^1.1.5",
+		"typescript": "catalog:",
+		"wxt": "^0.20.20"
+	}
 }

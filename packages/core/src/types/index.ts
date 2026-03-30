@@ -253,7 +253,7 @@ export interface StreamHandlers<T = Record<string, unknown>> {
 // ─── Ledger State ────────────────────────────────────────────────────────────
 
 export interface LedgerEnd {
-	offset: string;
+	offset: string | number;
 }
 
 export interface SynchronizerInfo {

@@ -1,5 +1,5 @@
 {
-	"name": "create-nexus-app",
+	"name": "@nexus/cli",
 	"version": "0.1.0",
 	"type": "module",
 	"bin": {
@@ -27,8 +27,8 @@
 	},
 	"devDependencies": {
 		"@types/fs-extra": "^11.0.4",
-		"@types/node": "^22.13.5",
+		"@types/node": "catalog:",
 		"tsup": "^8.3.6",
-		"typescript": "^5.7.3"
+		"typescript": "catalog:"
 	}
 }
