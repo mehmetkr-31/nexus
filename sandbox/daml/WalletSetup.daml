@@ -1,0 +1,121 @@
+module WalletSetup where
+
+import MultisigWallet (MultisigWallet(..))
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WalletInvitation
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | An invitation for a party to join a proposed multisig wallet.
+--
+-- The initiator creates one of these for each party they want to invite.
+-- The invitee can accept (producing a WalletAcceptance) or decline.
+--
+-- Production Flow:
+--   1. Initiator creates WalletInvitation for each non-initiator owner
+--   2. Each invitee exercises AcceptInvitation
+--   3. Initiator creates WalletFactory with all acceptance CIDs
+--   4. All acceptors exercise Finalize together (submitMulti in scripts)
+template WalletInvitation
+  with
+    initiator : Party
+    invitee   : Party
+    walletId  : Text
+    allOwners : [Party]  -- ^ Full proposed owner list including initiator
+    threshold : Int
+    custodian : Party
+  where
+    signatory initiator
+    observer invitee
+
+    -- | Accept the invitation to join the wallet.
+    choice AcceptInvitation : ContractId WalletAcceptance
+      controller invitee
+      do
+        create WalletAcceptance with
+          walletId  = walletId
+          owner     = invitee
+          initiator = initiator
+          allOwners = allOwners
+          threshold = threshold
+          custodian = custodian
+
+    -- | Decline the invitation. Archives this contract.
+    choice DeclineInvitation : ()
+      controller invitee
+      do return ()
+
+    -- | Initiator can retract the invitation before it is acted on.
+    choice RetractInvitation : ()
+      controller initiator
+      do return ()
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WalletAcceptance
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | Record that a party has accepted to join the wallet.
+--
+-- The initiator collects these and then finalizes the wallet.
+template WalletAcceptance
+  with
+    walletId  : Text
+    owner     : Party
+    initiator : Party
+    allOwners : [Party]
+    threshold : Int
+    custodian : Party
+  where
+    signatory owner
+    observer initiator
+
+    -- | The owner can retract their acceptance before finalization.
+    choice RetractAcceptance : ()
+      controller owner
+      do return ()
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WalletFactory
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | Factory contract to finalize wallet creation once all parties have accepted.
+--
+-- The initiator creates this after collecting all WalletAcceptance contracts.
+-- All acceptors must then call Finalize together (multi-party authorization),
+-- which creates the MultisigWallet with all owners as signatories.
+--
+-- In DAML Scripts, this can be done with:
+--   submitMulti allOwners [] do exerciseCmd factoryCid Finalize with acceptors = nonInitiatorOwners
+template WalletFactory
+  with
+    initiator : Party
+    walletId  : Text
+    allOwners : [Party]
+    threshold : Int
+    custodian : Party
+  where
+    signatory initiator
+    observer (filter (/= initiator) allOwners)
+
+    -- | Finalize the wallet. All non-initiator owners must authorize together.
+    -- This creates MultisigWallet with all owners as signatories.
+    choice Finalize : ContractId MultisigWallet
+      with
+        acceptors : [Party]  -- ^ All non-initiator owners who accepted
+      controller acceptors
+      do
+        let expected = filter (/= initiator) allOwners
+        assert (length acceptors == length expected)
+        assert (all (`elem` acceptors) expected)
+        create MultisigWallet with
+          walletId  = walletId
+          owners    = allOwners
+          threshold = threshold
+          custodian = custodian
+
+    -- | Initiator can cancel the factory (e.g. if someone declined).
+    choice CancelFactory : ()
+      controller initiator
+      do return ()

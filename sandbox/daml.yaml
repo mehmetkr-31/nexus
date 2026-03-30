@@ -5,6 +5,9 @@ version: 0.0.1
 dependencies:
   - daml-prim
   - daml-stdlib
+  - daml-script
 sandbox-options:
   - --json-api-port=7575
   - --port=6865
+script-options:
+  - --all

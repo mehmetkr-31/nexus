@@ -1,0 +1,362 @@
+module MultisigWalletTest where
+
+import Daml.Script
+import MultisigWallet
+import Iou
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Helpers
+-- ─────────────────────────────────────────────────────────────────────────────
+
+
+-- | Create a 2-of-3 wallet with alice as custodian. Convenience setup.
+setup2of3 : Script (Party, Party, Party, ContractId MultisigWallet)
+setup2of3 = do
+  alice   <- allocateParty "Alice"
+  bob     <- allocateParty "Bob"
+  charlie <- allocateParty "Charlie"
+  walletCid <- submitMulti [alice, bob, charlie] [] do
+    createCmd MultisigWallet with
+      walletId  = "wallet-test"
+      owners    = [alice, bob, charlie]
+      threshold = 2
+      custodian = alice
+  return (alice, bob, charlie, walletCid)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 1: Happy Path — 2-of-3 transfer
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | Propose a transfer, collect 2 approvals, execute, verify IOU moved.
+test2of3Transfer : Script ()
+test2of3Transfer = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "Dave"
+
+  -- Custodian (alice) holds an IOU
+  iouCid <- submit alice do
+    createCmd Iou with
+      issuer    = alice
+      owner     = alice
+      amount    = 1000.0
+      currency  = "USD"
+      observers = [bob, charlie]
+
+  -- Alice proposes a transfer of 1000 USD to Dave
+  proposalCid <- submit alice do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = alice
+      recipient   = dave
+      txAmount    = 1000.0
+      txCurrency  = "USD"
+      description = "Payment to Dave"
+
+  -- Bob approves (now 2 approvals: alice + bob = threshold met)
+  proposalCid <- submit bob do
+    exerciseCmd proposalCid Approve with approver = bob
+
+  -- Alice executes the transfer
+  newIouCid <- submit alice do
+    exerciseCmd proposalCid Execute with
+      executor  = alice
+      walletCid = walletCid
+      iouCid    = iouCid
+
+  -- Verify: IOU is now owned by Dave
+  Some iou <- queryContractId dave newIouCid
+  assert (iou.owner == dave)
+  assert (iou.amount == 1000.0)
+  assert (iou.currency == "USD")
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 2: Rejection — proposal cancelled before threshold
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testRejection : Script ()
+testRejection = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "Dave2"
+
+  iouCid <- submit alice do
+    createCmd Iou with
+      issuer    = alice
+      owner     = alice
+      amount    = 500.0
+      currency  = "EUR"
+      observers = [bob, charlie]
+
+  proposalCid <- submit alice do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = alice
+      recipient   = dave
+      txAmount    = 500.0
+      txCurrency  = "EUR"
+      description = "Rejected payment"
+
+  -- Bob rejects — proposal is archived
+  submit bob do
+    exerciseCmd proposalCid Reject with rejector = bob
+
+  -- Verify: no active proposals remain
+  proposals <- query @TransactionProposal alice
+  assert (null proposals)
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 3: Insufficient approvals — execute must fail
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testInsufficientApprovals : Script ()
+testInsufficientApprovals = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "Dave3"
+
+  iouCid <- submit alice do
+    createCmd Iou with
+      issuer    = alice
+      owner     = alice
+      amount    = 100.0
+      currency  = "USD"
+      observers = [bob, charlie]
+
+  proposalCid <- submit alice do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = alice
+      recipient   = dave
+      txAmount    = 100.0
+      txCurrency  = "USD"
+      description = "Under-approved transfer"
+
+  -- Only 1 approval (alice). Threshold = 2. Execute must fail.
+  submitMustFail alice do
+    exerciseCmd proposalCid Execute with
+      executor  = alice
+      walletCid = walletCid
+      iouCid    = iouCid
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 4: Governance — change threshold
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testChangeThreshold : Script ()
+testChangeThreshold = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+
+  -- Alice proposes changing threshold from 2 to 3
+  govCid <- submit alice do
+    exerciseCmd walletCid ProposeChangeThreshold with
+      proposer     = alice
+      newThreshold = 3
+
+  -- Bob approves (2 approvals = current threshold met)
+  govCid <- submit bob do
+    exerciseCmd govCid ApproveGovernance with approver = bob
+
+  -- Execute governance — gets Right (new wallet)
+  result <- submit alice do
+    exerciseCmd govCid ExecuteGovernance with
+      executor  = alice
+      walletCid = walletCid
+
+  case result of
+    Right newWalletCid -> do
+      Some wallet <- queryContractId alice newWalletCid
+      assert (wallet.threshold == 3)
+    Left _ ->
+      abort "Expected Right (new wallet) for ChangeThreshold"
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 5: Governance — add owner (via PendingWalletUpdate)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testAddOwner : Script ()
+testAddOwner = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "DaveOwner"
+
+  -- Alice proposes adding Dave
+  govCid <- submit alice do
+    exerciseCmd walletCid ProposeAddOwner with
+      proposer = alice
+      newOwner = dave
+
+  -- Bob approves (threshold met)
+  govCid <- submit bob do
+    exerciseCmd govCid ApproveGovernance with approver = bob
+
+  -- Execute — since AddOwner, returns Left (PendingWalletUpdate)
+  -- The execute requires multi-party submission since it creates PendingWalletUpdate
+  -- which has `signatory existingMembers`.
+  result <- submitMulti [alice, bob, charlie] [] do
+    exerciseCmd govCid ExecuteGovernance with
+      executor  = alice
+      walletCid = walletCid
+
+  case result of
+    Left pendingCid -> do
+      -- Dave accepts membership
+      newWalletCid <- submit dave do
+        exerciseCmd pendingCid AcceptMembership
+
+      Some wallet <- queryContractId dave newWalletCid
+      assert (dave `elem` wallet.owners)
+      assert (length wallet.owners == 4)
+
+    Right _ ->
+      abort "Expected Left (PendingWalletUpdate) for AddOwner"
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 6: 3-of-5 wallet transfer
+-- ─────────────────────────────────────────────────────────────────────────────
+
+test3of5Transfer : Script ()
+test3of5Transfer = script do
+  p1 <- allocateParty "Owner1"
+  p2 <- allocateParty "Owner2"
+  p3 <- allocateParty "Owner3"
+  p4 <- allocateParty "Owner4"
+  p5 <- allocateParty "Owner5"
+  recipient <- allocateParty "Recipient5"
+
+  let allOwners = [p1, p2, p3, p4, p5]
+
+  walletCid <- submitMulti allOwners [] do
+    createCmd MultisigWallet with
+      walletId  = "wallet-3of5"
+      owners    = allOwners
+      threshold = 3
+      custodian = p1
+
+  iouCid <- submit p1 do
+    createCmd Iou with
+      issuer    = p1
+      owner     = p1
+      amount    = 5000.0
+      currency  = "USD"
+      observers = [p2, p3, p4, p5]
+
+  -- p1 proposes (auto-approves as proposer = 1st approver)
+  proposalCid <- submit p1 do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = p1
+      recipient   = recipient
+      txAmount    = 5000.0
+      txCurrency  = "USD"
+      description = "Large 3-of-5 transfer"
+
+  -- p2 approves (2 total)
+  proposalCid <- submit p2 do
+    exerciseCmd proposalCid Approve with approver = p2
+
+  -- p3 approves (3 total = threshold met)
+  proposalCid <- submit p3 do
+    exerciseCmd proposalCid Approve with approver = p3
+
+  -- Execute
+  newIouCid <- submit p1 do
+    exerciseCmd proposalCid Execute with
+      executor  = p1
+      walletCid = walletCid
+      iouCid    = iouCid
+
+  Some iou <- queryContractId recipient newIouCid
+  assert (iou.owner == recipient)
+  assert (iou.amount == 5000.0)
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 7: Duplicate approval must fail
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testDuplicateApproval : Script ()
+testDuplicateApproval = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "Dave7"
+
+  iouCid <- submit alice do
+    createCmd Iou with
+      issuer    = alice
+      owner     = alice
+      amount    = 200.0
+      currency  = "USD"
+      observers = [bob, charlie]
+
+  proposalCid <- submit alice do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = alice
+      recipient   = dave
+      txAmount    = 200.0
+      txCurrency  = "USD"
+      description = "Dup approval test"
+
+  -- Bob approves once
+  proposalCid <- submit bob do
+    exerciseCmd proposalCid Approve with approver = bob
+
+  -- Bob tries to approve again — must fail
+  submitMustFail bob do
+    exerciseCmd proposalCid Approve with approver = bob
+
+  return ()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Test 8: IOU Split then transfer partial amount
+-- ─────────────────────────────────────────────────────────────────────────────
+
+testSplitAndTransfer : Script ()
+testSplitAndTransfer = script do
+  (alice, bob, charlie, walletCid) <- setup2of3
+  dave <- allocateParty "Dave8"
+
+  -- Alice has 1000 USD IOU
+  iouCid <- submit alice do
+    createCmd Iou with
+      issuer    = alice
+      owner     = alice
+      amount    = 1000.0
+      currency  = "USD"
+      observers = [bob, charlie]
+
+  -- Split into 400 and 600
+  (iou400Cid, iou600Cid) <- submit alice do
+    exerciseCmd iouCid Split with splitAmount = 400.0
+
+  -- Propose transferring only the 400 portion
+  proposalCid <- submit alice do
+    exerciseCmd walletCid ProposeTransfer with
+      proposer    = alice
+      recipient   = dave
+      txAmount    = 400.0
+      txCurrency  = "USD"
+      description = "Partial 400 USD transfer"
+
+  -- Bob approves
+  proposalCid <- submit bob do
+    exerciseCmd proposalCid Approve with approver = bob
+
+  -- Execute with the 400 IOU
+  newIouCid <- submit alice do
+    exerciseCmd proposalCid Execute with
+      executor  = alice
+      walletCid = walletCid
+      iouCid    = iou400Cid
+
+  Some iou <- queryContractId dave newIouCid
+  assert (iou.owner == dave)
+  assert (iou.amount == 400.0)
+
+  -- Alice still holds the 600 IOU
+  Some remaining <- queryContractId alice iou600Cid
+  assert (remaining.amount == 600.0)
+
+  return ()

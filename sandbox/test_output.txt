@@ -1,0 +1,117 @@
+WARNING: Daml Assistant has been deprecated and replaced with the Digital Asset Package Manager (DPM)
+See installation here: https://docs.digitalasset.com/build/3.4/dpm/dpm.html
+Daml Assistant will be removed in 3.5
+You can disable this warning with --no-legacy-assistant-warning
+
+
+2026-03-30 16:37:12.87 [ERROR]  [test ScriptService] 
+SCRIPT SERVICE STDERR: WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+
+2026-03-30 16:37:12.87 [ERROR]  [test ScriptService] 
+SCRIPT SERVICE STDERR: WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.apache.pekko.util.Unsafe (file:/Users/alikar/.daml/sdk/3.4.11/damlc/resources/script-service.jar)
+
+2026-03-30 16:37:12.87 [ERROR]  [test ScriptService] 
+SCRIPT SERVICE STDERR: WARNING: Please consider reporting this to the maintainers of class org.apache.pekko.util.Unsafe
+
+2026-03-30 16:37:12.87 [ERROR]  [test ScriptService] 
+SCRIPT SERVICE STDERR: WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+[0;91mScriptBackendException {scriptNote = "Failed to create script context", scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = "java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \"SCR\196\176PT\""}) fromList []))}[0m
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+[0;93mdaml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: "Legacy API, use `submit`, `actAs` and `readAs` separately"[0m
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+[0;93mdaml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: "Legacy API, use `submit`, `actAs` and `readAs` separately"[0m
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+[0;91mScriptBackendException {scriptNote = "Failed to create script context", scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = "java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \"SCR\196\176PT\""}) fromList []))}[0m
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+[0;93mdaml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: "Legacy API, use `submit`, `actAs` and `readAs` separately"[0m
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+[0;93mdaml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: "Legacy API, use `submit`, `actAs` and `readAs` separately"[0m
+File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+[0;93mdaml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()[0m
+[4;1m
+Test Summary[m
+
+Modules internal to this package:
+- Internal templates
+  9 defined
+  0 (  0.0%) created
+- Internal template choices
+  32 defined
+  0 (  0.0%) exercised
+- Internal interface implementations
+  0 defined
+    0 internal interfaces
+    0 external interfaces
+- Internal interface choices
+  0 defined
+  0 (100.0%) exercised
+Modules external to this package:
+- External templates
+  0 defined
+  0 (100.0%) created in any tests
+  0 (100.0%) created in internal tests
+  0 (100.0%) created in external tests
+- External template choices
+  0 defined
+  0 (100.0%) exercised in any tests
+  0 (100.0%) exercised in internal tests
+  0 (100.0%) exercised in external tests
+- External interface implementations
+  0 defined
+- External interface choices
+  0 defined
+  0 (100.0%) exercised in any tests
+  0 (100.0%) exercised in internal tests
+  0 (100.0%) exercised in external tests
+

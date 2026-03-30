@@ -1,5 +1,7 @@
 module Main where
 
+import MultisigWalletTest ()
+
 -- Minimal placeholder so the sandbox compiles
 template Placeholder
   with

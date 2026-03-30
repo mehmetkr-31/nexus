@@ -1,11 +1,54 @@
 module Iou where
 
+-- | An IOU (I Owe You) token representing a financial obligation.
+-- The owner can transfer or split the IOU. Used as the asset type
+-- in the multisig wallet system.
 template Iou
   with
-    owner : Party
-    amount : Text
-    currency : Text
+    issuer    : Party
+    owner     : Party
+    amount    : Decimal
+    currency  : Text
     observers : [Party]
   where
-    signatory owner
-    observer observers
+    signatory issuer
+    observer owner, observers
+
+    ensure amount > 0.0
+
+    -- | Transfer ownership to a new party.
+    -- The new IOU is created with no observers (caller can add them separately).
+    choice Transfer : ContractId Iou
+      with
+        newOwner : Party
+      controller owner
+      do
+        create this with
+          owner = newOwner
+          observers = []
+
+    -- | Split an IOU into two IOUs of the given amounts.
+    -- Useful for partial transfers where only part of an IOU is being sent.
+    choice Split : (ContractId Iou, ContractId Iou)
+      with
+        splitAmount : Decimal
+      controller owner
+      do
+        assert (splitAmount > 0.0)
+        assert (splitAmount < amount)
+        cid1 <- create this with amount = splitAmount
+        cid2 <- create this with amount = amount - splitAmount
+        return (cid1, cid2)
+
+    -- | Merge another IOU of the same currency into this one.
+    -- The other IOU must have the same owner and currency.
+    choice Merge : ContractId Iou
+      with
+        otherCid : ContractId Iou
+      controller owner
+      do
+        other <- fetch otherCid
+        assert (other.owner == owner)
+        assert (other.currency == currency)
+        archive otherCid
+        create this with amount = amount + other.amount

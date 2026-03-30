@@ -1,0 +1,431 @@
+<?xml version='1.0' ?><testsuites errors="0" failures="10" tests="10"><testsuite name="daml/Iou.daml" tests="0" /><testsuite name="daml/Main.daml" tests="0" /><testsuite name="daml/MultisigWallet.daml" tests="1"><testcase name="smokeTest" classname="daml/MultisigWallet.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase></testsuite><testsuite name="daml/MultisigWalletTest.daml" tests="9"><testcase name="setup2of3" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testInsufficientApprovals" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testDuplicateApproval" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testSplitAndTransfer" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="test3of5Transfer" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="test2of3Transfer" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testRejection" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testChangeThreshold" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase><testcase name="testAddOwner" classname="daml/MultisigWalletTest.daml"><failure>File:     daml/Main.daml
+Hidden:   no
+Range:    3:1-3:19
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/Main.daml:3:1: warning:
+    The import of ‘Daml.Script’ is redundant
+      except perhaps to import instances from ‘Daml.Script’
+    To import instances alone, use: import Daml.Script()
+File:     daml/MultisigWallet.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    1:1-2:1
+Source:   compiler
+Severity: DsError
+Message: 
+ScriptBackendException {scriptNote = &quot;Failed to create script context&quot;, scriptBackendError = BErrorClient (ClientIOError (GRPCIOBadStatusCode StatusInternal (StatusDetails {unStatusDetails = &quot;java.lang.IllegalArgumentException: non expected non first character 0x130 in Daml-LF Name \&quot;SCR\196\176PT\&quot;&quot;}) fromList []))}
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    18:16-18:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:18:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;
+File:     daml/MultisigWalletTest.daml
+Hidden:   no
+Range:    227:16-227:27
+Source:   typecheck
+Severity: DsWarning
+Message: 
+daml/MultisigWalletTest.daml:227:16: warning:
+    In the use of ‘submitMulti’
+    (imported from Daml.Script, but defined in Daml.Script.Internal.Questions.Submit):
+    Deprecated: &quot;Legacy API, use `submit`, `actAs` and `readAs` separately&quot;</failure></testcase></testsuite><testsuite name="daml/WalletSetup.daml" tests="0" /></testsuites>

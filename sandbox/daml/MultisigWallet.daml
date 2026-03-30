@@ -1,0 +1,376 @@
+module MultisigWallet where
+
+import DA.List (unique)
+import Iou (Iou(..), Transfer(..))
+import Daml.Script
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Data Types
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | The set of governance actions that can be proposed.
+data GovernanceAction
+  = AddOwner Party
+  | RemoveOwner Party
+  | ChangeThreshold Int
+  deriving (Eq, Show)
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MultisigWallet
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | A Safe.global-style M-of-N multisig wallet on Canton.
+--
+-- All owners are signatories, giving this contract full authority to act on
+-- behalf of the group. The custodian is one of the owners who physically holds
+-- IOU assets on behalf of the wallet.
+--
+-- Bootstrap: Because all owners must sign, use submitMulti in scripts or the
+-- WalletSetup module for production.
+template MultisigWallet
+  with
+    walletId  : Text    -- ^ Unique identifier for this wallet
+    owners    : [Party] -- ^ The N owners (all are signatories)
+    threshold : Int     -- ^ The M in M-of-N
+    custodian : Party   -- ^ Owner who holds IOU assets on behalf of the wallet
+  where
+    signatory owners
+
+    ensure threshold > 0
+        && threshold <= length owners
+        && length owners > 0
+        && unique owners
+        && custodian `elem` owners
+
+
+
+    -- | Intermediate choice to create PendingWalletUpdate with full owner authority
+    nonconsuming choice CreatePendingUpdate : ContractId PendingWalletUpdate
+      with
+        executor : Party
+        newOwner : Party
+      controller executor
+      do
+        assert (executor `elem` owners)
+        create PendingWalletUpdate with
+          walletId        = walletId
+          existingMembers = owners
+          newOwners       = owners ++ [newOwner]
+          newThreshold    = threshold
+          custodian       = custodian
+          newMember       = newOwner
+
+    -- ── Transaction proposal ─────────────────────────────────────────────────
+
+    -- | Any owner can propose a transfer. The proposer automatically becomes
+    -- the first approver. Returns a TransactionProposal contract.
+    nonconsuming choice ProposeTransfer : ContractId TransactionProposal
+      with
+        proposer    : Party
+        recipient   : Party
+        txAmount    : Decimal
+        txCurrency  : Text
+        description : Text
+      controller proposer
+      do
+        assert (proposer `elem` owners)
+        assert (txAmount > 0.0)
+        create TransactionProposal with
+          walletId        = walletId
+          walletOwners    = owners
+          walletThreshold = threshold
+          custodian       = custodian
+          proposer        = proposer
+          recipient       = recipient
+          amount          = txAmount
+          currency        = txCurrency
+          description     = description
+          approvers       = [proposer]
+
+    -- | Execute an IOU transfer. Called by TransactionProposal.Execute once
+    -- threshold is met. The wallet has authority over the custodian's IOUs
+    -- because custodian is a signatory of this contract.
+    nonconsuming choice ExecuteTransfer : ContractId Iou
+      with
+        executor  : Party
+        iouCid    : ContractId Iou
+        recipient : Party
+      controller executor
+      do
+        assert (executor `elem` owners)
+        exercise iouCid Transfer with newOwner = recipient
+
+    -- ── Governance proposals ─────────────────────────────────────────────────
+
+    -- | Propose adding a new owner to the wallet.
+    nonconsuming choice ProposeAddOwner : ContractId GovernanceProposal
+      with
+        proposer : Party
+        newOwner : Party
+      controller proposer
+      do
+        assert (proposer `elem` owners)
+        assert (newOwner `notElem` owners)
+        create GovernanceProposal with
+          walletId     = walletId
+          walletOwners = owners
+          threshold    = threshold
+          custodian    = custodian
+          proposer     = proposer
+          approvers    = [proposer]
+          action       = AddOwner newOwner
+
+    -- | Propose removing an existing owner from the wallet.
+    nonconsuming choice ProposeRemoveOwner : ContractId GovernanceProposal
+      with
+        proposer      : Party
+        ownerToRemove : Party
+      controller proposer
+      do
+        assert (proposer `elem` owners)
+        assert (ownerToRemove `elem` owners)
+        assert (length owners > 1)
+        create GovernanceProposal with
+          walletId     = walletId
+          walletOwners = owners
+          threshold    = threshold
+          custodian    = custodian
+          proposer     = proposer
+          approvers    = [proposer]
+          action       = RemoveOwner ownerToRemove
+
+    -- | Propose changing the approval threshold.
+    nonconsuming choice ProposeChangeThreshold : ContractId GovernanceProposal
+      with
+        proposer      : Party
+        newThreshold  : Int
+      controller proposer
+      do
+        assert (proposer `elem` owners)
+        assert (newThreshold > 0)
+        assert (newThreshold <= length owners)
+        create GovernanceProposal with
+          walletId     = walletId
+          walletOwners = owners
+          threshold    = threshold
+          custodian    = custodian
+          proposer     = proposer
+          approvers    = [proposer]
+          action       = ChangeThreshold newThreshold
+
+    -- ── Governance execution ─────────────────────────────────────────────────
+
+    -- | Execute a RemoveOwner or ChangeThreshold governance action.
+    -- The old wallet is archived and a new one is created.
+    -- Note: AddOwner is handled separately via PendingWalletUpdate because
+    -- the new owner must authorize the new wallet's creation.
+    choice ExecuteGovernanceDirect : ContractId MultisigWallet
+      with
+        executor : Party
+        action   : GovernanceAction
+        newApproversCount : Int
+      controller executor
+      do
+        assert (executor `elem` owners)
+        assert (newApproversCount >= threshold)
+        case action of
+          RemoveOwner ownerToRemove -> do
+            assert (ownerToRemove `elem` owners)
+            let newOwners = filter (/= ownerToRemove) owners
+            let newThresh = min threshold (length newOwners)
+            create this with
+              owners    = newOwners
+              threshold = newThresh
+          ChangeThreshold newThreshold -> do
+            assert (newThreshold > 0)
+            assert (newThreshold <= length owners)
+            create this with threshold = newThreshold
+          AddOwner _ ->
+            -- AddOwner must go through PendingWalletUpdate
+            error "Use ProposeAddOwner and PendingWalletUpdate for AddOwner governance"
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- TransactionProposal
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | A pending transfer awaiting M-of-N approvals.
+--
+-- Analogous to a Safe.global transaction that has been proposed but not yet
+-- executed. Each approval archives this contract and creates a new one with
+-- the new approver added (immutable DAML pattern).
+template TransactionProposal
+  with
+    walletId        : Text
+    walletOwners    : [Party]  -- ^ Snapshot of owners at proposal time
+    walletThreshold : Int      -- ^ Snapshot of threshold at proposal time
+    custodian       : Party
+    proposer        : Party
+    recipient       : Party
+    amount          : Decimal
+    currency        : Text
+    description     : Text
+    approvers       : [Party]  -- ^ Parties who have approved so far
+  where
+    signatory proposer
+    observer (filter (`notElem` [proposer]) walletOwners)
+
+
+
+    -- | Approve this proposal. Archives the current proposal and creates a
+    -- new one with the approver added. Returns the new proposal contract ID.
+    choice Approve : ContractId TransactionProposal
+      with
+        approver : Party
+      controller approver
+      do
+        assert (approver `elem` walletOwners)
+        assert (approver `notElem` approvers)
+        create this with approvers = approvers ++ [approver]
+
+    -- | Execute the transfer once threshold approvals are collected.
+    -- Delegates to MultisigWallet.ExecuteTransfer for proper authority.
+    choice Execute : ContractId Iou
+      with
+        executor  : Party
+        walletCid : ContractId MultisigWallet
+        iouCid    : ContractId Iou
+      controller executor
+      do
+        assert (executor `elem` walletOwners)
+        assert (length approvers >= walletThreshold)
+        -- Verify the IOU matches what was proposed
+        iou <- fetch iouCid
+        assert (iou.owner == custodian)
+        assert (iou.amount >= amount)
+        assert (iou.currency == currency)
+        -- Delegate to wallet which has all-owner authority over the IOU
+        exercise walletCid ExecuteTransfer with
+          executor  = executor
+          iouCid    = iouCid
+          recipient = recipient
+
+    -- | Any owner can reject (cancel) the proposal.
+    choice Reject : ()
+      with
+        rejector : Party
+      controller rejector
+      do
+        assert (rejector `elem` walletOwners)
+        return ()
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- GovernanceProposal
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | A pending governance change awaiting M-of-N approvals.
+--
+-- Covers: AddOwner, RemoveOwner, ChangeThreshold.
+template GovernanceProposal
+  with
+    walletId     : Text
+    walletOwners : [Party]
+    threshold    : Int
+    custodian    : Party
+    proposer     : Party
+    approvers    : [Party]
+    action       : GovernanceAction
+  where
+    signatory proposer
+    observer (filter (`notElem` [proposer]) walletOwners)
+
+    -- | Approve this governance proposal.
+    choice ApproveGovernance : ContractId GovernanceProposal
+      with
+        approver : Party
+      controller approver
+      do
+        assert (approver `elem` walletOwners)
+        assert (approver `notElem` approvers)
+        create this with approvers = approvers ++ [approver]
+
+    -- | Execute the governance action once threshold is met.
+    -- For AddOwner: creates PendingWalletUpdate (new member must AcceptMembership).
+    -- For others: archives old wallet and creates new one directly.
+    choice ExecuteGovernance : Either (ContractId PendingWalletUpdate) (ContractId MultisigWallet)
+      with
+        executor  : Party
+        walletCid : ContractId MultisigWallet
+      controller executor
+      do
+        assert (executor `elem` walletOwners)
+        assert (length approvers >= threshold)
+        wallet <- fetch walletCid
+        case action of
+          AddOwner newOwner -> do
+            let newOwners = walletOwners ++ [newOwner]
+            pendingCid <- exercise walletCid CreatePendingUpdate with
+              executor = executor
+              newOwner = newOwner
+            return (Left pendingCid)
+          RemoveOwner ownerToRemove -> do
+            let newOwners = filter (/= ownerToRemove) walletOwners
+            let newThresh = min threshold (length newOwners)
+            newWalletCid <- exercise walletCid ExecuteGovernanceDirect with
+              executor         = executor
+              action           = action
+              newApproversCount = length approvers
+            return (Right newWalletCid)
+          ChangeThreshold newThreshold -> do
+            newWalletCid <- exercise walletCid ExecuteGovernanceDirect with
+              executor         = executor
+              action           = action
+              newApproversCount = length approvers
+            return (Right newWalletCid)
+
+    -- | Any owner can reject (cancel) this governance proposal.
+    choice RejectGovernance : ()
+      with
+        rejector : Party
+      controller rejector
+      do
+        assert (rejector `elem` walletOwners)
+        return ()
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PendingWalletUpdate
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- | Intermediate contract for AddOwner governance.
+--
+-- Because the new MultisigWallet requires the new member as a signatory,
+-- the new member must explicitly accept. This contract bridges that gap.
+template PendingWalletUpdate
+  with
+    walletId        : Text
+    existingMembers : [Party]
+    newOwners       : [Party]
+    newThreshold    : Int
+    custodian       : Party
+    newMember       : Party   -- ^ The party who must accept to finalize
+  where
+    signatory existingMembers
+    observer newMember
+
+    -- | The new member accepts, creating the new MultisigWallet with all owners.
+    choice AcceptMembership : ContractId MultisigWallet
+      controller newMember
+      do
+        create MultisigWallet with
+          walletId  = walletId
+          owners    = newOwners
+          threshold = newThreshold
+          custodian = custodian
+
+    -- | Existing members can cancel the pending update (e.g. if new member refuses).
+    choice CancelUpdate : ()
+      controller existingMembers
+      do return ()
+
+smokeTest : Script ()
+smokeTest = script do
+  debug "SMOKE TEST IN WALLET MODULE STARTING"
+  alice <- allocateParty "Alice"
+  return ()

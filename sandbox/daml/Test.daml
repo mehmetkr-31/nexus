@@ -1,0 +1,19 @@
+module Test where
+
+import Daml.Script
+import MultisigWallet
+
+test_simple : Script ()
+test_simple = script do
+  debug "TEST SIMPLE START"
+  alice <- allocateParty "Alice"
+  bob <- allocateParty "Bob"
+  charlie <- allocateParty "Charlie"
+  walletCid <- submitMulti [alice, bob, charlie] [] do
+    createCmd MultisigWallet with
+      walletId  = "test-wallet"
+      owners    = [alice, bob, charlie]
+      threshold = 2
+      custodian = alice
+  debug "TEST SIMPLE END"
+  return ()
