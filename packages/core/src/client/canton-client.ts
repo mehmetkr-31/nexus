@@ -23,28 +23,49 @@ const templateIdSchema = z.object({
 	entityName: z.string(),
 });
 
-const activeContractSchema = z.object({
+/** Parse Canton's "pkgId:Module:Entity" string into a TemplateId object */
+function parseTemplateId(raw: string): { packageId: string; moduleName: string; entityName: string } {
+	const parts = raw.split(":");
+	return {
+		packageId: parts[0] ?? raw,
+		moduleName: parts[1] ?? "",
+		entityName: parts[2] ?? "",
+	};
+}
+
+// Canton JSON API v2 wraps each entry as { contractEntry: { JsActiveContract: { createdEvent: {...} } } }
+const cantonCreatedEventSchema = z.object({
 	contractId: z.string(),
-	templateId: templateIdSchema,
-	payload: z.record(z.string(), z.unknown()),
+	templateId: z.string(),
+	createArgument: z.record(z.string(), z.unknown()),
 	createdAt: z.string(),
 	signatories: z.array(z.string()),
 	observers: z.array(z.string()),
 });
 
-const activeContractsResponseSchema = z.union([
-	z.array(activeContractSchema).transform((contracts) => ({ contracts })),
-	z
-		.object({
-			contracts: z.array(activeContractSchema).optional(),
-			activeContracts: z.array(activeContractSchema).optional(),
-			nextPageToken: z.string().optional(),
-		})
-		.transform((obj) => ({
-			contracts: obj.contracts ?? obj.activeContracts ?? [],
-			nextPageToken: obj.nextPageToken,
-		})),
-]);
+const activeContractSchema = z
+	.object({
+		contractEntry: z.object({
+			JsActiveContract: z.object({
+				createdEvent: cantonCreatedEventSchema,
+			}),
+		}),
+	})
+	.transform(({ contractEntry }) => {
+		const ev = contractEntry.JsActiveContract.createdEvent;
+		return {
+			contractId: ev.contractId,
+			templateId: parseTemplateId(ev.templateId),
+			payload: ev.createArgument,
+			createdAt: ev.createdAt,
+			signatories: ev.signatories,
+			observers: ev.observers,
+		};
+	});
+
+const activeContractsResponseSchema = z
+	.array(activeContractSchema)
+	.transform((contracts) => ({ contracts }));
 
 const submitResultSchema = z.object({
 	updateId: z.string(),
@@ -52,7 +73,7 @@ const submitResultSchema = z.object({
 });
 
 const ledgerEndSchema = z.object({
-	offset: z.string(),
+	offset: z.union([z.string(), z.number()]).transform((v) => String(v)),
 });
 
 const synchronizerInfoSchema = z.object({
@@ -288,13 +309,16 @@ export class CantonClient {
 				{} as Record<string, unknown>,
 			) ?? {};
 
+		// Fetch current ledger end to get all contracts up to now
+		const ledgerEnd = await this.getLedgerEnd();
+
 		const body: Record<string, unknown> = {
 			filter: {
 				filtersByParty,
 				alsoFilterByTemplateId: toStableTemplateId(templateId),
 				...options?.filter,
 			},
-			activeAtOffset: "0",
+			activeAtOffset: String(ledgerEnd.offset),
 		};
 
 		if (options?.parties?.length) {
