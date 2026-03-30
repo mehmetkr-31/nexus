@@ -5,6 +5,7 @@ import type {
 	TemplateDescriptor,
 	TemplateId,
 } from "../types/index.ts";
+import { fetchAllPages } from "../utils/pagination.ts";
 import type { PackageResolver } from "./package-resolver.ts";
 
 export interface ContractQueryOptions<_T = Record<string, unknown>> {
@@ -57,22 +58,17 @@ export class ContractQuery {
 	async fetchAllActiveContracts<T = Record<string, unknown>>(
 		options: ContractQueryOptions<T>,
 	): Promise<ActiveContract<T>[]> {
-		const contracts: ActiveContract<T>[] = [];
-		let pageToken: string | undefined;
 		const templateId = await this.resolve(options.templateId);
 
-		do {
+		return fetchAllPages(async (pageToken) => {
 			const page = await this.client.queryContracts<T>(templateId, {
 				parties: options.parties,
 				filter: options.filter,
 				pageSize: options.pageSize ?? 100,
 				pageToken,
 			});
-			contracts.push(...page.contracts);
-			pageToken = page.nextPageToken;
-		} while (pageToken);
-
-		return contracts;
+			return { items: page.contracts, nextPageToken: page.nextPageToken };
+		});
 	}
 
 	/**

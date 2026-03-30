@@ -1,4 +1,4 @@
-import { type CantonParty, NexusAuthError } from "../types/index.ts";
+import { type CantonParty, NexusAuthError, NexusLedgerError } from "../types/index.ts";
 
 // Canton v2 (3.x): rights are in a flat array of { type, partyId } objects
 // Older Canton / legacy: { canActAs: string[], canReadAs: string[] }
@@ -67,25 +67,26 @@ export class PartyIdResolver {
 	// ─── Private ───────────────────────────────────────────────────────────────
 
 	private async fetchPartyId(userId: string): Promise<string> {
-		const token = await this.client.getToken();
-		const res = await fetch(`${this.client.baseUrl}/v2/users/${encodeURIComponent(userId)}`, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
-
-		if (res.status === 404) {
-			throw new NexusAuthError(`User "${userId}" not found (404): USER_NOT_FOUND`);
+		let data: Record<string, unknown>;
+		try {
+			data = await this.client.request<Record<string, unknown>>(
+				"GET",
+				`/v2/users/${encodeURIComponent(userId)}`,
+			);
+		} catch (err) {
+			if (err instanceof NexusLedgerError && err.statusCode === 404) {
+				throw new NexusAuthError(`User "${userId}" not found (404): USER_NOT_FOUND`);
+			}
+			throw err;
 		}
 
-		if (res.ok) {
-			const data = (await res.json()) as Record<string, unknown>;
-			// Canton 3.x: { user: { primaryParty: "..." } }
-			// Older: { primaryParty: "..." }
-			const primaryParty =
-				((data.user as Record<string, unknown> | undefined)?.primaryParty as string | undefined) ??
-				(data.primaryParty as string | undefined);
-			// Strip participant suffix (Canton 3.x adds ".participantName" to fingerprint)
-			if (primaryParty) return stripParticipantSuffix(primaryParty);
-		}
+		// Canton 3.x: { user: { primaryParty: "..." } }
+		// Older: { primaryParty: "..." }
+		const primaryParty =
+			((data.user as Record<string, unknown> | undefined)?.primaryParty as string | undefined) ??
+			(data.primaryParty as string | undefined);
+		// Strip participant suffix (Canton 3.x adds ".participantName" to fingerprint)
+		if (primaryParty) return stripParticipantSuffix(primaryParty);
 
 		// Fallback: derive from actAs rights
 		const rights = await this.fetchUserRights(userId);
@@ -99,22 +100,10 @@ export class PartyIdResolver {
 	}
 
 	private async fetchUserRights(userId: string): Promise<UserRightsResponse> {
-		const token = await this.client.getToken();
-		const res = await fetch(
-			`${this.client.baseUrl}/v2/users/${encodeURIComponent(userId)}/rights`,
-			{
-				headers: { Authorization: `Bearer ${token}` },
-			},
+		return this.client.request<UserRightsResponse>(
+			"GET",
+			`/v2/users/${encodeURIComponent(userId)}/rights`,
 		);
-
-		if (!res.ok) {
-			throw new NexusAuthError(
-				`Failed to fetch user rights for "${userId}": ${res.status} ${res.statusText}`,
-				await res.text().catch(() => undefined),
-			);
-		}
-
-		return res.json() as Promise<UserRightsResponse>;
 	}
 }
 

@@ -5,6 +5,7 @@ import type {
 	TemplateDescriptor,
 	TemplateId,
 } from "../types/index.ts";
+import { fetchAllPages } from "../utils/pagination.ts";
 import type { PackageResolver } from "./package-resolver.ts";
 
 /**
@@ -44,22 +45,13 @@ export class InterfaceQuery {
 	>(
 		options: Omit<ActivateInterfaceOptions, "pageToken" | "pageSize">,
 	): Promise<ActiveInterfacesResponse<TView, TPayload>["interfaces"]> {
-		const results: ActiveInterfacesResponse<TView, TPayload>["interfaces"] = [];
-		let pageToken: string | undefined;
-
-		do {
-			const response: ActiveInterfacesResponse<TView, TPayload> = await this.fetchActiveInterfaces<
-				TView,
-				TPayload
-			>({
+		return fetchAllPages(async (pageToken) => {
+			const response = await this.fetchActiveInterfaces<TView, TPayload>({
 				...options,
 				pageToken,
 				pageSize: 100,
 			});
-			results.push(...response.interfaces);
-			pageToken = response.nextPageToken;
-		} while (pageToken);
-
-		return results;
+			return { items: response.interfaces, nextPageToken: response.nextPageToken };
+		});
 	}
 }
