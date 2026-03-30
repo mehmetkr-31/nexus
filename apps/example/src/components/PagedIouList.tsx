@@ -20,17 +20,12 @@ const IOU_TEMPLATE: TemplateDescriptor = {
 export function PagedIouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+	const { contracts: allContracts, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
 		nexus.usePagedContracts<IouPayload>({
 			templateId: IOU_TEMPLATE,
 			parties,
-			pageSize: 5, // Performans testi için küçük sayfa boyutu
+			pageSize: 5,
 		});
-
-	// Tüm sayfalardaki kontratları tek bir listede birleştiriyoruz
-	const allContracts = useMemo(() => {
-		return data?.pages.flatMap((page) => page.contracts) ?? [];
-	}, [data]);
 
 	if (isLoading) {
 		return (

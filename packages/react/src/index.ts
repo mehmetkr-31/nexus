@@ -65,11 +65,14 @@ export type {
 	NexusClientPlugin,
 	TanstackQueryActions,
 	UseContractsOptions,
+	UseContractsResult,
+	UseContractsSuspenseResult,
 	UseCreateContractOptions,
 	UseExerciseAndGetResultOptions,
 	UseExerciseChoiceOptions,
 	UseInterfaceOptions,
 	UseLedgerMutationOptions,
+	UsePagedContractsResult,
 	UseRightsAsResult,
 } from "./plugins/tanstack-query.ts";
 export { tanstackQueryPlugin } from "./plugins/tanstack-query.ts";

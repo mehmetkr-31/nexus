@@ -26,14 +26,10 @@ export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 
 	const { mutate, isPending, error } = nexus.useCreateContract<IouPayload>({
 		waitForFinality: true,
-		optimistic: true,
-		optimisticContract: (vars) => ({
-			payload: vars.createArguments,
-		}),
+		optimistic: (vars) => ({ payload: vars.createArguments }),
 		onSuccess: () => {
 			setAmount("");
 			setOwner("");
-			// Refresh happens automatically via TanStack query invalidation
 		},
 	});
 

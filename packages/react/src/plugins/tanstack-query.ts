@@ -81,14 +81,15 @@ export interface UseCreateContractOptions<
 	onSuccess?: (result: SubmitResult) => void | Promise<void>;
 	onError?: (error: Error) => void;
 	/**
-	 * Optional function to generate a temporary "optimistic" contract.
-	 * This contract will be added to the cache immediately when the mutation starts.
+	 * Enable optimistic UI updates.
+	 * - `true`: auto-infer payload from createArguments
+	 * - function: provide a custom partial contract
+	 */
+	optimistic?: boolean | ((vars: CreateContractVariables<T>) => Partial<ActiveContract<T>>);
+	/**
+	 * @deprecated Use `optimistic` as a function instead.
 	 */
 	optimisticContract?: (vars: CreateContractVariables<T>) => Partial<ActiveContract<T>>;
-	/**
-	 * Enable automatic optimistic UI updates.
-	 */
-	optimistic?: boolean;
 	/** If true, wait for the transaction to be committed to the ledger before resolving. */
 	waitForFinality?: boolean;
 }
@@ -217,6 +218,26 @@ export interface UsePagedContractsOptions<_T = Record<string, unknown>> {
 	filter?: Record<string, unknown>;
 }
 
+// ─── Result types ─────────────────────────────────────────────────────────────
+
+export type UseContractsResult<T = Record<string, unknown>> =
+	UseQueryResult<ActiveContractsResponse<T>> & {
+		/** Always-defined array. Empty while loading, never undefined. */
+		contracts: ActiveContract<T>[];
+	};
+
+export type UseContractsSuspenseResult<T = Record<string, unknown>> =
+	UseSuspenseQueryResult<ActiveContractsResponse<T>> & {
+		/** Always-defined array. Never undefined. */
+		contracts: ActiveContract<T>[];
+	};
+
+export type UsePagedContractsResult<T = Record<string, unknown>> =
+	UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>> & {
+		/** Flattened contracts across all loaded pages. Never undefined. */
+		contracts: ActiveContract<T>[];
+	};
+
 // ─── useRightsAs ─────────────────────────────────────────────────────────────
 
 /**
@@ -233,15 +254,15 @@ export interface UseRightsAsResult {
 	 */
 	useContracts: <T = Record<string, unknown>>(
 		options: Omit<UseContractsOptions<T>, "parties">,
-	) => UseQueryResult<ActiveContractsResponse<T>>;
+	) => UseContractsResult<T>;
 	/** Scoped Suspense contract query. */
 	useContractsSuspense: <T = Record<string, unknown>>(
 		options: Omit<UseContractsOptions<T>, "parties">,
-	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
+	) => UseContractsSuspenseResult<T>;
 	/** Scoped paged contract query. */
 	usePagedContracts: <T = Record<string, unknown>>(
 		options: Omit<UsePagedContractsOptions<T>, "parties">,
-	) => UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>>;
+	) => UsePagedContractsResult<T>;
 	/** Scoped fetch by ID. */
 	useFetch: <T = Record<string, unknown>>(
 		options: Omit<UseFetchOptions<T>, "parties">,
@@ -272,11 +293,11 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 
 	useContracts: <T = Record<string, unknown>>(
 		options: UseContractsOptions<T>,
-	) => UseQueryResult<ActiveContractsResponse<T>>;
+	) => UseContractsResult<T>;
 
 	useContractsSuspense: <T = Record<string, unknown>>(
 		options: UseContractsOptions<T>,
-	) => UseSuspenseQueryResult<ActiveContractsResponse<T>>;
+	) => UseContractsSuspenseResult<T>;
 
 	/**
 	 * Fetch a single contract by its ID.
@@ -297,7 +318,7 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	 */
 	usePagedContracts: <T = Record<string, unknown>>(
 		options: UsePagedContractsOptions<T>,
-	) => UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>>;
+	) => UsePagedContractsResult<T>;
 
 	/**
 	 * Query contracts through a Daml interface — returns interfaceView + payload.
@@ -360,7 +381,7 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	 * Modern Query Options API (TRPC-style).
 	 * Returns TanStack Query `queryOptions` objects for use with `useQuery`, `prefetchQuery`, etc.
 	 */
-	query?: {
+	query: {
 		contracts: <T = Record<string, unknown>>(
 			params: ContractQueryOptionsParams<T>,
 		) => ReturnType<typeof contractQueryOptions<T>>;
@@ -412,11 +433,15 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 		getActions: (client): TanstackQueryActions => ({
 			// ─── Contract Queries ────────────────────────────────────────────────
 
-			useContracts: <T = Record<string, unknown>>(opts: UseContractsOptions<T>) =>
-				useQuery(contractQueryOptions<T>({ client, ...opts })),
+			useContracts: <T = Record<string, unknown>>(opts: UseContractsOptions<T>): UseContractsResult<T> => {
+				const result = useQuery(contractQueryOptions<T>({ client, ...opts }));
+				return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsResult<T>;
+			},
 
-			useContractsSuspense: <T = Record<string, unknown>>(opts: UseContractsOptions<T>) =>
-				useSuspenseQuery(contractQueryOptions<T>({ client, ...opts })),
+			useContractsSuspense: <T = Record<string, unknown>>(opts: UseContractsOptions<T>): UseContractsSuspenseResult<T> => {
+				const result = useSuspenseQuery(contractQueryOptions<T>({ client, ...opts }));
+				return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsSuspenseResult<T>;
+			},
 
 			useFetch: <T = Record<string, unknown>>(opts: UseFetchOptions<T>) =>
 				useQuery(fetchByIdOptions<T>({ client, ...opts })),
@@ -424,10 +449,10 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 			useFetchByKey: <T = Record<string, unknown>, K = unknown>(opts: UseFetchByKeyOptions<T, K>) =>
 				useQuery(fetchByKeyOptions<T, K>({ client, ...opts })),
 
-			usePagedContracts: <T = Record<string, unknown>>(opts: UsePagedContractsOptions<T>) => {
+			usePagedContracts: <T = Record<string, unknown>>(opts: UsePagedContractsOptions<T>): UsePagedContractsResult<T> => {
 				const stableId = toStableTemplateId(opts.templateId);
 
-				return useInfiniteQuery({
+				const result = useInfiniteQuery({
 					queryKey: nexusKeys.contractsQuery(stableId, {
 						parties: opts.parties,
 						filter: opts.filter,
@@ -445,6 +470,11 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					initialPageParam: undefined as string | undefined,
 					getNextPageParam: (lastPage) => lastPage.nextPageToken,
 				});
+
+				return {
+					...result,
+					contracts: result.data?.pages.flatMap((p) => p.contracts) ?? [],
+				} as UsePagedContractsResult<T>;
 			},
 
 			// ─── Interface Queries ───────────────────────────────────────────────
@@ -517,7 +547,10 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						const queryKey = nexusKeys.contractsQuery(stableTemplateId, { parties });
 
 						const previousData = await applyOptimisticUpdate<T>(queryClient, queryKey, (prev) => {
-							const optimisticSub = opts.optimisticContract?.(vars) ?? {};
+							const optimisticSub =
+								typeof opts.optimistic === "function"
+									? opts.optimistic(vars)
+									: (opts.optimisticContract?.(vars) ?? {});
 							return {
 								...prev,
 								contracts: [
@@ -707,16 +740,22 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				readAsParty: party,
 				useContracts: <T = Record<string, unknown>>(
 					opts: Omit<UseContractsOptions<T>, "parties">,
-				) => useQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				): UseContractsResult<T> => {
+					const result = useQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] }));
+					return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsResult<T>;
+				},
 				useContractsSuspense: <T = Record<string, unknown>>(
 					opts: Omit<UseContractsOptions<T>, "parties">,
-				) => useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] })),
+				): UseContractsSuspenseResult<T> => {
+					const result = useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] }));
+					return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsSuspenseResult<T>;
+				},
 				usePagedContracts: <T = Record<string, unknown>>(
 					opts: Omit<UsePagedContractsOptions<T>, "parties">,
-				) => {
+				): UsePagedContractsResult<T> => {
 					const stableId = toStableTemplateId(opts.templateId);
 
-					return useInfiniteQuery({
+					const result = useInfiniteQuery({
 						queryKey: nexusKeys.contractsQuery(stableId, {
 							parties: [party],
 							filter: opts.filter,
@@ -734,6 +773,11 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						initialPageParam: undefined as string | undefined,
 						getNextPageParam: (lastPage) => lastPage.nextPageToken,
 					});
+
+					return {
+						...result,
+						contracts: result.data?.pages.flatMap((p) => p.contracts) ?? [],
+					} as UsePagedContractsResult<T>;
 				},
 				useFetch: <T = Record<string, unknown>>(opts: Omit<UseFetchOptions<T>, "parties">) =>
 					useQuery(fetchByIdOptions<T>({ client, ...opts, parties: [party] })),
@@ -751,6 +795,17 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 						interfaceQueryOptions<TView, TPayload>({ client, ...opts, parties: [party] }),
 					),
 			}),
+
+			query: {
+				contracts: <T = Record<string, unknown>>(params: ContractQueryOptionsParams<T>) =>
+					contractQueryOptions<T>({ client, ...params }),
+				interfaces: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
+					params: InterfaceQueryOptionsParams<TView, TPayload>,
+				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
+				ledgerEnd: () => ledgerEndQueryOptions({ client }),
+				partyId: (params: PartyIdQueryOptionsParams) => partyIdQueryOptions({ client, ...params }),
+				synchronizers: () => synchronizersQueryOptions({ client }),
+			},
 		}),
 	};
 }
