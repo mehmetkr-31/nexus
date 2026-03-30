@@ -38,3 +38,4 @@ sandbox/log
 
 # Finder (MacOS) folder config
 .DS_Store
+.tmp

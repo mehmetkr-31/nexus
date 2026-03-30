@@ -1,12 +1,7 @@
 {
 	"name": "nexus",
 	"type": "module",
-	"packageManager": "bun@1.3.5",
-	"workspaces": [
-		"packages/*",
-		"apps/*",
-		"sandbox"
-	],
+	"packageManager": "pnpm@10.5.2",
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.9",
 		"@c7-digital/ledger": "^0.0.12",
