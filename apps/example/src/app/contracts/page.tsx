@@ -1,25 +1,29 @@
-import { dehydrate, QueryClient } from "@tanstack/react-query";
+import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { DashboardView } from "../../components/DashboardView";
 import { IOU_TEMPLATE_ID, resolveServerSession } from "../../lib/nexus";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContractsPage() {
-	// 1. Get authed client and resolved party ID (includes auto-provisioning)
 	const { client, partyId } = await resolveServerSession();
 
-	// 2. SSR prefetch — QueryClient is populated before HTML ships to browser
-	const queryClient = new QueryClient();
-	if (client.query) {
-		await queryClient.prefetchQuery(
-			client.query.contracts({
-				templateId: IOU_TEMPLATE_ID,
-				parties: [partyId],
-			}),
-		);
-	}
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {
+				staleTime: 5_000,
+				retry: 2,
+				retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
+			},
+		},
+	});
 
-	const dehydratedState = dehydrate(queryClient);
+	await queryClient.prefetchQuery(
+		client.query.contracts({ templateId: IOU_TEMPLATE_ID, parties: [partyId] }),
+	);
 
-	return <DashboardView partyId={partyId} dehydratedState={dehydratedState} />;
+	return (
+		<HydrationBoundary state={dehydrate(queryClient)}>
+			<DashboardView partyId={partyId} />
+		</HydrationBoundary>
+	);
 }

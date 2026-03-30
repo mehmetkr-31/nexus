@@ -24,7 +24,11 @@ const templateIdSchema = z.object({
 });
 
 /** Parse Canton's "pkgId:Module:Entity" string into a TemplateId object */
-function parseTemplateId(raw: string): { packageId: string; moduleName: string; entityName: string } {
+function parseTemplateId(raw: string): {
+	packageId: string;
+	moduleName: string;
+	entityName: string;
+} {
 	const parts = raw.split(":");
 	return {
 		packageId: parts[0] ?? raw,
@@ -234,11 +238,14 @@ export class CantonClient {
 			}
 			const d = details as Record<string, unknown>;
 			const message =
-				typeof details === "object" && details !== null && (
-					typeof d.message === "string" ? d.message :
-					typeof d.cause === "string" ? d.cause :
-					null
-				) || `Canton API error: ${response.status} ${response.statusText}`;
+				(typeof details === "object" &&
+					details !== null &&
+					(typeof d.message === "string"
+						? d.message
+						: typeof d.cause === "string"
+							? d.cause
+							: null)) ||
+				`Canton API error: ${response.status} ${response.statusText}`;
 			const error = new NexusLedgerError(String(message), response.status, details);
 			for (const mw of this.middlewares) {
 				if (mw.onError) {

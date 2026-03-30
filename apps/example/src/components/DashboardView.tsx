@@ -1,6 +1,4 @@
 "use client";
-
-import { type DehydratedState, HydrationBoundary } from "@tanstack/react-query";
 import { LayoutGroup, motion } from "framer-motion";
 import { Activity, Sparkles, Wallet } from "lucide-react";
 import { CreateIouForm } from "./CreateIouForm";
@@ -12,13 +10,7 @@ import { SeedDataButton } from "./SeedDataButton";
 import { StreamIouList } from "./StreamIouList";
 import { UserInfo } from "./UserInfo";
 
-export function DashboardView({
-	partyId,
-	dehydratedState,
-}: {
-	partyId: string;
-	dehydratedState: DehydratedState | null | undefined;
-}) {
+export function DashboardView({ partyId }: { partyId: string }) {
 	return (
 		<div className="p-6 lg:p-12 space-y-12 max-w-[1600px] mx-auto">
 			{/* Page Header */}
@@ -95,12 +87,10 @@ export function DashboardView({
 								<div className="h-px bg-slate-200 dark:bg-slate-800 flex-1 mx-6" />
 							</div>
 
-							<HydrationBoundary state={dehydratedState}>
-								<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-									<IouList partyId={partyId} />
-									<StreamIouList partyId={partyId} />
-								</div>
-							</HydrationBoundary>
+							<div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+								<IouList partyId={partyId} />
+								<StreamIouList partyId={partyId} />
+							</div>
 						</div>
 
 						<div className="space-y-6">

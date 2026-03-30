@@ -220,23 +220,26 @@ export interface UsePagedContractsOptions<_T = Record<string, unknown>> {
 
 // ─── Result types ─────────────────────────────────────────────────────────────
 
-export type UseContractsResult<T = Record<string, unknown>> =
-	UseQueryResult<ActiveContractsResponse<T>> & {
-		/** Always-defined array. Empty while loading, never undefined. */
-		contracts: ActiveContract<T>[];
-	};
+export type UseContractsResult<T = Record<string, unknown>> = UseQueryResult<
+	ActiveContractsResponse<T>
+> & {
+	/** Always-defined array. Empty while loading, never undefined. */
+	contracts: ActiveContract<T>[];
+};
 
-export type UseContractsSuspenseResult<T = Record<string, unknown>> =
-	UseSuspenseQueryResult<ActiveContractsResponse<T>> & {
-		/** Always-defined array. Never undefined. */
-		contracts: ActiveContract<T>[];
-	};
+export type UseContractsSuspenseResult<T = Record<string, unknown>> = UseSuspenseQueryResult<
+	ActiveContractsResponse<T>
+> & {
+	/** Always-defined array. Never undefined. */
+	contracts: ActiveContract<T>[];
+};
 
-export type UsePagedContractsResult<T = Record<string, unknown>> =
-	UseInfiniteQueryResult<InfiniteData<ActiveContractsResponse<T>>> & {
-		/** Flattened contracts across all loaded pages. Never undefined. */
-		contracts: ActiveContract<T>[];
-	};
+export type UsePagedContractsResult<T = Record<string, unknown>> = UseInfiniteQueryResult<
+	InfiniteData<ActiveContractsResponse<T>>
+> & {
+	/** Flattened contracts across all loaded pages. Never undefined. */
+	contracts: ActiveContract<T>[];
+};
 
 // ─── useRightsAs ─────────────────────────────────────────────────────────────
 
@@ -433,14 +436,21 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 		getActions: (client): TanstackQueryActions => ({
 			// ─── Contract Queries ────────────────────────────────────────────────
 
-			useContracts: <T = Record<string, unknown>>(opts: UseContractsOptions<T>): UseContractsResult<T> => {
+			useContracts: <T = Record<string, unknown>>(
+				opts: UseContractsOptions<T>,
+			): UseContractsResult<T> => {
 				const result = useQuery(contractQueryOptions<T>({ client, ...opts }));
 				return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsResult<T>;
 			},
 
-			useContractsSuspense: <T = Record<string, unknown>>(opts: UseContractsOptions<T>): UseContractsSuspenseResult<T> => {
+			useContractsSuspense: <T = Record<string, unknown>>(
+				opts: UseContractsOptions<T>,
+			): UseContractsSuspenseResult<T> => {
 				const result = useSuspenseQuery(contractQueryOptions<T>({ client, ...opts }));
-				return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsSuspenseResult<T>;
+				return {
+					...result,
+					contracts: result.data?.contracts ?? [],
+				} as UseContractsSuspenseResult<T>;
 			},
 
 			useFetch: <T = Record<string, unknown>>(opts: UseFetchOptions<T>) =>
@@ -449,7 +459,9 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 			useFetchByKey: <T = Record<string, unknown>, K = unknown>(opts: UseFetchByKeyOptions<T, K>) =>
 				useQuery(fetchByKeyOptions<T, K>({ client, ...opts })),
 
-			usePagedContracts: <T = Record<string, unknown>>(opts: UsePagedContractsOptions<T>): UsePagedContractsResult<T> => {
+			usePagedContracts: <T = Record<string, unknown>>(
+				opts: UsePagedContractsOptions<T>,
+			): UsePagedContractsResult<T> => {
 				const stableId = toStableTemplateId(opts.templateId);
 
 				const result = useInfiniteQuery({
@@ -747,8 +759,13 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				useContractsSuspense: <T = Record<string, unknown>>(
 					opts: Omit<UseContractsOptions<T>, "parties">,
 				): UseContractsSuspenseResult<T> => {
-					const result = useSuspenseQuery(contractQueryOptions<T>({ client, ...opts, parties: [party] }));
-					return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsSuspenseResult<T>;
+					const result = useSuspenseQuery(
+						contractQueryOptions<T>({ client, ...opts, parties: [party] }),
+					);
+					return {
+						...result,
+						contracts: result.data?.contracts ?? [],
+					} as UseContractsSuspenseResult<T>;
 				},
 				usePagedContracts: <T = Record<string, unknown>>(
 					opts: Omit<UsePagedContractsOptions<T>, "parties">,

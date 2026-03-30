@@ -36,7 +36,6 @@ export {
 export type {
 	AnyPlugin,
 	NexusClientInstance,
-	NexusProviderComponentProps,
 } from "./create-nexus-client.ts";
 export { createNexusClient } from "./create-nexus-client.ts";
 export {

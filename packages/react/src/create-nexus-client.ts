@@ -1,25 +1,7 @@
 "use client";
 
 import { createNexus, type NexusClient, type NexusPlugin } from "@nexus-framework/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createElement, type ReactNode, useMemo } from "react";
 import type { NexusClientPlugin } from "./plugins/tanstack-query.ts";
-
-export function createDefaultQueryClient(): QueryClient {
-	return new QueryClient({
-		defaultOptions: {
-			queries: {
-				// Canton finality takes 3-10s — stale after 5s is a reasonable default
-				staleTime: 5_000,
-				retry: 2,
-				retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
-			},
-			mutations: {
-				retry: 0,
-			},
-		},
-	});
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,37 +35,15 @@ export type InferNexusPlugins<P extends AnyPlugin[]> = UnionToIntersection<
 
 export type AnyPlugin = NexusPlugin | NexusClientPlugin;
 
-export interface NexusProviderComponentProps {
-	children: ReactNode;
-	/** Optionally override the QueryClient for this provider */
-	queryClient?: QueryClient;
-}
-
 /**
  * The object returned by `createNexusClient()`.
- * Combines the core `NexusClient` with hooks from client plugins
- * and a pre-configured `NexusProvider` component.
+ * Combines the core `NexusClient` with hooks from client plugins.
+ *
+ * Nexus hooks close over the client instance directly — no React Context needed.
+ * Just ensure `QueryClientProvider` is mounted somewhere above in the tree.
  */
 export type NexusClientInstance<TPluginContext = Record<string, never>> = NexusClient &
-	TPluginContext & {
-		/**
-		 * A React provider component pre-configured for this client.
-		 * Only wraps `QueryClientProvider` — no NexusContext needed since
-		 * hooks close over the client instance directly.
-		 *
-		 * @example
-		 * ```tsx
-		 * export function App() {
-		 *   return (
-		 *     <nexus.NexusProvider>
-		 *       <MyPage />
-		 *     </nexus.NexusProvider>
-		 *   );
-		 * }
-		 * ```
-		 */
-		NexusProvider: (props: NexusProviderComponentProps) => ReactNode;
-	};
+	TPluginContext;
 
 // ─── createNexusClient ────────────────────────────────────────────────────────
 
@@ -92,26 +52,25 @@ export type NexusClientInstance<TPluginContext = Record<string, never>> = NexusC
  *
  * Hooks produced by client plugins (e.g. `tanstackQueryPlugin()`) close
  * over the `NexusClient` instance directly — no React Context is injected.
- * Only a `QueryClientProvider` is needed in the component tree (provided
- * automatically by `nexus.NexusProvider`).
+ *
+ * You are responsible for mounting a `QueryClientProvider` in your component tree.
+ * Nexus does not create or own a `QueryClient`.
  *
  * @example
  * ```ts
- * import { createNexusClient, sandboxAuth, tanstackQueryPlugin } from "@nexus-framework/react";
- *
- * const nexus = createNexusClient({
+ * // nexus-client.ts
+ * export const nexus = await createNexusClient({
  *   baseUrl: "http://localhost:7575",
- *   plugins: [
- *     sandboxAuth({ userId: "alice", secret: "secret", partyId: "Alice::..." }),
- *     tanstackQueryPlugin(),
- *   ],
+ *   plugins: [sandboxAuth({ ... }), tanstackQueryPlugin()],
  * });
  *
- * // Wrap app root:
- * <nexus.NexusProvider><App /></nexus.NexusProvider>
+ * // layout.tsx
+ * <QueryClientProvider client={queryClient}>
+ *   <App />
+ * </QueryClientProvider>
  *
- * // In a component — no import from context needed:
- * const { data } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
+ * // component.tsx
+ * const { contracts } = nexus.useContracts({ templateId: "pkg:Mod:Iou" });
  * ```
  */
 export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
@@ -169,20 +128,8 @@ export async function createNexusClient<TPlugins extends AnyPlugin[]>(options: {
 		}),
 	) as InferNexusPlugins<TPlugins> & Record<string, unknown>;
 
-	const finalClient = {
+	return {
 		...coreClient,
 		...actions,
 	} as NexusClientInstance<InferNexusPlugins<TPlugins>>;
-
-	const BoundNexusProvider = (props: NexusProviderComponentProps) => {
-		const queryClient = useMemo(
-			() => props.queryClient ?? createDefaultQueryClient(),
-			[props.queryClient],
-		);
-		return createElement(QueryClientProvider, { client: queryClient }, props.children);
-	};
-
-	finalClient.NexusProvider = BoundNexusProvider;
-
-	return finalClient;
 }

@@ -155,7 +155,9 @@ export class PackageResolver {
 			return `${ids[ids.length - 1]}:${moduleName}:${entityName}`;
 		}
 
-		console.debug(`[Nexus] Could not resolve template: ${packageName}:${moduleName}:${entityName}. Using name only.`);
+		console.debug(
+			`[Nexus] Could not resolve template: ${packageName}:${moduleName}:${entityName}. Using name only.`,
+		);
 		return `${packageName}:${moduleName}:${entityName}`;
 	}
 
