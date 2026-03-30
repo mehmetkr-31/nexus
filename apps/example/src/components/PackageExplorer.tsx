@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { Box, ChevronRight, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { nexus } from "../lib/nexus-client";

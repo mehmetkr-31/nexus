@@ -18,21 +18,6 @@ export function LiveActivityFeed({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 	const [events, setEvents] = useState<TimelineEvent[]>([]);
 
-	// Use multi-stream for potential expansion, but focused on Ious for now
-	const stream = nexus.useMultiStream({
-		mapping: {
-			ious: { templateId: "nexus-example:Iou:Iou", parties },
-		},
-	});
-
-	// Logic to capture stream changes into a timeline
-	useEffect(() => {
-		// This is a bit tricky with useMultiStream as it gives current state.
-		// For a "Feed", we usually want to capture the delta.
-		// Since nexus core's stream supports callbacks, we could use useStreamContracts with callbacks
-		// but useMultiStream is what we want to demonstrate.
-	}, []);
-
 	// Fallback: Using useStreamContracts for one template but with an "Event" capture logic
 	const iouStream = nexus.useStreamContracts({
 		templateId: "nexus-example:Iou:Iou",
@@ -96,7 +81,7 @@ export function LiveActivityFeed({ partyId }: { partyId: string }) {
 
 					<AnimatePresence initial={false}>
 						{events.length > 0 ? (
-							events.map((event, idx) => (
+							events.map((event) => (
 								<motion.div
 									key={event.id + event.timestamp.getTime()}
 									initial={{ opacity: 0, x: -20, scale: 0.95 }}
@@ -104,7 +89,7 @@ export function LiveActivityFeed({ partyId }: { partyId: string }) {
 									exit={{ opacity: 0, scale: 0.95 }}
 									layout
 								>
-									<GlassCard className="!p-0 overflow-hidden ml-4">
+									<GlassCard className="p-0! overflow-hidden ml-4">
 										<div className="flex items-stretch">
 											<div
 												className={`w-1.5 ${event.type === "created" ? "bg-emerald-500" : "bg-rose-500"}`}
