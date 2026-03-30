@@ -5,7 +5,7 @@
 	"scripts": {
 		"build": "vite build",
 		"serve": "vite preview",
-		"dev": "vite dev",
+		"dev": "PORT=3001 vite dev",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome lint ."
 	},
