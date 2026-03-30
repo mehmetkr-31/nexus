@@ -1,17 +1,25 @@
 {
-	"expo": {
-		"scheme": "nexus-framework",
-		"userInterfaceStyle": "automatic",
-		"orientation": "default",
-		"web": {
-			"bundler": "metro"
-		},
-		"name": "nexus-framework",
-		"slug": "nexus-framework",
-		"plugins": ["expo-font"],
-		"experiments": {
-			"typedRoutes": true,
-			"reactCompiler": true
-		}
-	}
+  "expo": {
+    "scheme": "nexus-framework",
+    "userInterfaceStyle": "automatic",
+    "orientation": "default",
+    "web": {
+      "bundler": "metro"
+    },
+    "name": "nexus-framework",
+    "slug": "nexus-framework",
+    "plugins": [
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "android": {
+      "package": "com.anonymous.nexusframework"
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.nexusframework"
+    }
+  }
 }

@@ -1,4 +1,4 @@
-import { Toaster } from "@nexus-framework/ui/components/sonner";
+import { Toaster } from "@nexus/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/react-router";

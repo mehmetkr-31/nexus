@@ -1,4 +1,4 @@
-import { auth } from "@nexus-framework/auth";
+import { auth } from "@nexus/auth";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/api/auth/$")({

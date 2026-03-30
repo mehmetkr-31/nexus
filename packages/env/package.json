@@ -1,5 +1,5 @@
 {
-	"name": "@nexus-framework/env",
+	"name": "@nexus/env",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -19,7 +19,7 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@nexus-framework/config": "workspace:*",
+		"@nexus/config": "workspace:*",
 		"@types/node": "catalog:",
 		"typescript": "catalog:"
 	}

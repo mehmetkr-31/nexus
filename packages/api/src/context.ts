@@ -1,4 +1,4 @@
-import { auth } from "@nexus-framework/auth";
+import { auth } from "@nexus/auth";
 
 export async function createContext({ req }: { req: Request }) {
 	const session = await auth.api.getSession({

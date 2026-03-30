@@ -13,8 +13,8 @@
 	"iconLibrary": "lucide",
 	"aliases": {
 		"components": "@/components",
-		"utils": "@nexus-framework/ui/lib/utils",
-		"ui": "@nexus-framework/ui/components",
+		"utils": "@nexus/ui/lib/utils",
+		"ui": "@nexus/ui/components",
 		"lib": "@/lib",
 		"hooks": "@/hooks"
 	},

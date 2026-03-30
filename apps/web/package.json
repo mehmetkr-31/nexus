@@ -11,10 +11,10 @@
 	},
 	"dependencies": {
 		"@libsql/client": "catalog:",
-		"@nexus-framework/api": "workspace:*",
-		"@nexus-framework/auth": "workspace:*",
-		"@nexus-framework/env": "workspace:*",
-		"@nexus-framework/ui": "workspace:*",
+		"@nexus/api": "workspace:*",
+		"@nexus/auth": "workspace:*",
+		"@nexus/env": "workspace:*",
+		"@nexus/ui": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
@@ -40,7 +40,7 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@nexus-framework/config": "workspace:*",
+		"@nexus/config": "workspace:*",
 		"@tanstack/react-query-devtools": "^5.91.1",
 		"@tanstack/react-router-devtools": "^1.141.1",
 		"@testing-library/dom": "^10.4.0",

@@ -68,7 +68,7 @@
 				"node_modules",
 				".turbo",
 				".next",
-				"**/packages/cli/templates/**"
+				"**/framework/cli/templates/**"
 			],
 			"linter": {
 				"enabled": false

@@ -1,4 +1,4 @@
-import { cn } from "@nexus-framework/ui/lib/utils";
+import { cn } from "@nexus/ui/lib/utils";
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
 	return (

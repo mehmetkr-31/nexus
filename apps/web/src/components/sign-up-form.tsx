@@ -1,6 +1,6 @@
-import { Button } from "@nexus-framework/ui/components/button";
-import { Input } from "@nexus-framework/ui/components/input";
-import { Label } from "@nexus-framework/ui/components/label";
+import { Button } from "@nexus/ui/components/button";
+import { Input } from "@nexus/ui/components/input";
+import { Label } from "@nexus/ui/components/label";
 import { useForm } from "@tanstack/react-form";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";

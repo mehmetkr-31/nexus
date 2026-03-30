@@ -1,5 +1,5 @@
 import { createClient } from "@libsql/client";
-import { env } from "@nexus-framework/env/server";
+import { env } from "@nexus/env/server";
 import { drizzle } from "drizzle-orm/libsql";
 
 import * as schema from "./schema";

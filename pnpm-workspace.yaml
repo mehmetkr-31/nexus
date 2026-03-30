@@ -1,4 +1,5 @@
 packages:
+  - 'framework/*'
   - 'packages/*'
   - 'apps/*'
   - 'sandbox'

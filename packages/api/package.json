@@ -1,5 +1,5 @@
 {
-	"name": "@nexus-framework/api",
+	"name": "@nexus/api",
 	"version": "0.1.0",
 	"type": "module",
 	"exports": {
@@ -16,9 +16,9 @@
 		"build": "tsc"
 	},
 	"dependencies": {
-		"@nexus-framework/auth": "workspace:*",
-		"@nexus-framework/db": "workspace:*",
-		"@nexus-framework/env": "workspace:*",
+		"@nexus/auth": "workspace:*",
+		"@nexus/db": "workspace:*",
+		"@nexus/env": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",
@@ -27,7 +27,7 @@
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@nexus-framework/config": "workspace:*",
+		"@nexus/config": "workspace:*",
 		"@types/node": "catalog:",
 		"typescript": "catalog:"
 	}

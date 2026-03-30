@@ -1,4 +1,4 @@
-import { Button } from "@nexus-framework/ui/components/button";
+import { Button } from "@nexus/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -7,8 +7,8 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@nexus-framework/ui/components/dropdown-menu";
-import { Skeleton } from "@nexus-framework/ui/components/skeleton";
+} from "@nexus/ui/components/dropdown-menu";
+import { Skeleton } from "@nexus/ui/components/skeleton";
 import { Link, useNavigate } from "@tanstack/react-router";
 
 import { authClient } from "@/lib/auth-client";

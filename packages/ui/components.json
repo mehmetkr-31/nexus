@@ -12,11 +12,11 @@
 	},
 	"iconLibrary": "lucide",
 	"aliases": {
-		"components": "@nexus-framework/ui/components",
-		"utils": "@nexus-framework/ui/lib/utils",
-		"hooks": "@nexus-framework/ui/hooks",
-		"lib": "@nexus-framework/ui/lib",
-		"ui": "@nexus-framework/ui/components"
+		"components": "@nexus/ui/components",
+		"utils": "@nexus/ui/lib/utils",
+		"hooks": "@nexus/ui/hooks",
+		"lib": "@nexus/ui/lib",
+		"ui": "@nexus/ui/components"
 	},
 	"menuColor": "default",
 	"menuAccent": "subtle",

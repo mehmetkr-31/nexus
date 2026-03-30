@@ -1,5 +1,5 @@
 {
-	"name": "@nexus-framework/db",
+	"name": "@nexus/db",
 	"version": "0.1.0",
 	"type": "module",
 	"exports": {
@@ -22,14 +22,14 @@
 	},
 	"dependencies": {
 		"@libsql/client": "catalog:",
-		"@nexus-framework/env": "workspace:*",
+		"@nexus/env": "workspace:*",
 		"dotenv": "catalog:",
 		"drizzle-orm": "^0.45.1",
 		"libsql": "catalog:",
 		"zod": "catalog:"
 	},
 	"devDependencies": {
-		"@nexus-framework/config": "workspace:*",
+		"@nexus/config": "workspace:*",
 		"@types/node": "catalog:",
 		"drizzle-kit": "^0.31.8",
 		"typescript": "catalog:"

@@ -8,6 +8,17 @@ dist
 .next
 .turbo
 
+# build artifacts (tsc emitted .js in src dirs)
+packages/*/src/**/*.js
+framework/*/src/**/*.js
+
+# expo native builds
+apps/native/android
+apps/native/ios
+
+# wrangler
+.wrangler
+
 # code coverage
 coverage
 *.lcov

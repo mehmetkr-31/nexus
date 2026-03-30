@@ -1,5 +1,5 @@
-import type { AppRouterClient } from "@nexus-framework/api/routers/index";
-import { env } from "@nexus-framework/env/native";
+import type { AppRouterClient } from "@nexus/api/routers/index";
+import { env } from "@nexus/env/native";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";

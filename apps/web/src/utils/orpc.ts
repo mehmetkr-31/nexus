@@ -1,5 +1,5 @@
-import { createContext } from "@nexus-framework/api/context";
-import { appRouter } from "@nexus-framework/api/routers/index";
+import { createContext } from "@nexus/api/context";
+import { appRouter } from "@nexus/api/routers/index";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";

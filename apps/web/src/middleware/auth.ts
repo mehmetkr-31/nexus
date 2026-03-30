@@ -1,4 +1,4 @@
-import { auth } from "@nexus-framework/auth";
+import { auth } from "@nexus/auth";
 import { createMiddleware } from "@tanstack/react-start";
 
 export const authMiddleware = createMiddleware().server(async ({ next, request }) => {

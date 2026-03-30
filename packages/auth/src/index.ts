@@ -1,7 +1,7 @@
 import { expo } from "@better-auth/expo";
-import { createDb } from "@nexus-framework/db";
-import * as schema from "@nexus-framework/db/schema/auth";
-import { env } from "@nexus-framework/env/server";
+import { createDb } from "@nexus/db";
+import * as schema from "@nexus/db/schema/auth";
+import { env } from "@nexus/env/server";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
