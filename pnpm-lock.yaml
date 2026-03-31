@@ -575,6 +575,15 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  framework/pqs:
+    devDependencies:
+      '@types/bun':
+        specifier: latest
+        version: 1.3.11
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   framework/react:
     dependencies:
       '@nexus-framework/core':

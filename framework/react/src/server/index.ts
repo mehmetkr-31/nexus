@@ -7,7 +7,18 @@
  * IMPORTANT: Do NOT import this in client components ("use client" files).
  */
 
+export {
+	type LedgerRouteHandler,
+	type LedgerRouteHandlerConfig,
+	createLedgerRouteHandler,
+} from "./route-handler.ts";
 export { type LedgerActionResult, withLedgerAction } from "./server-actions.ts";
 export type { ServerNexusConfig } from "./server-client.ts";
-export { createServerNexusClient } from "./server-client.ts";
-export { type GetLedgerDataOptions, getLedgerData } from "./server-queries.ts";
+export { createServerNexusClient, createServerNexusClientFromSession } from "./server-client.ts";
+export {
+	type GetLedgerDataOptions,
+	type PrefetchContractOptions,
+	type PrefetchInterfaceOptions,
+	getLedgerData,
+	prefetchNexusQuery,
+} from "./server-queries.ts";
