@@ -101,12 +101,41 @@ export interface ExerciseCommand<T = Record<string, unknown>> {
 
 export type Command = CreateCommand | ExerciseCommand;
 
+/**
+ * Deduplication period for command submission.
+ * Canton JSON API v2 uses a discriminated union — one of three variants must be set.
+ *
+ * - `DeduplicationDuration`: time-based window (seconds + nanos) measured from submission
+ * - `DeduplicationOffset`: ledger-offset-based window (avoids clock skew)
+ * - `Empty`: use the participant node's configured maximum deduplication period
+ */
+export type DeduplicationPeriod =
+	| { DeduplicationDuration: { value: { seconds: number; nanos?: number } } }
+	| { DeduplicationOffset: { value: number } }
+	| { Empty: Record<string, never> };
+
 export interface SubmitRequest {
 	commands: Command[];
 	actAs: string[];
 	readAs?: string[];
+	/**
+	 * Stable identifier for the intended ledger change.
+	 * Must be the SAME across all retries of the same logical operation.
+	 * If omitted, a UUID is auto-generated (but won't survive app restarts).
+	 */
 	commandId?: string;
+	/**
+	 * Unique identifier for this specific submission attempt.
+	 * Must be a FRESH UUID on every retry — auto-generated if omitted.
+	 * Used to correlate completions in the completion stream.
+	 */
+	submissionId?: string;
 	workflowId?: string;
+	/**
+	 * Deduplication window for this command. Defaults to participant node maximum.
+	 * Prefer explicit values to avoid silent configuration-change surprises.
+	 */
+	deduplicationPeriod?: DeduplicationPeriod;
 }
 
 export interface SubmitResult {
@@ -223,6 +252,33 @@ export interface ActiveInterfacesResponse<
 > {
 	interfaces: ActiveInterface<TView, TPayload>[];
 	nextPageToken?: string;
+}
+
+// ─── Completion Stream ────────────────────────────────────────────────────────
+
+/**
+ * A single completion event from the `/v2/commands/completions` stream.
+ * Emitted after a command submission is accepted or rejected by the ledger.
+ */
+export interface CompletionEvent {
+	/** Matches the `commandId` from the original submission */
+	commandId: string;
+	/** Matches the `submissionId` from the specific submission attempt */
+	submissionId?: string;
+	/** gRPC status code — 0 = OK, non-zero = failure */
+	status: number;
+	/** Ledger offset at which this completion was recorded */
+	offset: number;
+	/** Update ID of the resulting transaction (only set on success) */
+	updateId?: string;
+	/** Human-readable error message (only set on failure) */
+	errorMessage?: string;
+}
+
+export interface CompletionStreamHandlers {
+	onCompletion: (event: CompletionEvent) => void;
+	onError?: (error: Error) => void;
+	onClose?: () => void;
 }
 
 // ─── Streaming ────────────────────────────────────────────────────────────────

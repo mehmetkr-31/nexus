@@ -58,11 +58,13 @@ export type {
 } from "./plugins/streaming.ts";
 export { streamingPlugin } from "./plugins/streaming.ts";
 export type {
+	CommandStatusState,
 	CreateContractVariables,
 	ExerciseAndGetResultVariables,
 	ExerciseChoiceVariables,
 	NexusClientPlugin,
 	TanstackQueryActions,
+	UseCommandStatusResult,
 	UseContractsOptions,
 	UseContractsResult,
 	UseContractsSuspenseResult,

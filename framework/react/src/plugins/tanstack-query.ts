@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import type {
 	ActiveContract,
 	ActiveContractsResponse,
 	ActiveInterfacesResponse,
+	CompletionEvent,
 	ExerciseResult,
 	LedgerEnd,
 	NexusClient,
@@ -241,6 +243,24 @@ export type UsePagedContractsResult<T = Record<string, unknown>> = UseInfiniteQu
 	contracts: ActiveContract<T>[];
 };
 
+// ─── useCommandStatus ─────────────────────────────────────────────────────────
+
+export type CommandStatusState =
+	| { status: "idle" }
+	| { status: "waiting" }
+	| { status: "accepted"; updateId?: string; offset: number }
+	| { status: "rejected"; errorMessage: string; code: number }
+	| { status: "error"; error: Error };
+
+export interface UseCommandStatusResult {
+	/** Current processing state of the command */
+	state: CommandStatusState;
+	/** True while the completion stream WebSocket is open */
+	connected: boolean;
+	/** Manually close the stream (auto-closed on component unmount or accepted/rejected) */
+	close: () => void;
+}
+
 // ─── useRightsAs ─────────────────────────────────────────────────────────────
 
 /**
@@ -372,6 +392,23 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 	 * @param transactionId Hex ID of the transaction to check
 	 */
 	useTransactionStatus: (transactionId: string | undefined) => UseQueryResult<TransactionStatus>;
+
+	/**
+	 * Track the lifecycle of a submitted command via the completions stream.
+	 *
+	 * Opens a WebSocket to `/v2/commands/completions` and emits status updates
+	 * as the ledger processes the command. More reliable than polling `waitForTransaction`
+	 * because it correlates via `submissionId`.
+	 *
+	 * @param commandId - The `commandId` used in the submission
+	 * @param options.submissionId - The `submissionId` used in the submission (for precise matching)
+	 * @param options.parties - Act-as parties to subscribe completions for
+	 * @param options.fromOffset - Ledger offset before the submission (capture with `useLedgerEnd`)
+	 */
+	useCommandStatus: (
+		commandId: string | undefined,
+		options?: { submissionId?: string; parties?: string[]; fromOffset?: string | number },
+	) => UseCommandStatusResult;
 
 	/**
 	 * Returns a scoped set of query hooks pre-bound to the given party as `readAs`.
@@ -529,7 +566,80 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				});
 			},
 
-			// ─── Mutations ──────────────────────────────────────────────────────
+			useCommandStatus: (
+			commandId: string | undefined,
+			options?: { submissionId?: string; parties?: string[]; fromOffset?: string | number },
+		): UseCommandStatusResult => {
+			const [state, setState] = useState<CommandStatusState>(
+				commandId ? { status: "waiting" } : { status: "idle" },
+			);
+			const [connected, setConnected] = useState(false);
+			// Store only the close function — avoids TS property issues
+			const closeRef = useRef<(() => void) | null>(null);
+			const partiesKey = JSON.stringify(options?.parties ?? []);
+
+			useEffect(() => {
+				if (!commandId) {
+					setState({ status: "idle" });
+					return;
+				}
+
+				setState({ status: "waiting" });
+				let cancelled = false;
+
+				const open = async () => {
+					const fromOffset = options?.fromOffset ?? (await client.http.getLedgerEnd()).offset;
+					const parties = options?.parties ?? [];
+
+					if (cancelled) return;
+
+					const handle = await client.http.streamCompletions(parties, fromOffset, {
+						onCompletion: (event: CompletionEvent) => {
+							if (event.commandId !== commandId) return;
+							if (options?.submissionId && event.submissionId !== options.submissionId) return;
+
+							if (event.status === 0) {
+								setState({ status: "accepted", updateId: event.updateId, offset: event.offset });
+							} else {
+								setState({
+									status: "rejected",
+									errorMessage: event.errorMessage ?? "Command rejected by ledger",
+									code: event.status,
+								});
+							}
+							handle.close();
+						},
+						onError: (err: Error) => {
+							setState({ status: "error", error: err });
+						},
+						onClose: () => setConnected(false),
+					});
+
+					if (cancelled) {
+						handle.close();
+						return;
+					}
+
+					setConnected(handle.connected);
+					closeRef.current = () => handle.close();
+				};
+
+				open().catch((err: unknown) => {
+					if (!cancelled) setState({ status: "error", error: err as Error });
+				});
+
+				return () => {
+					cancelled = true;
+					closeRef.current?.();
+					closeRef.current = null;
+				};
+			// eslint-disable-next-line react-hooks/exhaustive-deps
+			}, [commandId, options?.submissionId, options?.fromOffset, partiesKey]);
+
+			return { state, connected, close: () => closeRef.current?.() };
+		},
+
+		// ─── Mutations ──────────────────────────────────────────────────────
 
 			useCreateContract: <T extends Record<string, unknown> = Record<string, unknown>>(
 				opts: UseCreateContractOptions<T> = {},

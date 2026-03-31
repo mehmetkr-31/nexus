@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
 	type ActiveContractsResponse,
 	type ActiveInterfacesResponse,
+	type CompletionStreamHandlers,
 	type LedgerEnd,
 	NexusLedgerError,
 	type SubmitRequest,
@@ -380,8 +381,12 @@ export class CantonClient {
 			}),
 			actAs: request.actAs,
 			readAs: request.readAs ?? [],
-			commandId: request.commandId ?? generateCommandId(),
+			// commandId identifies the ledger change — same across retries
+			commandId: request.commandId ?? crypto.randomUUID(),
+			// submissionId identifies this specific attempt — always fresh
+			submissionId: request.submissionId ?? crypto.randomUUID(),
 			workflowId: request.workflowId,
+			...(request.deduplicationPeriod ? { deduplicationPeriod: request.deduplicationPeriod } : {}),
 			...(userId ? { userId } : {}),
 		};
 	}
@@ -390,12 +395,25 @@ export class CantonClient {
 		const userId = await this.getUserId();
 		const body = this.buildCommandBody(request, userId);
 
-		return this.request<SubmitResult>(
-			"POST",
-			`${this.apiBase}/commands/submit-and-wait`,
-			body,
-			submitResultSchema,
-		);
+		try {
+			return await this.request<SubmitResult>(
+				"POST",
+				`${this.apiBase}/commands/submit-and-wait`,
+				body,
+				submitResultSchema,
+			);
+		} catch (err) {
+			// DUPLICATE_COMMAND (HTTP 409 / gRPC ALREADY_EXISTS) means the command
+			// was already accepted — treat as success per Canton deduplication spec.
+			if (err instanceof NexusLedgerError && isDuplicateCommandError(err)) {
+				const d = err.details as Record<string, unknown> | undefined;
+				return {
+					updateId: (d?.updateId as string | undefined) ?? body.commandId,
+					completionOffset: (d?.completionOffset as number | undefined) ?? 0,
+				};
+			}
+			throw err;
+		}
 	}
 
 	/**
@@ -563,6 +581,87 @@ export class CantonClient {
 		return handle;
 	}
 
+	// ─── Completion Stream ─────────────────────────────────────────────────────
+
+	/**
+	 * Open a WebSocket stream for command completions.
+	 * Used to track the lifecycle of a submitted command:
+	 * submitted → accepted/rejected by the ledger.
+	 *
+	 * Match events using `commandId` + `submissionId` from your `SubmitRequest`.
+	 *
+	 * @param parties Act-as parties whose completions to receive
+	 * @param fromOffset Ledger offset to stream from (exclusive). Use ledger end before submit.
+	 * @param handlers Callbacks for completion events, errors, and close
+	 */
+	async streamCompletions(
+		parties: string[],
+		fromOffset: string | number,
+		handlers: CompletionStreamHandlers,
+	): Promise<import("../types/index.ts").StreamHandle> {
+		const token = await this.getToken();
+		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/commands/completions`;
+
+		let ws = new WebSocket(wsUrl, [`jwt.token.${token}`, "daml.ws.auth"]);
+		let _connected = false;
+
+		const subscribe = (socket: WebSocket) => {
+			socket.onopen = () => {
+				_connected = true;
+				socket.send(
+					JSON.stringify({
+						parties,
+						beginOffset: String(fromOffset),
+					}),
+				);
+			};
+
+			socket.onmessage = (event) => {
+				try {
+					const msg = JSON.parse(event.data as string) as Record<string, unknown>;
+					// Canton completion stream wraps events in { completion: { ... } }
+					const raw = (msg.completion ?? msg) as Record<string, unknown>;
+					if (raw.commandId) {
+						const status = (raw.status as Record<string, unknown> | undefined) ?? {};
+						handlers.onCompletion({
+							commandId: raw.commandId as string,
+							submissionId: raw.submissionId as string | undefined,
+							status: (status.code as number | undefined) ?? 0,
+							offset: (raw.offset as number | undefined) ?? 0,
+							updateId: raw.updateId as string | undefined,
+							errorMessage: (status.message as string | undefined) ?? undefined,
+						});
+					}
+				} catch (err) {
+					handlers.onError?.(err instanceof Error ? err : new Error(String(err)));
+				}
+			};
+
+			socket.onerror = () => {
+				handlers.onError?.(new Error("Completion stream WebSocket error"));
+			};
+
+			socket.onclose = () => {
+				_connected = false;
+				handlers.onClose?.();
+			};
+		};
+
+		subscribe(ws);
+
+		return {
+			close: () => ws.close(),
+			updateToken: (newToken: string) => {
+				ws.close();
+				ws = new WebSocket(wsUrl, [`jwt.token.${newToken}`, "daml.ws.auth"]);
+				subscribe(ws);
+			},
+			get connected() {
+				return _connected;
+			},
+		};
+	}
+
 	// ─── Packages ──────────────────────────────────────────────────────────────
 
 	/**
@@ -692,6 +791,13 @@ export class CantonClient {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function generateCommandId(): string {
-	return `nexus-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+/**
+ * Returns true for Canton ALREADY_EXISTS / DUPLICATE_COMMAND errors.
+ * HTTP 409 or error code containing "DUPLICATE" in the details message.
+ */
+function isDuplicateCommandError(err: NexusLedgerError): boolean {
+	if (err.statusCode === 409) return true;
+	const d = err.details as Record<string, unknown> | undefined;
+	const msg = typeof d?.message === "string" ? d.message : "";
+	return msg.includes("DUPLICATE_COMMAND") || msg.includes("ALREADY_EXISTS");
 }
