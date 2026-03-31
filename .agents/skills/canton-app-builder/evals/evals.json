@@ -1,0 +1,77 @@
+{
+  "skill_name": "canton-app-builder",
+  "evals": [
+    {
+      "id": 1,
+      "name": "Multiparty Agreement Pattern",
+      "prompt": "How do I implement a 'Multiple Party Agreement' pattern using Daml 3.4? Explain step-by-step and provide a template example.",
+      "expected_output": "Pending contract wrapper for the Agreement contract with multiple signatories logic.",
+      "assertions": [
+        {
+          "text": "Mentions the use of a 'Pending' contract wrapper.",
+          "passed": true
+        },
+        {
+          "text": "Includes a choice that updates the list of signatories.",
+          "passed": true
+        },
+        {
+          "text": "Atomic creation of the final agreement when all signatures are collected.",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "JSON API V2 Query",
+      "prompt": "How can I list active contracts using TypeScript with the Canton JSON Ledger API V2? Provide a cURL example and a TS code snippet.",
+      "expected_output": "Usage of /v2/query endpoint and TypeScript codegen for ACS access.",
+      "assertions": [
+        {
+          "text": "Correctly identifies the /v2/query endpoint.",
+          "passed": true
+        },
+        {
+          "text": "Mentions dpm codegen-js for TypeScript bindings.",
+          "passed": true
+        },
+        {
+          "text": "Provides a functioning TypeScript snippet using ledger context.",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Daml Script Reference",
+      "prompt": "How do I catch an authority error in Daml Script? Explain using submitMustFail or similar methods.",
+      "expected_output": "Usage of submitMustFail or DA.Exception handling in Daml Script.",
+      "assertions": [
+        {
+          "text": "Explains the use of submitMustFail for negative testing.",
+          "passed": true
+        },
+        {
+          "text": "Mentions DA.Exception for catching logical errors.",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "DPM Lifecycle",
+      "prompt": "Write the sequence of command line commands required to start a new Daml project and create a .dar file.",
+      "expected_output": "Sequences: dpm init -> dpm build -> DAR file creation.",
+      "assertions": [
+        {
+          "text": "Commands dpm init and dpm build are listed in order.",
+          "passed": true
+        },
+        {
+          "text": "Mentions the production of a .dar file.",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

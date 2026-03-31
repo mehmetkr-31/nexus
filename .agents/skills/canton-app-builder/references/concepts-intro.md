@@ -1,0 +1,11 @@
+# Concepts Intro
+
+- [Introduction](https://docs.digitalasset.com/build/3.4/overview/introduction.html): Canton Network applications are applications that use the Canton ledger to operate business processes spanning multiple organizations or business entities. The benefit of using the Canton ledger is that the state of these applications is automatically synchronized across all participating organizati
+- [Canton Network community tools](https://docs.digitalasset.com/build/3.4/overview/community_tools.html): Warning
+- [Overview](https://docs.digitalasset.com/build/3.4/overview/index.html): Copyright (c) 2025 Digital Asset (Switzerland) GmbH and/or its affiliates. All rights reserved. Any unauthorized use, duplication or distribution is strictly prohibited. "Digital Asset" and "Daml" are Registered in the U.S. Patent and Trademark Office.
+- [Key concepts of Canton Network applications](https://docs.digitalasset.com/build/3.4/overview/key_concepts.html): The sections below define the key concepts that the rest of the documentation builds on.
+- [SDK components](https://docs.digitalasset.com/build/3.4/overview/sdk_components.html): See the Component how-tos section for the complete list of all SDK components.
+- [TL;DR for new Canton Network developers](https://docs.digitalasset.com/build/3.4/overview/tldr.html): Use this document to begin your journey as a Canton Network developer. We recommend you join the suggested Slack channels, then work through the introductory links under each subheading to orient yourself to Daml and the Canton Network, then begin building as early as possible. Return to this guide
+- [Introduction to Splice in the Canton Network](https://docs.digitalasset.com/build/3.4/quickstart/operate/introduction-to-splice-in-cn.html): Splice is a collection of reference applications that allow entities to operate, fund, and govern publicly available decentralized Canton synchronizers. It presents a reference method for operating decentralized Canton synchronizers through entities known as Super Validators (SVs). Within the Canton
+- [Glossary of concepts](https://docs.digitalasset.com/build/3.4/reference/glossary.html): This glossary is alphabetically sorted. Use the TOC to find the entry you are looking for.
+
