@@ -403,15 +403,32 @@ export class CantonClient {
 				submitResultSchema,
 			);
 		} catch (err) {
+			if (!(err instanceof NexusLedgerError)) throw err;
+
 			// DUPLICATE_COMMAND (HTTP 409 / gRPC ALREADY_EXISTS) means the command
 			// was already accepted — treat as success per Canton deduplication spec.
-			if (err instanceof NexusLedgerError && isDuplicateCommandError(err)) {
+			if (isDuplicateCommandError(err)) {
 				const d = err.details as Record<string, unknown> | undefined;
 				return {
 					updateId: (d?.updateId as string | undefined) ?? body.commandId,
 					completionOffset: (d?.completionOffset as number | undefined) ?? 0,
 				};
 			}
+
+			// SUBMISSION_ALREADY_IN_FLIGHT means the participant is still processing
+			// an earlier attempt with this submissionId. Issue a single retry with a
+			// fresh submissionId after a short back-off (same commandId — same change).
+			if (isSubmissionInFlightError(err)) {
+				await new Promise((r) => setTimeout(r, 500));
+				const retryBody = { ...body, submissionId: crypto.randomUUID() };
+				return await this.request<SubmitResult>(
+					"POST",
+					`${this.apiBase}/commands/submit-and-wait`,
+					retryBody,
+					submitResultSchema,
+				);
+			}
+
 			throw err;
 		}
 	}
@@ -800,4 +817,17 @@ function isDuplicateCommandError(err: NexusLedgerError): boolean {
 	const d = err.details as Record<string, unknown> | undefined;
 	const msg = typeof d?.message === "string" ? d.message : "";
 	return msg.includes("DUPLICATE_COMMAND") || msg.includes("ALREADY_EXISTS");
+}
+
+/**
+ * Returns true for SUBMISSION_ALREADY_IN_FLIGHT errors.
+ * The participant is already processing this (commandId, submissionId) pair —
+ * wait briefly and retry with a fresh submissionId.
+ */
+function isSubmissionInFlightError(err: NexusLedgerError): boolean {
+	// Canton returns 425 Too Early for in-flight submissions
+	if (err.statusCode === 425) return true;
+	const d = err.details as Record<string, unknown> | undefined;
+	const msg = typeof d?.message === "string" ? d.message : "";
+	return msg.includes("SUBMISSION_ALREADY_IN_FLIGHT");
 }

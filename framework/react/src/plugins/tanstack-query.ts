@@ -576,8 +576,6 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 			const [connected, setConnected] = useState(false);
 			// Store only the close function — avoids TS property issues
 			const closeRef = useRef<(() => void) | null>(null);
-			const partiesKey = JSON.stringify(options?.parties ?? []);
-
 			useEffect(() => {
 				if (!commandId) {
 					setState({ status: "idle" });
@@ -633,8 +631,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					closeRef.current?.();
 					closeRef.current = null;
 				};
-			// eslint-disable-next-line react-hooks/exhaustive-deps
-			}, [commandId, options?.submissionId, options?.fromOffset, partiesKey]);
+			}, [commandId, options?.submissionId, options?.fromOffset, options?.parties]);
 
 			return { state, connected, close: () => closeRef.current?.() };
 		},

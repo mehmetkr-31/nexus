@@ -385,7 +385,8 @@ export interface NexusClient {
 	packages?: PackageResolver;
 	auth: {
 		partyId: PartyIdResolver;
-		session: SessionManager;
+		/** Only present when a SessionManager is explicitly configured (e.g. Next.js server). */
+		session?: SessionManager;
 	};
 	ledger: {
 		contracts: ContractQuery;

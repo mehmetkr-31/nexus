@@ -1,5 +1,4 @@
 import { PartyIdResolver } from "./auth/party-id-resolver.ts";
-import { SessionManager } from "./auth/session-manager.ts";
 import { CantonClient } from "./client/canton-client.ts";
 import { CommandSubmitter } from "./ledger/command-submitter.ts";
 import { ContractQuery } from "./ledger/contract-query.ts";
@@ -88,7 +87,6 @@ export async function createNexus<
 		http,
 		auth: {
 			partyId: new PartyIdResolver(http),
-			session: new SessionManager({}),
 		},
 		ledger: {
 			contracts: new ContractQuery(http, packages),
