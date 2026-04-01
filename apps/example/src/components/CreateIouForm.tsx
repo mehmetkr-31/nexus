@@ -15,6 +15,7 @@ type IouPayload = {
 	amount: string;
 	currency: string;
 	owner: string;
+	observers: string[];
 };
 
 export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
@@ -43,6 +44,7 @@ export function CreateIouForm({ partyId: guestPartyId }: { partyId: string }) {
 				amount,
 				currency,
 				owner,
+				observers: [],
 			},
 			actAs,
 		});

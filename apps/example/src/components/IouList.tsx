@@ -1,7 +1,6 @@
 "use client";
 
 import type { ActiveContract, TemplateDescriptor } from "@nexus-framework/react";
-import { useQuery } from "@tanstack/react-query";
 import { Clock, Trash2, Wallet } from "lucide-react";
 import { useMemo } from "react";
 import { nexus } from "../lib/nexus-client";
@@ -21,11 +20,7 @@ const IOU_TEMPLATE: TemplateDescriptor = {
 export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { data, isLoading } = useQuery(
-		nexus.query.contracts<IouPayload>({ templateId: IOU_TEMPLATE, parties }),
-	);
-
-	const contracts = data?.contracts ?? [];
+	const { contracts, isLoading } = nexus.useContracts<IouPayload>({ templateId: IOU_TEMPLATE, parties });
 
 	if (isLoading) {
 		return (

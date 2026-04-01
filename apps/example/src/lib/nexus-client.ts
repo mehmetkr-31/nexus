@@ -25,6 +25,8 @@ export const nexus = await createNexusClient({
 			: (process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575"),
 	plugins: [
 		sandboxAuth({
+			// WARNING: NEXT_PUBLIC_ prefix embeds this value in the client bundle.
+			// This is intentional for sandbox/dev only — never use a real secret here.
 			secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? "secret",
 			userId: NEXUS_USER_ID,
 		}),

@@ -36,7 +36,7 @@ export async function resolveServerSession() {
 
 	try {
 		const partyId = await client.auth.partyId.resolvePartyId(SANDBOX_USER_ID);
-		return { client, partyId };
+		return { client: await getServerClient(partyId), partyId };
 	} catch (err: unknown) {
 		const msg = String((err as { message?: string })?.message ?? err);
 		const isNotFound =
