@@ -1,0 +1,79 @@
+// /framework/core/src/command/ledger-fetch.ts
+
+/**
+ * A native, completely lightweight fetch layer bypassing legacy dependency wrappers.
+ * Safely delivers command payloads strictly adhering to the Canton JSON API v2 protocol.
+ */
+export class CantonJsonApiClient {
+	// Root address of the targeted Canton Ledger API node.
+	private readonly baseUrl: string;
+
+	constructor(baseUrl: string) {
+		this.baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+	}
+
+	/**
+	 * Takes an active Daml Template ID and its generated encoded payload format,
+	 * pushing this CreateCommand to the Canton HTTP integration node.
+	 *
+	 * @param token An active, externally authenticated JWT or OAuth identity token
+	 * @param templateId The universally unique ledger template identifier
+	 * @param encodedPayload Verified and Daml-LF encoded payload representing template parameters
+	 */
+	public async create(
+		token: string | undefined,
+		templateId: string,
+		encodedPayload: unknown,
+	): Promise<unknown> {
+		const result = (await this.submitCommand(token, "/v2/command/submit", {
+			commands: [
+				{
+					CreateCommand: {
+						templateId: templateId,
+						createArguments: encodedPayload,
+					},
+				},
+			],
+		})) as { events?: Array<{ created?: { payload?: unknown } }> };
+
+		// The Ledger usually responds by emitting multiple associated events.
+		// Returns solely the relevant originating payload created during submission.
+		const createdEvent = result?.events?.[0]?.created;
+		return createdEvent?.payload || {};
+	}
+
+	/**
+	 * General purpose execution layer bridging node-to-ledger JSON communications.
+	 */
+	private async submitCommand(
+		token: string | undefined,
+		endpoint: string,
+		body: unknown,
+	): Promise<unknown> {
+		const headers: Record<string, string> = {
+			"Content-Type": "application/json",
+		};
+
+		// Safely appends Bearer schema should an authentication token be supplied.
+		if (token) {
+			headers.Authorization = `Bearer ${token}`;
+		}
+
+		try {
+			const res = await fetch(`${this.baseUrl}${endpoint}`, {
+				method: "POST",
+				headers,
+				body: JSON.stringify(body),
+			});
+
+			if (!res.ok) {
+				const errText = await res.text();
+				throw new Error(`Canton Ledger Error (${res.status}): ${errText}`);
+			}
+
+			return await res.json();
+		} catch (e: unknown) {
+			throw new Error(`Unable to communicate with the Canton ledger: ${(e as Error).message}`);
+		}
+	}
+}

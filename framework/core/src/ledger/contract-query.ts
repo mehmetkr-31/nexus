@@ -10,7 +10,7 @@ import type {
 import { fetchAllPages } from "../utils/pagination.ts";
 import type { PackageResolver } from "./package-resolver.ts";
 
-export interface ContractQueryOptions<T = unknown> {
+export interface ContractQueryOptions<_T = unknown> {
 	/** Daml template ID — "packageId:Module:Entity", TemplateId object, TemplateDescriptor, or DamlTemplate */
 	templateId: NexusTemplateIdentifier;
 	/** Party IDs to query as */
