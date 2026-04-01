@@ -9,6 +9,8 @@
 		"lint": "eslint"
 	},
 	"dependencies": {
+		"@daml/types": "^2.10.4",
+		"@daml.js/nexus-example-0.0.1": "workspace:*",
 		"@nexus-framework/core": "workspace:*",
 		"@nexus-framework/react": "workspace:*",
 		"@tanstack/react-query": "catalog:",

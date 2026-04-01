@@ -55,23 +55,21 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 							 * Payload is verified using strict JSON-Type-Validation and encoded into Daml-LF.
 							 */
 							create: async (payload: unknown) => {
-								const validated = damlTemplate.decoder.run(payload);
+								const result = damlTemplate.decoder.run(payload) as {
+									ok: boolean;
+									result?: unknown;
+									error?: { message: string };
+								};
 
-								let finalPayload = validated;
-								if (validated && typeof validated === "object" && "ok" in validated) {
-									const valObj = validated as unknown as {
-										error: { message: string };
-										result: unknown;
-									};
-									if (!validated.ok) {
-										throw new Error(
-											`Daml Schema Validation Error (${contractKey}): ${valObj.error.message}`,
-										);
-									}
-									finalPayload = valObj.result;
+								if (!result.ok || result.result === undefined) {
+									throw new Error(
+										`Daml Schema Validation Error (${contractKey}): ${
+											result.error?.message ?? "Unknown validation failure"
+										}`,
+									);
 								}
 
-								const encodedArg = damlTemplate.encode(finalPayload);
+								const encodedArg = damlTemplate.encode(result.result);
 								return ledgerClient.create(token, damlTemplate.templateId, encodedArg);
 							},
 

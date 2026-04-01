@@ -48,11 +48,8 @@ export const nexus = await createNexusClient({
 							return null;
 						}
 
-						// Non-consuming choices can return partial payload updates
-						// Example: if we had a 'Rename' choice:
-						// if (choice === 'Rename') return { description: _arg.newName };
-
-						return contract.payload;
+						// Return the current payload as the optimistic state
+						return contract.payload as Partial<typeof contract.payload>;
 					},
 				},
 			],
