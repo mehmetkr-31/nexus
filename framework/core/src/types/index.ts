@@ -67,7 +67,48 @@ export interface TemplateId {
 	entityName: string;
 }
 
-export interface ActiveContract<T = Record<string, unknown>> {
+/**
+ * Matches the structure of @daml/types Template objects produced by codegen.
+ * T: The payload type of the contract.
+ * K: The contract key type.
+ * I: The template ID string literal.
+ */
+export interface DamlTemplateIdentity {
+	templateId: string;
+	templateIdWithPackageId: string;
+}
+
+export interface DamlTemplate<T = unknown, K = unknown, I extends string = string>
+	extends DamlTemplateIdentity {
+	templateId: I;
+	decoder: { decode: (raw: unknown) => T };
+	encode: (payload: T) => unknown;
+	keyDecoder: { decode: (raw: unknown) => K };
+	keyEncode: (key: K) => unknown;
+}
+
+/**
+ * A union type for anything that can identify a Daml template.
+ */
+export type NexusTemplateIdentifier =
+	| string
+	| TemplateId
+	| TemplateDescriptor
+	| DamlTemplateIdentity;
+
+/**
+ * Matches the structure of @daml/types Choice objects produced by codegen.
+ */
+export interface DamlChoice<T, Arg, Res, K = unknown> {
+	template: () => DamlTemplate<T, K>;
+	choiceName: string;
+	argumentDecoder: { decode: (raw: unknown) => Arg };
+	argumentEncode: (arg: Arg) => unknown;
+	resultDecoder: { decode: (raw: unknown) => Res };
+	resultEncode: (res: Res) => unknown;
+}
+
+export interface ActiveContract<T = unknown> {
 	contractId: string;
 	templateId: TemplateId;
 	payload: T;
@@ -83,19 +124,24 @@ export interface ActiveContractsResponse<T = Record<string, unknown>> {
 	nextPageToken?: string;
 }
 
-// ─── Commands ────────────────────────────────────────────────────────────────
+export interface ContractQueryFilters {
+	parties?: string[];
+	filter?: Record<string, unknown>;
+	pageSize?: number;
+	pageToken?: string;
+}
 
-export interface CreateCommand<T = Record<string, unknown>> {
+export interface CreateCommand<T = unknown> {
 	type: "create";
-	templateId: string | TemplateId | TemplateDescriptor;
+	templateId: NexusTemplateIdentifier;
 	createArguments: T;
 }
 
-export interface ExerciseCommand<T = Record<string, unknown>> {
+export interface ExerciseCommand<T = unknown> {
 	type: "exercise";
-	templateId: string | TemplateId | TemplateDescriptor;
+	templateId: NexusTemplateIdentifier;
 	contractId: string;
-	choice: string;
+	choice: string | DamlChoice<unknown, T, unknown, unknown>;
 	choiceArgument: T;
 }
 
@@ -394,6 +440,15 @@ export interface NexusClient {
 		commands: CommandSubmitter;
 		identity: LedgerIdentity;
 	};
+	/**
+	 * Simplified query interface using Template-based inference.
+	 * Returns all active contracts matching the template.
+	 */
+	query: ContractQuery["query"];
+	/**
+	 * Simplified choice execution interface using Template/Choice-based inference.
+	 */
+	exercise: CommandSubmitter["exercise"];
 	getToken: () => Promise<string>;
 	getCachedToken: () => string | null;
 }

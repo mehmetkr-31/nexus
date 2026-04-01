@@ -52,9 +52,7 @@ export type LedgerRouteHandler = (req: Request) => Promise<Response>;
  * export const POST = handler;
  * ```
  */
-export function createLedgerRouteHandler(
-	config: LedgerRouteHandlerConfig,
-): LedgerRouteHandler {
+export function createLedgerRouteHandler(config: LedgerRouteHandlerConfig): LedgerRouteHandler {
 	const sessionMgr = new SessionManager({
 		encryptionKey: config.sessionEncryptionKey,
 		cookieName: config.sessionCookieName,

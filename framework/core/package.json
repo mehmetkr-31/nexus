@@ -12,6 +12,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@canton-network/core-ledger-client": "^0.34.0",
 		"zod": "catalog:"
 	},
 	"devDependencies": {

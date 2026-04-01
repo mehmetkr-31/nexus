@@ -1,10 +1,10 @@
 import type { ActiveContractsResponse, NexusClient } from "@nexus-framework/core";
 import type { QueryClient } from "@tanstack/react-query";
 import {
-	contractQueryOptions,
 	type ContractQueryOptionsParams,
-	interfaceQueryOptions,
+	contractQueryOptions,
 	type InterfaceQueryOptionsParams,
+	interfaceQueryOptions,
 } from "../query/query-options.ts";
 
 export interface GetLedgerDataOptions<_T = Record<string, unknown>> {

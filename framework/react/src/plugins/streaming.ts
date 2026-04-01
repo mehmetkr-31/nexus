@@ -1,13 +1,18 @@
 "use client";
 
-import type { ActiveContract, StreamHandle, TemplateId } from "@nexus-framework/core";
+import type {
+	ActiveContract,
+	NexusTemplateIdentifier,
+	StreamHandle,
+	TemplateId,
+} from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NexusClientPlugin } from "./tanstack-query.ts";
 
 // ─── Single-stream state ──────────────────────────────────────────────────────
 
-export interface StreamContractsState<T = Record<string, unknown>> {
+export interface StreamContractsState<T = unknown> {
 	/** Current set of active contracts (reflects creates + archives) */
 	contracts: ActiveContract<T>[];
 	/** True once the initial ACS snapshot is fully delivered */
@@ -26,8 +31,8 @@ export interface StreamContractsState<T = Record<string, unknown>> {
 	updateToken: (newToken: string) => void;
 }
 
-export interface UseStreamContractsOptions<_T = Record<string, unknown>> {
-	templateId: string | import("@nexus-framework/core").TemplateDescriptor;
+export interface UseStreamContractsOptions<T = unknown> {
+	templateId: NexusTemplateIdentifier;
 	/**
 	 * Party IDs to query as. Pass a stable reference (useMemo / module-level const)
 	 * to avoid unnecessary re-subscriptions.
@@ -45,13 +50,13 @@ export interface UseStreamContractsOptions<_T = Record<string, unknown>> {
 
 export interface MultiStreamMapping {
 	[key: string]: {
-		templateId: string | import("@nexus-framework/core").TemplateDescriptor;
+		templateId: NexusTemplateIdentifier;
 		parties?: string[];
 	};
 }
 
 export type MultiStreamContractsState<TMap extends MultiStreamMapping> = {
-	[K in keyof TMap]: ActiveContract<Record<string, unknown>>[];
+	[K in keyof TMap]: ActiveContract<unknown>[];
 } & {
 	/** True when ALL streams have received their initial ACS snapshot */
 	isLive: boolean;
@@ -81,7 +86,7 @@ export interface StreamingActions extends Record<string, unknown> {
 	/**
 	 * Stream active contracts in real-time via WebSocket.
 	 */
-	useStreamContracts: <T = Record<string, unknown>>(
+	useStreamContracts: <T = unknown>(
 		options: UseStreamContractsOptions<T>,
 	) => StreamContractsState<T>;
 
@@ -115,7 +120,7 @@ export function streamingPlugin(): NexusClientPlugin<{
 		getActions: (client): StreamingActions => ({
 			// ─── useStreamContracts ───────────────────────────────────────────────
 
-			useStreamContracts: <T = Record<string, unknown>>(
+			useStreamContracts: <T = unknown>(
 				opts: UseStreamContractsOptions<T>,
 			): StreamContractsState<T> => {
 				const [contracts, setContracts] = useState<ActiveContract<T>[]>([]);
@@ -201,7 +206,7 @@ export function streamingPlugin(): NexusClientPlugin<{
 						}
 						handleRef.current = null;
 					};
-				}, [stableTemplateId, opts.parties?.join(","), enabled]);
+				}, [stableTemplateId, opts.parties?.join(","), enabled, client.http]);
 
 				const close = useCallback(() => {
 					handleRef.current?.close();
@@ -220,8 +225,8 @@ export function streamingPlugin(): NexusClientPlugin<{
 			useMultiStream: <TMap extends MultiStreamMapping>(
 				opts: UseMultiStreamOptions<TMap>,
 			): MultiStreamContractsState<TMap> => {
-				const [contractsMap, setContractsMap] = useState<Record<string, ActiveContract[]>>(() =>
-					Object.fromEntries(Object.keys(opts.mapping).map((k) => [k, []])),
+				const [contractsMap, setContractsMap] = useState<Record<string, ActiveContract<unknown>[]>>(
+					() => Object.fromEntries(Object.keys(opts.mapping).map((k) => [k, []])),
 				);
 				const [liveSet, setLiveSet] = useState<Set<string>>(new Set());
 				const [connectedSet, setConnectedSet] = useState<Set<string>>(new Set());
@@ -260,7 +265,7 @@ export function streamingPlugin(): NexusClientPlugin<{
 						const stableId = toStableTemplateId(config.templateId);
 
 						client.http
-							.streamActiveContracts(
+							.streamActiveContracts<unknown>(
 								stableId,
 								{
 									onCreate: (contract) => {
@@ -338,7 +343,7 @@ export function streamingPlugin(): NexusClientPlugin<{
 						}
 						handlesRef.current.clear();
 					};
-				}, [mappingKey, enabled]);
+				}, [mappingKey, enabled, client.http]);
 
 				const close = useCallback(() => {
 					for (const handle of handlesRef.current.values()) {

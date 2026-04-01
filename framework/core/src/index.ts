@@ -26,15 +26,52 @@ export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin.ts";
 export { PackageResolver } from "./ledger/package-resolver.ts";
 export { provisionSandboxUser } from "./ledger/sandbox-provision.ts";
 export { fetchMiddlewarePlugin } from "./plugins/fetch-middleware-plugin.ts";
-export * from "./types/index.ts";
+export type {
+	ActiveContract,
+	ActiveContractsResponse,
+	ActiveInterface,
+	ActiveInterfacesResponse,
+	ArchivedEvent,
+	Command,
+	CompletionEvent,
+	ContractQueryFilters,
+	CreateCommand,
+	DamlChoice,
+	DamlTemplate,
+	DamlTemplateIdentity,
+	DeduplicationPeriod,
+	ExerciseCommand,
+	ExercisedEvent,
+	ExerciseResult,
+	LedgerEnd,
+	NexusSession,
+	NexusTemplateIdentifier,
+	PackageId,
+	StreamHandle,
+	SubmitResult,
+	SynchronizerInfo,
+	TemplateDescriptor,
+	TemplateId,
+	TransactionEvent,
+	TransactionResult,
+	TransactionStatus,
+} from "./types/index.ts";
+export {
+	NexusAuthError,
+	NexusError,
+	NexusLedgerError,
+} from "./types/index.ts";
+
 export type {
 	FetchMiddleware,
 	InferNexusPlugins,
 	InferPluginContext,
+	NexusClient,
+	NexusConfig,
 	NexusPlugin,
 	RequestConfig,
 } from "./types/plugin.ts";
-export * from "./types/plugin.ts";
+
 export * from "./utils/jwt.ts";
 export * from "./utils/template.ts";
 
@@ -77,6 +114,9 @@ export async function createNexus<
 
 	const packages = new PackageResolver(http);
 
+	const contracts = new ContractQuery(http, packages);
+	const commands = new CommandSubmitter(http, packages);
+
 	const client: NexusClient = {
 		config: {
 			ledgerApiUrl: options.ledgerApiUrl,
@@ -89,11 +129,13 @@ export async function createNexus<
 			partyId: new PartyIdResolver(http),
 		},
 		ledger: {
-			contracts: new ContractQuery(http, packages),
+			contracts,
 			interfaces: new InterfaceQuery(http, packages),
-			commands: new CommandSubmitter(http, packages),
+			commands,
 			identity: new LedgerIdentity(http),
 		},
+		query: contracts.query.bind(contracts),
+		exercise: commands.exercise.bind(commands),
 		getToken,
 		getCachedToken: () => authPlugin?.auth?.getCachedToken?.() ?? null,
 	};
@@ -104,9 +146,9 @@ export async function createNexus<
 		}
 	};
 
-	for (const plugin of options.plugins) {
-		if (plugin.id.endsWith("-auth") && plugin.setRefreshDispatcher) {
-			plugin.setRefreshDispatcher(dispatchRefresh);
+	for (const p of options.plugins) {
+		if (p.id.endsWith("-auth") && p.setRefreshDispatcher) {
+			p.setRefreshDispatcher(dispatchRefresh);
 		}
 	}
 

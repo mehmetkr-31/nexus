@@ -1,8 +1,14 @@
-import type { ActiveContract, TemplateDescriptor, TemplateId } from "@nexus-framework/core";
+import type {
+	ActiveContract,
+	NexusTemplateIdentifier,
+	TemplateDescriptor,
+	TemplateId,
+} from "@nexus-framework/core";
+import { toStableTemplateId } from "@nexus-framework/core";
 import type { NexusClientPlugin } from "./tanstack-query.ts";
 
-export interface OptimisticUpdateConfig<T = Record<string, unknown>> {
-	templateId: string | TemplateDescriptor;
+export interface OptimisticUpdateConfig<T = unknown> {
+	templateId: NexusTemplateIdentifier;
 	/**
 	 * Function to generate the optimistic update for a choice.
 	 * If it returns null, no update is applied for that choice.
@@ -15,14 +21,11 @@ export interface OptimisticUpdateConfig<T = Record<string, unknown>> {
 }
 
 export interface OptimisticUiPluginOptions {
-	updates: OptimisticUpdateConfig[];
+	updates: OptimisticUpdateConfig<unknown>[];
 }
 
 /**
  * Plugin that provides declarative optimistic UI logic for Nexus.
- *
- * It extends the client with an `optimistic` registry that hooks can use
- * to look up how to update the cache for a given template/choice combination.
  */
 export function optimisticUiPlugin(options: OptimisticUiPluginOptions): NexusClientPlugin<{
 	optimistic: {
@@ -38,13 +41,10 @@ export function optimisticUiPlugin(options: OptimisticUiPluginOptions): NexusCli
 		id: "optimistic-ui",
 
 		getActions: () => {
-			const registry = new Map<string, OptimisticUpdateConfig>();
+			const registry = new Map<string, OptimisticUpdateConfig<unknown>>();
 
 			for (const update of options.updates) {
-				const key =
-					typeof update.templateId === "string"
-						? update.templateId
-						: `${update.templateId.packageName}:${update.templateId.moduleName}:${update.templateId.entityName}`;
+				const key = toStableTemplateId(update.templateId);
 				registry.set(key, update);
 			}
 
@@ -56,13 +56,13 @@ export function optimisticUiPlugin(options: OptimisticUiPluginOptions): NexusCli
 						argument: unknown,
 						contract: ActiveContract,
 					) => {
-						const key =
-							typeof templateId === "string"
-								? templateId
-								: `${templateId.packageId}:${templateId.moduleName}:${templateId.entityName}`;
-
+						const key = toStableTemplateId(templateId);
 						const config = registry.get(key);
-						return config?.onChoice?.(choice, argument, contract) ?? null;
+						// We cast to any here because the registry stores unknown configs,
+						// and we're matching by templateId which guarantees the payload type matches.
+						// This is safe because onChoice only returns a Partial of the same contract.
+						// biome-ignore lint/suspicious/noExplicitAny: Registry lookup guarantees type safety at runtime
+						return (config as any)?.onChoice?.(choice, argument, contract) ?? null;
 					},
 				},
 			};

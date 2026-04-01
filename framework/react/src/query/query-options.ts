@@ -1,7 +1,9 @@
 import type {
 	ActiveContractsResponse,
 	ActiveInterfacesResponse,
+	DamlTemplate,
 	NexusClient,
+	NexusTemplateIdentifier,
 	TemplateDescriptor,
 } from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
@@ -10,8 +12,8 @@ import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
 // ─── Contract queryOptions factory ───────────────────────────────────────────
 
-export interface ContractQueryOptionsParams<_T = Record<string, unknown>> {
-	templateId: string | TemplateDescriptor;
+export interface ContractQueryOptionsParams<T = unknown> {
+	templateId: NexusTemplateIdentifier;
 	parties?: string[];
 	filter?: Record<string, unknown>;
 	/**
@@ -24,29 +26,15 @@ export interface ContractQueryOptionsParams<_T = Record<string, unknown>> {
 	staleTime?: number;
 }
 
-export interface ContractQueryOptionsInput<T = Record<string, unknown>>
-	extends ContractQueryOptionsParams<T> {
+export interface ContractQueryOptionsInput<T = unknown> extends ContractQueryOptionsParams<T> {
 	client: NexusClient;
 }
 
 /**
  * Creates a TanStack Query `queryOptions` object for fetching active contracts.
  * Use with `useQuery` or `useSuspenseQuery`.
- *
- * @example
- * ```ts
- * const options = contractQueryOptions({
- *   client: nexus,
- *   templateId: "pkg:Mod:Iou",
- *   parties: ["Alice::abc"],
- * });
- *
- * const { data } = useQuery(options);
- * ```
  */
-export function contractQueryOptions<T = Record<string, unknown>>(
-	input: ContractQueryOptionsInput<T>,
-) {
+export function contractQueryOptions<T = unknown>(input: ContractQueryOptionsInput<T>) {
 	const filters: ContractQueryFilters = {
 		parties: input.parties,
 		filter: input.filter,
@@ -124,10 +112,7 @@ export function partyIdQueryOptions(input: PartyIdQueryOptionsInput) {
 
 // ─── Interface queryOptions factory ──────────────────────────────────────────
 
-export interface InterfaceQueryOptionsParams<
-	_TView = Record<string, unknown>,
-	_TPayload = Record<string, unknown>,
-> {
+export interface InterfaceQueryOptionsParams<TView = unknown, TPayload = unknown> {
 	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
 	/**
@@ -142,7 +127,7 @@ export interface InterfaceQueryOptionsParams<
 	staleTime?: number;
 }
 
-export interface InterfaceQueryOptionsInput<TView, TPayload>
+export interface InterfaceQueryOptionsInput<TView = unknown, TPayload = unknown>
 	extends InterfaceQueryOptionsParams<TView, TPayload> {
 	client: NexusClient;
 }
@@ -151,10 +136,9 @@ export interface InterfaceQueryOptionsInput<TView, TPayload>
  * Creates a TanStack Query `queryOptions` object for fetching active contracts
  * viewed through a Daml interface.
  */
-export function interfaceQueryOptions<
-	TView = Record<string, unknown>,
-	TPayload = Record<string, unknown>,
->(input: InterfaceQueryOptionsInput<TView, TPayload>) {
+export function interfaceQueryOptions<TView = unknown, TPayload = unknown>(
+	input: InterfaceQueryOptionsInput<TView, TPayload>,
+) {
 	const stableId = toStableTemplateId(input.interfaceId);
 
 	return queryOptions<ActiveInterfacesResponse<TView, TPayload>>({
@@ -184,9 +168,9 @@ export function interfaceQueryOptions<
 
 // ─── Single Fetch queryOptions ────────────────────────────────────────────────
 
-export function fetchByIdOptions<T = Record<string, unknown>>(input: {
+export function fetchByIdOptions<T = unknown>(input: {
 	client: NexusClient;
-	templateId: string | TemplateDescriptor;
+	templateId: NexusTemplateIdentifier;
 	contractId: string;
 	parties?: string[];
 	enabled?: boolean;
@@ -207,9 +191,9 @@ export function fetchByIdOptions<T = Record<string, unknown>>(input: {
 	});
 }
 
-export function fetchByKeyOptions<T = Record<string, unknown>, K = unknown>(input: {
+export function fetchByKeyOptions<T = unknown, K = unknown>(input: {
 	client: NexusClient;
-	templateId: string | TemplateDescriptor;
+	templateId: NexusTemplateIdentifier;
 	key: K;
 	keyPredicate: (payload: T) => boolean;
 	parties?: string[];

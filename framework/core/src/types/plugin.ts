@@ -10,6 +10,31 @@ export interface RequestConfig {
 	body?: unknown;
 }
 
+export type {
+	ActiveContract,
+	ActiveContractsResponse,
+	ActiveInterface,
+	ActiveInterfacesResponse,
+	Command,
+	CompletionEvent,
+	ContractQueryFilters,
+	CreateCommand,
+	DamlChoice,
+	DamlTemplate,
+	DamlTemplateIdentity,
+	ExerciseCommand,
+	ExerciseResult,
+	LedgerEnd,
+	NexusClient,
+	NexusConfig,
+	SubmitResult,
+	SynchronizerInfo,
+	TemplateDescriptor,
+	TemplateId,
+	TransactionResult,
+	TransactionStatus,
+} from "./index.ts";
+
 export interface FetchMiddleware {
 	onRequest?: (config: RequestConfig) => RequestConfig | Promise<RequestConfig>;
 	onResponse?: (response: Response, config: RequestConfig) => void | Promise<void>;
