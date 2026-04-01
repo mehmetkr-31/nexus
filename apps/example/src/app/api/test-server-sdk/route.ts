@@ -1,6 +1,6 @@
+import type { Iou } from "@daml.js/nexus-example-0.0.1/lib/Iou";
 import { type NextRequest, NextResponse } from "next/server";
 import { backendSDK } from "../../../lib/nexus-server";
-import type { Iou } from "@daml.js/nexus-example-0.0.1/lib/Iou";
 
 /**
  * Bu rota yeni nesil "Server-Side" Canton Client SDK'sını test eder.
@@ -12,8 +12,8 @@ import type { Iou } from "@daml.js/nexus-example-0.0.1/lib/Iou";
 export async function GET(_req: NextRequest) {
 	try {
 		// 1. Yeni Isomorphic Server Client üzerinden "Alice" olarak context açıyoruz.
-		// (Okumalar postgres PQS üzerinden geçtiği için kimlik doğrulamasına "şeffaf" bırakılabilir,
-		// ama gerçek bir auth mekanizmasında PQS seviyesinde RLS kullanılır)
+		// Artık her okuma işlemi "SET LOCAL app.current_user = 'alice'" RLS ayarıyla
+		// sadece Alice'in görmeye yetkili olduğu sözleşmeleri güvenle filtreler!
 		const userContext = backendSDK.withUser("alice");
 
 		// 2. Kysely PQS Motorunu kullanarak 2 milisaniyede veriyi SQL'den çekiyoruz!
@@ -47,8 +47,12 @@ export async function POST(req: NextRequest) {
 
 		const userContext = backendSDK.withUser("alice");
 
+		// `any` tipinde bir nesneyi doğrudan göndermek artık derleyici tarafından engellendiği için,
+		// gelen isteği ya Zod/Typegen ile doğrulamalı ya da tip dönüşümü yapmalıyız.
+		const typedPayload = payload as Iou;
+
 		// Ledger API (HTTP JSON v2) üzerinden oluşturulmasını tetikle!
-		const createdPayload = await userContext.Iou.create(payload);
+		const createdPayload = await userContext.Iou.create(typedPayload);
 
 		return NextResponse.json({
 			status: "success",

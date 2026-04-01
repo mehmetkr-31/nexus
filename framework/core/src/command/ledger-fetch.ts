@@ -43,6 +43,41 @@ export class CantonJsonApiClient {
 	}
 
 	/**
+	 * Exercises a choice on an active ledger contract.
+	 *
+	 * @param token Authentication token.
+	 * @param templateId Template identifier of the contract.
+	 * @param contractId Ledger assigned unique ID of the contract.
+	 * @param choice Name of the choice to exercise.
+	 * @param choiceArgument Optional arguments for the choice.
+	 */
+	public async exercise(
+		token: string | undefined,
+		templateId: string,
+		contractId: string,
+		choice: string,
+		choiceArgument: unknown = {},
+	): Promise<unknown> {
+		const result = (await this.submitCommand(token, "/v2/command/submit", {
+			commands: [
+				{
+					ExerciseCommand: {
+						templateId,
+						contractId,
+						choice,
+						choiceArgument,
+					},
+				},
+			],
+		})) as { events?: Array<{ exercised?: { exerciseResult?: unknown } }> };
+
+		const exercisedEvent = result?.events?.find(
+			(e: { exercised?: unknown }) => e.exercised,
+		)?.exercised;
+		return exercisedEvent?.exerciseResult || {};
+	}
+
+	/**
 	 * General purpose execution layer bridging node-to-ledger JSON communications.
 	 */
 	private async submitCommand(

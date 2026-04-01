@@ -34,7 +34,7 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 	const pqsEngine = new KyselyPqsEngine(config.pqsUrl);
 
 	return {
-		withUser: (_partyId: string, token?: string) => {
+		withUser: (partyId: string, token?: string) => {
 			const proxyClient = new Proxy(
 				{},
 				{
@@ -77,7 +77,40 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 							 * Queries active contracts rapidly via PostgreSQL PQS.
 							 */
 							findMany: async (options?: PqsFindOptions<unknown>) => {
-								return pqsEngine.findMany(damlTemplate.templateId, options);
+								return pqsEngine.findMany(partyId, damlTemplate.templateId, options);
+							},
+
+							/**
+							 * Queries a single contract rapidly via PostgreSQL PQS.
+							 */
+							findById: async (contractId: string) => {
+								return pqsEngine.findById(partyId, damlTemplate.templateId, contractId);
+							},
+
+							/**
+							 * Submits an ExerciseCommand to the Canton Ledger JSON API.
+							 */
+							exercise: async (contractId: string, choiceName: string, choiceArgument: unknown) => {
+								return ledgerClient.exercise(
+									token,
+									damlTemplate.templateId,
+									contractId,
+									choiceName,
+									choiceArgument,
+								);
+							},
+
+							/**
+							 * Archives the contract by exercising the Archive choice.
+							 */
+							archive: async (contractId: string) => {
+								return ledgerClient.exercise(
+									token,
+									damlTemplate.templateId,
+									contractId,
+									"Archive",
+									{},
+								);
 							},
 						};
 					},

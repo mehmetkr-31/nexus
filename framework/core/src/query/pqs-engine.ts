@@ -1,4 +1,4 @@
-import { Kysely, PostgresDialect } from "kysely";
+import { Kysely, PostgresDialect, sql } from "kysely";
 import pkg from "pg";
 
 const { Pool } = pkg;
@@ -26,56 +26,116 @@ export class KyselyPqsEngine {
 	}
 
 	/**
+	 * Scopes database queries within a transaction with an isolated session variable
+	 * for Row Level Security (RLS) enforcement.
+	 */
+	private async withRls<T>(
+		partyId: string,
+		callback: (trx: Kysely<GenericKyselyDb>) => Promise<T>,
+	): Promise<T> {
+		return this.db.transaction().execute(async (trx) => {
+			// Ensure sub-transaction privacy by setting session variable for RLS
+			await sql`SET LOCAL app.current_user = ${partyId}`.execute(trx);
+			return callback(trx);
+		});
+	}
+
+	/**
 	 * Takes a generic options object (similar to modern ORM find parameters),
 	 * building Kysely query chains for extremely fast payload retrieval.
 	 *
+	 * @param partyId The authenticated participant requesting data
 	 * @param templateIdRaw The raw Daml generated format of the Template ID
 	 * @param options Query and filter constraints
-	 * @returns Array of resulting database rows
+	 * @returns Array of resulting database rows (payloads)
 	 */
 	public async findMany(
+		partyId: string,
 		templateIdRaw: string,
 		options?: PqsFindOptions<unknown>,
 	): Promise<unknown[]> {
-		// PQS usually translates table names by replacing special formatting with underscores.
-		const tableName = sanitizePqsTableName(templateIdRaw);
+		return this.withRls(partyId, async (trx) => {
+			const tableName = sanitizePqsTableName(templateIdRaw);
+			let query = trx.selectFrom(tableName).selectAll();
 
-		let query = this.db.selectFrom(tableName).selectAll();
+			if (options?.where) {
+				query = applyWhere(query, options.where);
+			}
 
-		if (options?.where) {
-			for (const [key, val] of Object.entries(options.where)) {
-				if (typeof val === "object" && val !== null) {
-					const typedVal = val as unknown as Record<string, unknown>;
-					// Handle comparative operators
-					if ("gt" in typedVal) query = query.where(key, ">", typedVal.gt);
-					if ("gte" in typedVal) query = query.where(key, ">=", typedVal.gte);
-					if ("lt" in typedVal) query = query.where(key, "<", typedVal.lt);
-					if ("lte" in typedVal) query = query.where(key, "<=", typedVal.lte);
-				} else {
-					// Handle strict equality constraints
-					query = query.where(key, "=", val);
+			if (options?.limit) {
+				query = query.limit(options.limit as number);
+			}
+
+			if (options?.orderBy) {
+				for (const [key, direction] of Object.entries(options.orderBy)) {
+					query = query.orderBy(key, direction as "asc" | "desc");
 				}
 			}
-		}
 
-		if (options?.limit) {
-			query = query.limit(options.limit as number);
-		}
+			const rows = await query.execute();
 
-		if (options?.orderBy) {
-			for (const [key, direction] of Object.entries(options.orderBy)) {
-				query = query.orderBy(key, direction as "asc" | "desc");
-			}
-		}
+			// PQS tables typically wrap the real data inside a 'payload' column or field
+			return rows.map((r: unknown) => {
+				const rec = r as Record<string, unknown>;
+				return rec.payload ?? rec;
+			});
+		});
+	}
 
-		// Execute compiled SQL directly against the Canton PQS replica
-		const rows = await query.execute();
-		return rows as unknown[];
+	/**
+	 * Fetches a single contract by its Ledger assigned ID.
+	 */
+	public async findById(
+		partyId: string,
+		templateIdRaw: string,
+		contractId: string,
+	): Promise<unknown | null> {
+		return this.withRls(partyId, async (trx) => {
+			const tableName = sanitizePqsTableName(templateIdRaw);
+			const row = await trx
+				.selectFrom(tableName)
+				.selectAll()
+				.where("contract_id", "=", contractId)
+				.executeTakeFirst();
+
+			if (!row) return null;
+			const rec = row as Record<string, unknown>;
+			return rec.payload ?? rec;
+		});
 	}
 
 	public destroy() {
 		return this.db.destroy();
 	}
+}
+
+/**
+ * Recursively applies OR/AND/Equal filters.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: Recursive Kysely query builders are extremely hard to type explicitly
+function applyWhere(query: any, whereObj: Record<string, unknown>): any {
+	for (const [key, val] of Object.entries(whereObj)) {
+		if (key === "AND" && Array.isArray(val)) {
+			// biome-ignore lint/suspicious/noExplicitAny: Recursive ExpressionBuilder
+			query = query.where((eb: any) =>
+				eb.and(val.map((condition: Record<string, unknown>) => applyWhere(eb, condition))),
+			);
+		} else if (key === "OR" && Array.isArray(val)) {
+			// biome-ignore lint/suspicious/noExplicitAny: Recursive ExpressionBuilder
+			query = query.where((eb: any) =>
+				eb.or(val.map((condition: Record<string, unknown>) => applyWhere(eb, condition))),
+			);
+		} else if (typeof val === "object" && val !== null) {
+			const typedVal = val as Record<string, unknown>;
+			if ("gt" in typedVal) query = query.where(key, ">", typedVal.gt);
+			if ("gte" in typedVal) query = query.where(key, ">=", typedVal.gte);
+			if ("lt" in typedVal) query = query.where(key, "<", typedVal.lt);
+			if ("lte" in typedVal) query = query.where(key, "<=", typedVal.lte);
+		} else {
+			query = query.where(key, "=", val);
+		}
+	}
+	return query;
 }
 
 /**

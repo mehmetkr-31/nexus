@@ -6,7 +6,7 @@ type IsAny<T> = 0 extends 1 & T ? true : false;
 type NoAny<T> = IsAny<T> extends true ? never : T;
 
 /**
- * Prettifies complex types (like intersections) to show a single flattened object 
+ * Prettifies complex types (like intersections) to show a single flattened object
  * in the IDE hover experience.
  */
 export type Prettify<T> = {
@@ -44,10 +44,10 @@ export interface PqsFindOptions<Payload> {
 export interface CommandQueryOperations<Payload> {
 	/**
 	 * Submits a Ledger Command to create a new contract.
-	 * 
-	 * The provided payload is automatically validated against the Daml schema 
+	 *
+	 * The provided payload is automatically validated against the Daml schema
 	 * and formatted to the network's standard encoding.
-	 * 
+	 *
 	 * @param payload The raw JavaScript object representing the Template arguments.
 	 *                Note: Passing 'any' is strictly forbidden to prevent type leaks.
 	 */
@@ -55,20 +55,36 @@ export interface CommandQueryOperations<Payload> {
 
 	/**
 	 * Queries active contracts utilizing high-performance SQL engines.
-	 * 
+	 *
 	 * Supports complex filtering equivalent to typical ORM find constraints,
 	 * ensuring millisecond-level responsiveness for large datasets.
-	 * 
+	 *
 	 * @param options Query and filter constraints.
 	 */
 	findMany: (options?: Prettify<PqsFindOptions<Payload>>) => Promise<Prettify<Payload>[]>;
 
 	/**
 	 * Returns a singular contract from the Ledger query store by its ID.
-	 * 
+	 *
 	 * @param contractId Ledger ID of the target contract.
 	 */
 	findById: (contractId: string) => Promise<Prettify<Payload> | null>;
+
+	/**
+	 * Exercises a choice on an active contract.
+	 *
+	 * @param contractId Ledger ID of the target contract.
+	 * @param choiceName Name of the choice to exercise.
+	 * @param choiceArgument Arguments for the choice.
+	 */
+	exercise: (contractId: string, choiceName: string, choiceArgument: unknown) => Promise<unknown>;
+
+	/**
+	 * Archives an active contract (shorthand for the Archive choice).
+	 *
+	 * @param contractId Ledger ID of the target contract.
+	 */
+	archive: (contractId: string) => Promise<unknown>;
 }
 
 export type ConstructNexusApi<T extends Record<string, unknown>> = {
