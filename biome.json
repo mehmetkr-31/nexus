@@ -68,7 +68,8 @@
 				"node_modules",
 				".turbo",
 				".next",
-				"**/framework/cli/templates/**"
+				"**/framework/cli/templates/**",
+				"**/sandbox/daml.js/**"
 			],
 			"linter": {
 				"enabled": false

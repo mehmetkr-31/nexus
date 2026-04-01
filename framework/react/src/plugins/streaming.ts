@@ -31,7 +31,7 @@ export interface StreamContractsState<T = unknown> {
 	updateToken: (newToken: string) => void;
 }
 
-export interface UseStreamContractsOptions<T = unknown> {
+export interface UseStreamContractsOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	/**
 	 * Party IDs to query as. Pass a stable reference (useMemo / module-level const)

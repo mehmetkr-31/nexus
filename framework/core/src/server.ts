@@ -1,38 +1,39 @@
 // /framework/core/src/server.ts
 
 import type { SessionManager } from "./auth/session-manager.js";
-import { CantonJsonApiClient } from "./command/ledger-fetch.js";
-import { KyselyPqsEngine } from "./query/pqs-engine.js";
 import type {
+	CommandQueryOperations,
 	ConstructNexusApi,
 	DamlTemplate,
-	NexusClientConfig,
+	NexusServerConfig,
 	NexusUniversalClient,
-	PqsFindOptions,
 } from "./types/client.js";
 
 export * from "./command/ledger-fetch.js";
+// Export the newly created plugins
+export * from "./plugins/canton-ledger.js";
+export * from "./plugins/pqs-database.js";
+export * from "./plugins/session-auth.js";
 export * from "./query/pqs-engine.js";
 export * from "./types/client.js";
 
 /**
  * Creates the Isomorphic Universal Nexus SDK Server Client.
- * This client integrates both the Canton JSON API for Ledger commands
- * and the PQS (Kysely-based) Engine for optimized contract queries.
+ * Highly modular, supporting custom plugins for Auth, Database (PQS), and Ledger.
  *
- * Note: This module performs server-side database connections and must
- * not be executed within browser environments.
- *
- * @param myTypes The generated Daml typings module (daml2js)
- * @param config Client configuration including Ledger and PQS URLs
+ * @param config Nexus Server Configuration including plugins, types, and URLs.
  * @returns The typed Nexus Universal API exposing the withUser context
  */
 export function createNexusServerClient<T extends Record<string, unknown>>(
-	myTypes: T,
-	config: NexusClientConfig,
+	config: NexusServerConfig<T>,
 ): NexusUniversalClient<T> {
-	const ledgerClient = new CantonJsonApiClient(config.ledgerUrl);
-	const pqsEngine = new KyselyPqsEngine(config.pqsUrl);
+	// Initialize plugins
+	const plugins = config.plugins ?? [];
+	for (const plugin of plugins) {
+		if (plugin.onInit) {
+			plugin.onInit(config);
+		}
+	}
 
 	return {
 		withUser: (partyId: string, token?: string) => {
@@ -42,7 +43,7 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 					get(_target, contractKey: string) {
 						if (contractKey === "then" || contractKey === "catch") return undefined;
 
-						const damlTemplate = myTypes[contractKey] as DamlTemplate<unknown> | undefined;
+						const damlTemplate = config.types[contractKey] as DamlTemplate<unknown> | undefined;
 
 						if (!damlTemplate?.templateId) {
 							throw new Error(
@@ -50,76 +51,38 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 							);
 						}
 
-						return {
-							/**
-							 * Submits a CreateCommand to the Canton Ledger JSON API.
-							 * Payload is verified using strict JSON-Type-Validation and encoded into Daml-LF.
-							 */
-							create: async (payload: unknown) => {
-								const result = damlTemplate.decoder.run(payload) as {
-									ok: boolean;
-									result?: unknown;
-									error?: { message: string };
-								};
-
-								if (!result.ok || result.result === undefined) {
-									throw new Error(
-										`Daml Schema Validation Error (${contractKey}): ${
-											result.error?.message ?? "Unknown validation failure"
-										}`,
-									);
-								}
-
-								const encodedArg = damlTemplate.encode(result.result);
-								const response = await ledgerClient.create(
-									token,
-									damlTemplate.templateId,
-									encodedArg,
-								);
-
-								return response; // Return the { contractId, payload } object
+						// Base dummy operations. In a fully modular setup, the plugins must provide the implementation.
+						let baseOperations: CommandQueryOperations<unknown> = {
+							create: async () => {
+								throw new Error("No Ledger plugin configured");
 							},
-
-							/**
-							 * Queries active contracts rapidly via PostgreSQL PQS.
-							 */
-							findMany: async (options?: PqsFindOptions<unknown>) => {
-								return pqsEngine.findMany(partyId, damlTemplate.templateId, options);
+							findMany: async () => {
+								throw new Error("No PQS plugin configured");
 							},
-
-							/**
-							 * Queries a single contract rapidly via PostgreSQL PQS.
-							 */
-							findById: async (contractId: string) => {
-								return pqsEngine.findById(partyId, damlTemplate.templateId, contractId);
+							findById: async () => {
+								throw new Error("No PQS plugin configured");
 							},
-
-							/**
-							 * Submits an ExerciseCommand to the Canton Ledger JSON API.
-							 */
-							exercise: async (contractId: string, choiceName: string, choiceArgument: unknown) => {
-								return ledgerClient.exercise(
-									token,
-									damlTemplate.templateId,
-									contractId,
-									choiceName,
-									choiceArgument,
-								);
+							exercise: async () => {
+								throw new Error("No Ledger plugin configured");
 							},
-
-							/**
-							 * Archives the contract by exercising the Archive choice.
-							 */
-							archive: async (contractId: string) => {
-								return ledgerClient.exercise(
-									token,
-									damlTemplate.templateId,
-									contractId,
-									"Archive",
-									{},
-								);
+							archive: async () => {
+								throw new Error("No Ledger plugin configured");
 							},
 						};
+
+						// Allow plugins to intercept and modify operations
+						for (const plugin of plugins) {
+							if (plugin.extendOperations) {
+								baseOperations = plugin.extendOperations(baseOperations, {
+									partyId,
+									token,
+									templateId: damlTemplate.templateId,
+									template: damlTemplate,
+								});
+							}
+						}
+
+						return baseOperations;
 					},
 				},
 			);
@@ -133,9 +96,6 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
  * user's session from the standard Web API `Request` object and returns
  * a fully authenticated SDK context.
  *
- * This allows developers to use the SDK without worrying about parsing JWTs,
- * checking headers, or managing RLS contexts manually.
- *
  * @param serverClient The base server client instance created by createNexusServerClient
  * @param sessionManager The configured Nexus Session Manager instance
  * @returns An async function that takes a Request and returns the fully typed UserContext API
@@ -145,11 +105,7 @@ export function createNexusContextExtractor<T extends Record<string, unknown>>(
 	sessionManager: SessionManager,
 ): (req: Request) => Promise<ConstructNexusApi<T>> {
 	return async (req: Request): Promise<ConstructNexusApi<T>> => {
-		// Uses the built-in SessionManager to parse headers/cookies.
-		// Throws a typed NexusAuthError if session is invalid or missing.
 		const session = await sessionManager.requireSession(req);
-
-		// Seamlessly bind the parsed identity (RLS partyId + JWT token) to the SDK
 		return serverClient.withUser(session.partyId, session.token);
 	};
 }

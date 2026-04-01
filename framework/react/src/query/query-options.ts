@@ -1,7 +1,6 @@
 import type {
 	ActiveContractsResponse,
 	ActiveInterfacesResponse,
-	DamlTemplate,
 	NexusClient,
 	NexusTemplateIdentifier,
 	TemplateDescriptor,
@@ -12,7 +11,7 @@ import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
 // ─── Contract queryOptions factory ───────────────────────────────────────────
 
-export interface ContractQueryOptionsParams<T = unknown> {
+export interface ContractQueryOptionsParams<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	parties?: string[];
 	filter?: Record<string, unknown>;
@@ -112,7 +111,7 @@ export function partyIdQueryOptions(input: PartyIdQueryOptionsInput) {
 
 // ─── Interface queryOptions factory ──────────────────────────────────────────
 
-export interface InterfaceQueryOptionsParams<TView = unknown, TPayload = unknown> {
+export interface InterfaceQueryOptionsParams<_TView = unknown, _TPayload = unknown> {
 	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
 	/**

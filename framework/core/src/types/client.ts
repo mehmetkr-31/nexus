@@ -1,7 +1,6 @@
 // /framework/core/src/types/client.ts
 import type * as jtv from "@mojotech/json-type-validation";
 
-// biome-ignore lint/suspicious/noExplicitAny: Industry standard trick to detect the 'any' keyword
 type IsAny<T> = 0 extends 1 & T ? true : false;
 type NoAny<T> = IsAny<T> extends true ? never : T;
 
@@ -107,11 +106,34 @@ export type ConstructNexusApi<T extends Record<string, unknown>> = {
 };
 
 /**
- * Connection Details defining where the SDK communicates.
+ * Interface defining what a Server Plugin can do.
  */
-export interface NexusClientConfig {
-	ledgerUrl: string; // Target HTTP JSON API (e.g., http://localhost:3975)
-	pqsUrl: string; // Target Postgres connection string (e.g., postgres://user:pass@localhost:5432)
+export interface NexusServerPlugin<T extends Record<string, unknown> = Record<string, unknown>> {
+	id: string;
+	onInit?: (config: NexusServerConfig<T>) => void;
+	/** Intercepts operations to route them to different backends (Ledger vs PQS) */
+	extendOperations?: (
+		baseOps: CommandQueryOperations<unknown>,
+		ctx: { partyId: string; token?: string; templateId: string; template: DamlTemplate<unknown> },
+	) => CommandQueryOperations<unknown>;
+}
+
+/**
+ * Interface defining what a Server Plugin can do.
+ */
+export interface NexusServerPlugin<T extends Record<string, unknown> = Record<string, unknown>> {
+	id: string;
+	onInit?: (config: NexusServerConfig<T>) => void;
+	/** Intercepts operations to route them to different backends (Ledger vs PQS) */
+	extendOperations?: (
+		baseOps: CommandQueryOperations<unknown>,
+		ctx: { partyId: string; token?: string; templateId: string; template: DamlTemplate<unknown> },
+	) => CommandQueryOperations<unknown>;
+}
+
+export interface NexusServerConfig<T extends Record<string, unknown>> {
+	types: T;
+	plugins?: NexusServerPlugin<Record<string, unknown>>[];
 }
 
 /**

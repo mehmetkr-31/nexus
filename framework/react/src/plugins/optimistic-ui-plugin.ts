@@ -1,9 +1,4 @@
-import type {
-	ActiveContract,
-	NexusTemplateIdentifier,
-	TemplateDescriptor,
-	TemplateId,
-} from "@nexus-framework/core";
+import type { ActiveContract, NexusTemplateIdentifier, TemplateId } from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
 import type { NexusClientPlugin } from "./tanstack-query.ts";
 

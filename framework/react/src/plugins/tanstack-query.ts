@@ -4,8 +4,6 @@ import type {
 	ActiveInterfacesResponse,
 	CompletionEvent,
 	DamlChoice,
-	DamlTemplate,
-	DamlTemplateIdentity,
 	ExerciseResult,
 	LedgerEnd,
 	NexusClient,
@@ -45,7 +43,7 @@ import {
 	synchronizersQueryOptions,
 } from "../query/query-options.ts";
 
-export interface UseContractsOptions<T = unknown> {
+export interface UseContractsOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	parties?: string[];
 	filter?: Record<string, unknown>;
@@ -54,7 +52,7 @@ export interface UseContractsOptions<T = unknown> {
 	staleTime?: number;
 }
 
-export interface UseFetchOptions<T = unknown> {
+export interface UseFetchOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	contractId: string;
 	parties?: string[];
@@ -194,7 +192,7 @@ export interface UseExerciseAndGetResultOptions<TResult = unknown> {
 	invalidateTemplates?: Array<NexusTemplateIdentifier>;
 }
 
-export interface UseInterfaceOptions<TView = unknown, TPayload = unknown> {
+export interface UseInterfaceOptions<_TView = unknown, _TPayload = unknown> {
 	interfaceId: string | TemplateDescriptor;
 	parties?: string[];
 	fetchAll?: boolean;
@@ -203,7 +201,7 @@ export interface UseInterfaceOptions<TView = unknown, TPayload = unknown> {
 	staleTime?: number;
 }
 
-export interface UsePagedContractsOptions<T = unknown> {
+export interface UsePagedContractsOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	parties?: string[];
 	pageSize?: number;

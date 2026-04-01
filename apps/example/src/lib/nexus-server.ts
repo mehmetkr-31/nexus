@@ -1,6 +1,12 @@
 import { Iou } from "@daml.js/nexus-example-0.0.1";
 import { SessionManager } from "@nexus-framework/core/auth/session-manager";
-import { createNexusContextExtractor, createNexusServerClient } from "@nexus-framework/core/server";
+import {
+	cantonLedgerPlugin,
+	createNexusContextExtractor,
+	createNexusServerClient,
+	pqsDatabasePlugin,
+	sessionAuthPlugin,
+} from "@nexus-framework/core/server";
 
 const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
 
@@ -17,7 +23,6 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
  */
 export const sessionManager = new SessionManager({
 	encryptionKey: SESSION_SECRET,
-	// ttlMs, cookieName, domain can also be configured here
 });
 
 /**
@@ -25,16 +30,18 @@ export const sessionManager = new SessionManager({
  * It is completely HIDDEN from the Browser (Frontend bundle).
  *
  * We map the real Daml templates from @daml.js packages to the keys we want.
+ * We are using the highly modular config where plugins can be attached.
  */
-export const backendSDK = createNexusServerClient(
-	{
+export const backendSDK = createNexusServerClient({
+	types: {
 		Iou: Iou.Iou,
 	},
-	{
-		ledgerUrl: CANTON_API_URL,
-		pqsUrl: PQS_URL,
-	},
-);
+	plugins: [
+		sessionAuthPlugin({ sessionManager }),
+		pqsDatabasePlugin({ url: PQS_URL }),
+		cantonLedgerPlugin({ url: CANTON_API_URL }),
+	],
+});
 
 /**
  * HIGHEST ABSTRACTION LEVEL:
