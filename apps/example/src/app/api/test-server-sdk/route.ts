@@ -52,13 +52,13 @@ export async function POST(req: NextRequest) {
 		const typedPayload = payload as Iou;
 
 		// Ledger API (HTTP JSON v2) üzerinden oluşturulmasını tetikle!
-		const createdPayload = await userContext.Iou.create(typedPayload);
+		const createdContract = await userContext.Iou.create(typedPayload);
 
 		return NextResponse.json({
 			status: "success",
 			message: "Ledger API'ye Command (Yazma) Gönderildi",
 			engine: "Native Fetch",
-			data: createdPayload,
+			data: createdContract,
 		});
 	} catch (error: unknown) {
 		return NextResponse.json(

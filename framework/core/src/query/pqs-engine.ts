@@ -77,7 +77,11 @@ export class KyselyPqsEngine {
 			// PQS tables typically wrap the real data inside a 'payload' column or field
 			return rows.map((r: unknown) => {
 				const rec = r as Record<string, unknown>;
-				return rec.payload ?? rec;
+				// We package the raw payload back with its contractId as expected by the SDK Contract type.
+				return {
+					contractId: rec.contract_id ?? "",
+					payload: rec.payload ?? rec,
+				};
 			});
 		});
 	}
@@ -100,7 +104,10 @@ export class KyselyPqsEngine {
 
 			if (!row) return null;
 			const rec = row as Record<string, unknown>;
-			return rec.payload ?? rec;
+			return {
+				contractId: rec.contract_id ?? "",
+				payload: rec.payload ?? rec,
+			};
 		});
 	}
 

@@ -70,7 +70,13 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 								}
 
 								const encodedArg = damlTemplate.encode(result.result);
-								return ledgerClient.create(token, damlTemplate.templateId, encodedArg);
+								const response = await ledgerClient.create(
+									token,
+									damlTemplate.templateId,
+									encodedArg,
+								);
+
+								return response; // Return the { contractId, payload } object
 							},
 
 							/**

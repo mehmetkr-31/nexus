@@ -39,6 +39,15 @@ export interface PqsFindOptions<Payload> {
 }
 
 /**
+ * Interface representing a fully materialized Contract fetched from Canton.
+ * It contains both the unique Ledger identifier and the actual business Payload.
+ */
+export interface Contract<Payload> {
+	contractId: string;
+	payload: Prettify<Payload>;
+}
+
+/**
  * Operations available on a single Contract once a User context is established.
  */
 export interface CommandQueryOperations<Payload> {
@@ -51,7 +60,7 @@ export interface CommandQueryOperations<Payload> {
 	 * @param payload The raw JavaScript object representing the Template arguments.
 	 *                Note: Passing 'any' is strictly forbidden to prevent type leaks.
 	 */
-	create: <P extends Payload>(payload: NoAny<P>) => Promise<unknown>;
+	create: <P extends Payload>(payload: NoAny<P>) => Promise<Prettify<Contract<Payload>>>;
 
 	/**
 	 * Queries active contracts utilizing high-performance SQL engines.
@@ -61,14 +70,14 @@ export interface CommandQueryOperations<Payload> {
 	 *
 	 * @param options Query and filter constraints.
 	 */
-	findMany: (options?: Prettify<PqsFindOptions<Payload>>) => Promise<Prettify<Payload>[]>;
+	findMany: (options?: Prettify<PqsFindOptions<Payload>>) => Promise<Prettify<Contract<Payload>>[]>;
 
 	/**
 	 * Returns a singular contract from the Ledger query store by its ID.
 	 *
 	 * @param contractId Ledger ID of the target contract.
 	 */
-	findById: (contractId: string) => Promise<Prettify<Payload> | null>;
+	findById: (contractId: string) => Promise<Prettify<Contract<Payload>> | null>;
 
 	/**
 	 * Exercises a choice on an active contract.

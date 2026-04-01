@@ -24,7 +24,7 @@ export class CantonJsonApiClient {
 		token: string | undefined,
 		templateId: string,
 		encodedPayload: unknown,
-	): Promise<unknown> {
+	): Promise<{ contractId: string; payload: unknown }> {
 		const result = (await this.submitCommand(token, "/v2/command/submit", {
 			commands: [
 				{
@@ -34,12 +34,20 @@ export class CantonJsonApiClient {
 					},
 				},
 			],
-		})) as { events?: Array<{ created?: { payload?: unknown } }> };
+		})) as { events?: Array<{ created?: { contractId?: string; payload?: unknown } }> };
 
 		// The Ledger usually responds by emitting multiple associated events.
 		// Returns solely the relevant originating payload created during submission.
 		const createdEvent = result?.events?.[0]?.created;
-		return createdEvent?.payload || {};
+
+		if (!createdEvent?.contractId) {
+			throw new Error("Ledger API returned a success response but contractId was missing.");
+		}
+
+		return {
+			contractId: createdEvent.contractId,
+			payload: createdEvent.payload || {},
+		};
 	}
 
 	/**
