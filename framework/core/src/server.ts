@@ -1,5 +1,6 @@
 // /framework/core/src/server.ts
 
+import type { SessionManager } from "./auth/session-manager.js";
 import { CantonJsonApiClient } from "./command/ledger-fetch.js";
 import { KyselyPqsEngine } from "./query/pqs-engine.js";
 import type {
@@ -124,5 +125,31 @@ export function createNexusServerClient<T extends Record<string, unknown>>(
 			);
 			return proxyClient as unknown as ConstructNexusApi<T>;
 		},
+	};
+}
+
+/**
+ * Creates a higher-order abstraction that automatically extracts the
+ * user's session from the standard Web API `Request` object and returns
+ * a fully authenticated SDK context.
+ *
+ * This allows developers to use the SDK without worrying about parsing JWTs,
+ * checking headers, or managing RLS contexts manually.
+ *
+ * @param serverClient The base server client instance created by createNexusServerClient
+ * @param sessionManager The configured Nexus Session Manager instance
+ * @returns An async function that takes a Request and returns the fully typed UserContext API
+ */
+export function createNexusContextExtractor<T extends Record<string, unknown>>(
+	serverClient: NexusUniversalClient<T>,
+	sessionManager: SessionManager,
+): (req: Request) => Promise<ConstructNexusApi<T>> {
+	return async (req: Request): Promise<ConstructNexusApi<T>> => {
+		// Uses the built-in SessionManager to parse headers/cookies.
+		// Throws a typed NexusAuthError if session is invalid or missing.
+		const session = await sessionManager.requireSession(req);
+
+		// Seamlessly bind the parsed identity (RLS partyId + JWT token) to the SDK
+		return serverClient.withUser(session.partyId, session.token);
 	};
 }

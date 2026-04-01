@@ -6,7 +6,8 @@
 	"main": "src/index.ts",
 	"exports": {
 		".": "./src/index.ts",
-		"./server": "./src/server.ts"
+		"./server": "./src/server.ts",
+		"./auth/session-manager": "./src/auth/session-manager.ts"
 	},
 	"scripts": {
 		"test": "bun test",

@@ -1,6 +1,6 @@
 import type { Iou } from "@daml.js/nexus-example-0.0.1/lib/Iou";
 import { type NextRequest, NextResponse } from "next/server";
-import { backendSDK } from "../../../lib/nexus-server";
+import { requireNexusContext } from "../../../lib/nexus-server";
 
 /**
  * Bu rota yeni nesil "Server-Side" Canton Client SDK'sını test eder.
@@ -9,12 +9,13 @@ import { backendSDK } from "../../../lib/nexus-server";
  * 2. GET -> PQS PostgreSQL veritabanından doğrudan ultra yüksek hızda okuma (Query).
  */
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
 	try {
-		// 1. Yeni Isomorphic Server Client üzerinden "Alice" olarak context açıyoruz.
+		// Yüksek Hızlı PQS Okuma Testi (Canton JSON API yerine Kysely kullanır)
 		// Artık her okuma işlemi "SET LOCAL app.current_user = 'alice'" RLS ayarıyla
-		// sadece Alice'in görmeye yetkili olduğu sözleşmeleri güvenle filtreler!
-		const userContext = backendSDK.withUser("alice");
+		// sadece mevcut kullanıcının görmeye yetkili olduğu sözleşmeleri güvenle filtreler!
+		// Header'dan (Authorization: Bearer <token>) veya Cookie'den otomatik çeker
+		const userContext = await requireNexusContext(req);
 
 		// 2. Kysely PQS Motorunu kullanarak 2 milisaniyede veriyi SQL'den çekiyoruz!
 		// `findMany` metodumuz `myTypes`taki proxy'ler ile ışık hızında çalışır.
@@ -31,12 +32,13 @@ export async function GET(_req: NextRequest) {
 			data: pqsRows,
 		});
 	} catch (error: unknown) {
+		const statusCode = (error as { statusCode?: number }).statusCode || 500;
 		return NextResponse.json(
 			{
 				status: "error",
 				message: (error as Error).message,
 			},
-			{ status: 500 },
+			{ status: statusCode },
 		);
 	}
 }
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
 	try {
 		const payload = await req.json();
 
-		const userContext = backendSDK.withUser("alice");
+		const userContext = await requireNexusContext(req);
 
 		// `any` tipinde bir nesneyi doğrudan göndermek artık derleyici tarafından engellendiği için,
 		// gelen isteği ya Zod/Typegen ile doğrulamalı ya da tip dönüşümü yapmalıyız.
@@ -61,12 +63,13 @@ export async function POST(req: NextRequest) {
 			data: createdContract,
 		});
 	} catch (error: unknown) {
+		const statusCode = (error as { statusCode?: number }).statusCode || 500;
 		return NextResponse.json(
 			{
 				status: "error",
 				message: (error as Error)?.message || "Bilinmeyen Sunucu Hatası",
 			},
-			{ status: 500 },
+			{ status: statusCode },
 		);
 	}
 }
