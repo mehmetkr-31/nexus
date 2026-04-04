@@ -40,7 +40,10 @@ import {
 	ledgerEndQueryOptions,
 	type PartyIdQueryOptionsParams,
 	partyIdQueryOptions,
+	pagedContractsQueryOptions,
+	type PagedContractsQueryOptionsParams,
 	synchronizersQueryOptions,
+	transactionStatusQueryOptions,
 } from "../query/query-options.ts";
 
 export interface UseContractsOptions<_T = unknown> {
@@ -345,9 +348,31 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 		contracts: <T = unknown>(
 			params: ContractQueryOptionsParams<T>,
 		) => ReturnType<typeof contractQueryOptions<T>>;
+		pagedContracts: <T = unknown>(
+			params: PagedContractsQueryOptionsParams<T>,
+		) => ReturnType<typeof pagedContractsQueryOptions<T>>;
+		contractById: <T = unknown>(params: {
+			templateId: NexusTemplateIdentifier;
+			contractId: string;
+			parties?: string[];
+			enabled?: boolean;
+			staleTime?: number;
+		}) => ReturnType<typeof fetchByIdOptions<T>>;
+		contractByKey: <T = unknown, K = unknown>(params: {
+			templateId: NexusTemplateIdentifier;
+			key: K;
+			keyPredicate: (payload: T) => boolean;
+			parties?: string[];
+			enabled?: boolean;
+			staleTime?: number;
+		}) => ReturnType<typeof fetchByKeyOptions<T, K>>;
 		interfaces: <TView = unknown, TPayload = unknown>(
 			params: InterfaceQueryOptionsParams<TView, TPayload>,
 		) => ReturnType<typeof interfaceQueryOptions<TView, TPayload>>;
+		transactionStatus: (params: {
+			transactionId: string;
+			timeoutMs?: number;
+		}) => ReturnType<typeof transactionStatusQueryOptions>;
 		ledgerEnd: () => ReturnType<typeof ledgerEndQueryOptions>;
 		partyId: (params: PartyIdQueryOptionsParams) => ReturnType<typeof partyIdQueryOptions>;
 		synchronizers: () => ReturnType<typeof synchronizersQueryOptions>;
@@ -380,9 +405,28 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 			query: {
 				contracts: <T = unknown>(params: ContractQueryOptionsParams<T>) =>
 					contractQueryOptions<T>({ client, ...params }),
+				pagedContracts: <T = unknown>(params: PagedContractsQueryOptionsParams<T>) =>
+					pagedContractsQueryOptions<T>({ client, ...params }),
+				contractById: <T = unknown>(params: {
+					templateId: NexusTemplateIdentifier;
+					contractId: string;
+					parties?: string[];
+					enabled?: boolean;
+					staleTime?: number;
+				}) => fetchByIdOptions<T>({ client, ...params }),
+				contractByKey: <T = unknown, K = unknown>(params: {
+					templateId: NexusTemplateIdentifier;
+					key: K;
+					keyPredicate: (payload: T) => boolean;
+					parties?: string[];
+					enabled?: boolean;
+					staleTime?: number;
+				}) => fetchByKeyOptions<T, K>({ client, ...params }),
 				interfaces: <TView = unknown, TPayload = unknown>(
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
+				transactionStatus: (params: { transactionId: string; timeoutMs?: number }) =>
+					transactionStatusQueryOptions({ client, ...params }),
 				ledgerEnd: () => ledgerEndQueryOptions({ client }),
 				partyId: (params: PartyIdQueryOptionsParams) => partyIdQueryOptions({ client, ...params }),
 				synchronizers: () => synchronizersQueryOptions({ client }),
@@ -392,11 +436,13 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 		getActions: (client): TanstackQueryActions => ({
 			// ─── Contract Queries ────────────────────────────────────────────────
 
+			/** @deprecated Use `useQuery(nexus.query.contracts(...))` or `useSuspenseQuery(nexus.query.contracts(...))` instead. */
 			useContracts: <T = unknown>(opts: UseContractsOptions<T>): UseContractsResult<T> => {
 				const result = useQuery(contractQueryOptions<T>({ client, ...opts }));
 				return { ...result, contracts: result.data?.contracts ?? [] } as UseContractsResult<T>;
 			},
 
+			/** @deprecated Use `useSuspenseQuery(nexus.query.contracts(...))` instead. */
 			useContractsSuspense: <T = unknown>(
 				opts: UseContractsOptions<T>,
 			): UseContractsSuspenseResult<T> => {
@@ -407,12 +453,15 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				} as UseContractsSuspenseResult<T>;
 			},
 
+			/** @deprecated Use `useQuery(nexus.query.contractById(...))` instead. */
 			useFetch: <T = unknown>(opts: UseFetchOptions<T>) =>
 				useQuery(fetchByIdOptions<T>({ client, ...opts })),
 
+			/** @deprecated Use `useQuery(nexus.query.contractByKey(...))` instead. */
 			useFetchByKey: <T = unknown, K = unknown>(opts: UseFetchByKeyOptions<T, K>) =>
 				useQuery(fetchByKeyOptions<T, K>({ client, ...opts })),
 
+			/** @deprecated Use `useInfiniteQuery(nexus.query.pagedContracts(...))` instead. */
 			usePagedContracts: <T = unknown>(
 				opts: UsePagedContractsOptions<T>,
 			): UsePagedContractsResult<T> => {
@@ -445,20 +494,28 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 
 			// ─── Interface Queries ───────────────────────────────────────────────
 
+			/** @deprecated Use `useQuery(nexus.query.interfaces(...))` instead. */
 			useInterface: <TView = unknown, TPayload = unknown>(
 				opts: UseInterfaceOptions<TView, TPayload>,
 			) => useQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts })),
 
+			/** @deprecated Use `useSuspenseQuery(nexus.query.interfaces(...))` instead. */
 			useInterfaceSuspense: <TView = unknown, TPayload = unknown>(
 				opts: UseInterfaceOptions<TView, TPayload>,
 			) => useSuspenseQuery(interfaceQueryOptions<TView, TPayload>({ client, ...opts })),
 
 			// ─── Ledger State ────────────────────────────────────────────────────
 
+			/** @deprecated Use `useQuery(nexus.query.partyId(...))` instead. */
 			usePartyId: (userId: string) => useQuery(partyIdQueryOptions({ client, userId })),
+
+			/** @deprecated Use `useQuery(nexus.query.ledgerEnd())` instead. */
 			useLedgerEnd: () => useQuery(ledgerEndQueryOptions({ client })),
+
+			/** @deprecated Use `useQuery(nexus.query.synchronizers())` instead. */
 			useSynchronizers: () => useQuery(synchronizersQueryOptions({ client })),
 
+			/** @deprecated Use `useQuery(nexus.query.transactionStatus(...))` instead. */
 			useTransactionStatus: (transactionId: string | undefined) => {
 				return useQuery({
 					queryKey: nexusKeys.transactionStatus(transactionId ?? ""),
@@ -820,9 +877,28 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 			query: {
 				contracts: <T = unknown>(params: ContractQueryOptionsParams<T>) =>
 					contractQueryOptions<T>({ client, ...params }),
+				pagedContracts: <T = unknown>(params: PagedContractsQueryOptionsParams<T>) =>
+					pagedContractsQueryOptions<T>({ client, ...params }),
+				contractById: <T = unknown>(params: {
+					templateId: NexusTemplateIdentifier;
+					contractId: string;
+					parties?: string[];
+					enabled?: boolean;
+					staleTime?: number;
+				}) => fetchByIdOptions<T>({ client, ...params }),
+				contractByKey: <T = unknown, K = unknown>(params: {
+					templateId: NexusTemplateIdentifier;
+					key: K;
+					keyPredicate: (payload: T) => boolean;
+					parties?: string[];
+					enabled?: boolean;
+					staleTime?: number;
+				}) => fetchByKeyOptions<T, K>({ client, ...params }),
 				interfaces: <TView = unknown, TPayload = unknown>(
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
+				transactionStatus: (params: { transactionId: string; timeoutMs?: number }) =>
+					transactionStatusQueryOptions({ client, ...params }),
 				ledgerEnd: () => ledgerEndQueryOptions({ client }),
 				partyId: (params: PartyIdQueryOptionsParams) => partyIdQueryOptions({ client, ...params }),
 				synchronizers: () => synchronizersQueryOptions({ client }),

@@ -24,6 +24,14 @@ import type {
 	UsePagedContractsOptions,
 	UsePagedContractsResult,
 } from "./plugins/tanstack-query.ts";
+import {
+	type ContractQueryOptionsParams,
+	contractQueryOptions,
+	fetchByIdOptions,
+	fetchByKeyOptions,
+	type PagedContractsQueryOptionsParams,
+	pagedContractsQueryOptions,
+} from "./query/query-options.ts";
 
 // ─── Plugin type helpers ───────────────────────────────────────────────────────
 
@@ -86,20 +94,48 @@ type ExerciseCoreVars<TArg> = {
  * ```
  */
 export type TypedContractNamespace<T> = {
+	/** Query options factories — use with `useQuery`, `useSuspenseQuery`, or `useInfiniteQuery`. */
+	query: {
+		contracts: (
+			params?: Omit<ContractQueryOptionsParams<T>, "templateId">,
+		) => ReturnType<typeof contractQueryOptions<T>>;
+		pagedContracts: (
+			params?: Omit<PagedContractsQueryOptionsParams<T>, "templateId">,
+		) => ReturnType<typeof pagedContractsQueryOptions<T>>;
+		contractById: (params: {
+			contractId: string;
+			parties?: string[];
+			enabled?: boolean;
+			staleTime?: number;
+		}) => ReturnType<typeof fetchByIdOptions<T>>;
+		contractByKey: <K = unknown>(params: {
+			key: K;
+			keyPredicate: (payload: T) => boolean;
+			parties?: string[];
+			enabled?: boolean;
+			staleTime?: number;
+		}) => ReturnType<typeof fetchByKeyOptions<T, K>>;
+	};
+
+	/** @deprecated Use `useQuery(nexus.<Template>.query.contracts(...))` instead. */
 	useContracts: (opts?: Omit<UseContractsOptions<T>, "templateId">) => UseContractsResult<T>;
 
+	/** @deprecated Use `useSuspenseQuery(nexus.<Template>.query.contracts(...))` instead. */
 	useContractsSuspense: (
 		opts?: Omit<UseContractsOptions<T>, "templateId">,
 	) => UseContractsSuspenseResult<T>;
 
+	/** @deprecated Use `useInfiniteQuery(nexus.<Template>.query.pagedContracts(...))` instead. */
 	usePagedContracts: (
 		opts?: Omit<UsePagedContractsOptions<T>, "templateId">,
 	) => UsePagedContractsResult<T>;
 
+	/** @deprecated Use `useQuery(nexus.<Template>.query.contractById(...))` instead. */
 	useFetch: (
 		opts: Omit<UseFetchOptions<T>, "templateId">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
+	/** @deprecated Use `useQuery(nexus.<Template>.query.contractByKey(...))` instead. */
 	useFetchByKey: <K = unknown>(
 		opts: Omit<UseFetchByKeyOptions<T, K>, "templateId">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
@@ -150,8 +186,13 @@ function buildTypedNamespace<T>(
 	nexus: Record<string, unknown>,
 	template: DamlTemplate<T>,
 ): TypedContractNamespace<T> {
-	// Use a concrete named-property type so noUncheckedIndexedAccess doesn't widen to `| undefined`
 	type HookMap = {
+		query: {
+			contracts: (...args: unknown[]) => unknown;
+			pagedContracts: (...args: unknown[]) => unknown;
+			contractById: (...args: unknown[]) => unknown;
+			contractByKey: (...args: unknown[]) => unknown;
+		};
 		useContracts: (...args: unknown[]) => unknown;
 		useContractsSuspense: (...args: unknown[]) => unknown;
 		usePagedContracts: (...args: unknown[]) => unknown;
@@ -163,6 +204,21 @@ function buildTypedNamespace<T>(
 	const n = nexus as HookMap;
 
 	return {
+		query: {
+			contracts: (params = {}) =>
+				// biome-ignore lint/suspicious/noExplicitAny: delegate to runtime-typed query factory
+				(n.query.contracts as any)({ ...params, templateId: template }),
+			pagedContracts: (params = {}) =>
+				// biome-ignore lint/suspicious/noExplicitAny: delegate to runtime-typed query factory
+				(n.query.pagedContracts as any)({ ...params, templateId: template }),
+			contractById: (params) =>
+				// biome-ignore lint/suspicious/noExplicitAny: delegate to runtime-typed query factory
+				(n.query.contractById as any)({ ...params, templateId: template }),
+			contractByKey: (params) =>
+				// biome-ignore lint/suspicious/noExplicitAny: delegate to runtime-typed query factory
+				(n.query.contractByKey as any)({ ...params, templateId: template }),
+		},
+
 		useContracts: (opts = {}) =>
 			n.useContracts({ ...opts, templateId: template }) as UseContractsResult<T>,
 

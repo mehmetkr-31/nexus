@@ -3,8 +3,8 @@
 import type { ActiveContract } from "@nexus-framework/react";
 import { Layers, Loader2, Target } from "lucide-react";
 import { Suspense, useMemo } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { nexus } from "../lib/nexus-client";
-import { IOU_TEMPLATE_ID } from "../lib/nexus";
 
 interface IouPayload {
 	owner: string;
@@ -37,10 +37,7 @@ function SuspenseLoader() {
 function IouListInner({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { data } = nexus.useContractsSuspense<IouPayload>({
-		templateId: IOU_TEMPLATE_ID,
-		parties,
-	});
+	const { data } = useSuspenseQuery(nexus.Iou.query.contracts({ parties }));
 
 	const contracts = data?.contracts ?? [];
 

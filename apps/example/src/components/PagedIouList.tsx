@@ -3,6 +3,7 @@
 import type { ActiveContract, TemplateDescriptor } from "@nexus-framework/react";
 import { Loader2, Plus, Wallet } from "lucide-react";
 import { useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { nexus } from "../lib/nexus-client";
 
 type IouPayload = {
@@ -20,17 +21,14 @@ const IOU_TEMPLATE: TemplateDescriptor = {
 export function PagedIouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const {
-		contracts: allContracts,
-		isLoading,
-		fetchNextPage,
-		hasNextPage,
-		isFetchingNextPage,
-	} = nexus.usePagedContracts<IouPayload>({
-		templateId: IOU_TEMPLATE,
-		parties,
-		pageSize: 5,
-	});
+	const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery(
+		nexus.Iou.query.pagedContracts({
+			parties,
+			pageSize: 5,
+		}),
+	);
+
+	const allContracts = data?.pages.flatMap((p) => p.contracts) ?? [];
 
 	if (isLoading) {
 		return (

@@ -4,8 +4,9 @@ import type {
 	NexusClient,
 	NexusTemplateIdentifier,
 	TemplateDescriptor,
+	TransactionStatus,
 } from "@nexus-framework/core";
-import { toStableTemplateId } from "@nexus-framework/core";
+import { DEFAULT_PAGE_SIZE, toStableTemplateId } from "@nexus-framework/core";
 import { queryOptions } from "@tanstack/react-query";
 import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
 
@@ -213,3 +214,73 @@ export function fetchByKeyOptions<T = unknown, K = unknown>(input: {
 // ─── Prefetch helpers ─────────────────────────────────────────────────────────
 
 // Prefetch helpers are internal-only. Use nexus.prefetch.X(...)
+
+// ─── Paged contracts (infinite query) ─────────────────────────────────────────
+
+export interface PagedContractsQueryOptionsParams<_T = unknown> {
+	templateId: NexusTemplateIdentifier;
+	parties?: string[];
+	pageSize?: number;
+	filter?: Record<string, unknown>;
+}
+
+export interface PagedContractsQueryOptionsInput<T = unknown>
+	extends PagedContractsQueryOptionsParams<T> {
+	client: NexusClient;
+}
+
+/**
+ * Creates an `infiniteQueryOptions` object for cursor-based pagination of active contracts.
+ * Use with `useInfiniteQuery`.
+ */
+export function pagedContractsQueryOptions<T = unknown>(input: PagedContractsQueryOptionsInput<T>) {
+	const stableId = toStableTemplateId(input.templateId);
+	const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
+
+	return {
+		queryKey: nexusKeys.contractsQuery(stableId, {
+			parties: input.parties,
+			filter: input.filter,
+			pageSize,
+		}),
+		queryFn: async ({ pageParam }: { pageParam?: string }) => {
+			return input.client.ledger.contracts.fetchActiveContracts<T>({
+				templateId: input.templateId,
+				parties: input.parties,
+				filter: input.filter,
+				pageSize,
+				pageToken: pageParam,
+			});
+		},
+		initialPageParam: undefined as string | undefined,
+		getNextPageParam: (lastPage: ActiveContractsResponse<T>) => lastPage.nextPageToken,
+	};
+}
+
+// ─── Transaction status queryOptions ──────────────────────────────────────────
+
+export interface TransactionStatusQueryOptionsInput {
+	client: NexusClient;
+	transactionId: string;
+	timeoutMs?: number;
+}
+
+/**
+ * Polls for transaction finality. Use with `useQuery`.
+ * Returns "pending" while waiting, "finalized" when confirmed, "failed" on error.
+ */
+export function transactionStatusQueryOptions(input: TransactionStatusQueryOptionsInput) {
+	return queryOptions<TransactionStatus>({
+		queryKey: nexusKeys.transactionStatus(input.transactionId),
+		queryFn: async ({ signal }): Promise<TransactionStatus> => {
+			await input.client.http.waitForTransaction(input.transactionId, {
+				timeoutMs: input.timeoutMs ?? 10_000,
+				signal,
+			});
+			return "finalized" as const;
+		},
+		enabled: !!input.transactionId,
+		placeholderData: "pending" as TransactionStatus,
+		refetchInterval: (query) => (query.state.data === "finalized" ? false : 1_000),
+	});
+}

@@ -4,6 +4,7 @@ import { Iou } from "@daml.js/nexus-example-0.0.1";
 import type { ActiveContract } from "@nexus-framework/react";
 import { Clock, Trash2, Wallet } from "lucide-react";
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { nexus } from "../lib/nexus-client";
 
 type IouPayload = Iou.Iou;
@@ -11,7 +12,8 @@ type IouPayload = Iou.Iou;
 export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { contracts, isLoading } = nexus.Iou.useContracts({ parties });
+	const { data, isLoading } = useQuery(nexus.Iou.query.contracts({ parties }));
+	const contracts = data?.contracts ?? [];
 
 	if (isLoading) {
 		return (
