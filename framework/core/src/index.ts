@@ -73,7 +73,10 @@ export type {
 } from "./types/plugin.ts";
 
 export * from "./utils/jwt.ts";
+export * from "./utils/canton-jwt.ts";
 export * from "./utils/template.ts";
+export { JwksClient } from "./auth/jwks-client.ts";
+export type { NexusJwk, NexusJwkSet, JwksClientOptions } from "./auth/jwks-client.ts";
 
 import type { InferNexusPlugins } from "./types/plugin.ts";
 

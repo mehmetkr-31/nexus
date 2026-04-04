@@ -69,11 +69,21 @@ export class JwtManager {
 	private readonly config: AuthConfig;
 	private refreshTimer?: ReturnType<typeof setTimeout>;
 	private onTokenRefreshed?: (newToken: string) => void;
+	/**
+	 * Optional post-fetch hook for verifying tokens after they are fetched.
+	 * Used by `oidcAuth` to validate tokens against a JWKS before caching them.
+	 */
+	private readonly onTokenFetched?: (token: string) => Promise<void>;
 	private static readonly GRACE_PERIOD_MS = 10_000;
 
-	constructor(config: AuthConfig, onTokenRefreshed?: (newToken: string) => void) {
+	constructor(
+		config: AuthConfig,
+		onTokenRefreshed?: (newToken: string) => void,
+		onTokenFetched?: (token: string) => Promise<void>,
+	) {
 		this.config = config;
 		this.onTokenRefreshed = onTokenRefreshed;
+		this.onTokenFetched = onTokenFetched;
 	}
 
 	async getToken(): Promise<string> {
@@ -91,6 +101,10 @@ export class JwtManager {
 		this.refreshPromise = (async () => {
 			try {
 				const token = await this.fetchFreshToken();
+				// Run post-fetch hook (e.g. JWKS verification) before caching
+				if (this.onTokenFetched) {
+					await this.onTokenFetched(token);
+				}
 				this.pendingToken = this.cachedToken;
 				this.cachedToken = token;
 				this.scheduleRefresh(token);
