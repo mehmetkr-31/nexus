@@ -75,16 +75,29 @@ export interface TemplateId {
  */
 export interface DamlTemplateIdentity {
 	templateId: string;
-	templateIdWithPackageId: string;
+	/**
+	 * Package-hash–qualified template ID (e.g. `"abc123...:Iou:Iou"`).
+	 * Present in @daml/types ≥ 3.x generated code; absent in 2.x.
+	 * When missing, Nexus falls back to the short `templateId`.
+	 */
+	templateIdWithPackageId?: string;
 }
 
 export interface DamlTemplate<T = unknown, K = unknown, I extends string = string>
 	extends DamlTemplateIdentity {
 	templateId: I;
-	decoder: { decode: (raw: unknown) => T };
-	encode: (payload: T) => unknown;
-	keyDecoder: { decode: (raw: unknown) => K };
-	keyEncode: (key: K) => unknown;
+	/**
+	 * @internal jtv.Decoder<T> — used by daml.js; typed as `unknown` to avoid
+	 * coupling to the jtv private-member shape. Access via the plugin layer only.
+	 */
+	decoder: unknown;
+	// Method syntax makes parameter checking bivariant so DamlTemplate<Iou> extends DamlTemplate<unknown>
+	encode(payload: T): unknown;
+	/**
+	 * @internal jtv.Decoder<K> — same rationale as `decoder`.
+	 */
+	keyDecoder: unknown;
+	keyEncode(key: K): unknown;
 }
 
 /**
@@ -98,14 +111,19 @@ export type NexusTemplateIdentifier =
 
 /**
  * Matches the structure of @daml/types Choice objects produced by codegen.
+ * Works with both @daml/types v2 and v3.
  */
-export interface DamlChoice<T, Arg, Res, K = unknown> {
+export interface DamlChoice<T, Arg, _Res, K = unknown> {
 	template: () => DamlTemplate<T, K>;
 	choiceName: string;
-	argumentDecoder: { decode: (raw: unknown) => Arg };
-	argumentEncode: (arg: Arg) => unknown;
-	resultDecoder: { decode: (raw: unknown) => Res };
-	resultEncode: (res: Res) => unknown;
+	/** @internal jtv.Decoder<Arg> — typed as unknown to avoid jtv private-member coupling */
+	argumentDecoder: unknown;
+	// Method syntax → bivariant parameter checking, enabling TArg inference from DamlChoice objects
+	argumentEncode(arg: Arg): unknown;
+	/** @internal jtv.Decoder<Res> */
+	resultDecoder: unknown;
+	/** @internal Not present in @daml/types v2 */
+	resultEncode?: unknown;
 }
 
 export interface ActiveContract<T = unknown> {

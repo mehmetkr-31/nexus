@@ -1,29 +1,17 @@
 "use client";
 
-import type { ActiveContract, TemplateDescriptor } from "@nexus-framework/react";
+import { Iou } from "@daml.js/nexus-example-0.0.1";
+import type { ActiveContract } from "@nexus-framework/react";
 import { Clock, Trash2, Wallet } from "lucide-react";
 import { useMemo } from "react";
 import { nexus } from "../lib/nexus-client";
 
-type IouPayload = {
-	owner: string;
-	amount: string;
-	currency: string;
-};
-
-const IOU_TEMPLATE: TemplateDescriptor = {
-	packageName: "nexus-example",
-	moduleName: "Iou",
-	entityName: "Iou",
-};
+type IouPayload = Iou.Iou;
 
 export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { contracts, isLoading } = nexus.useContracts<IouPayload>({
-		templateId: IOU_TEMPLATE,
-		parties,
-	});
+	const { contracts, isLoading } = nexus.Iou.useContracts({ parties });
 
 	if (isLoading) {
 		return (
@@ -69,13 +57,11 @@ function IouRow({
 	contract: ActiveContract<IouPayload>;
 	guestPartyId: string;
 }) {
-	const { mutate, isPending } = nexus.useExerciseChoice({ optimistic: true });
+	const { mutate, isPending } = nexus.Iou.useExercise(Iou.Iou.Archive, { optimistic: true });
 
 	const handleArchive = () => {
 		mutate({
-			templateId: IOU_TEMPLATE,
 			contractId: contract.contractId,
-			choice: "Archive",
 			choiceArgument: {},
 			actAs: [contract.signatories[0] ?? guestPartyId],
 		});

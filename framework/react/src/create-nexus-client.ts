@@ -3,12 +3,13 @@
 import {
 	type ActiveContract,
 	createNexus,
+	type DamlChoice,
 	type DamlTemplate,
 	type NexusClient,
 	type NexusPlugin,
 	type SubmitResult,
 } from "@nexus-framework/core";
-import type { UseQueryResult } from "@tanstack/react-query";
+import type { UseMutationResult, UseQueryResult } from "@tanstack/react-query";
 import type {
 	CreateContractVariables,
 	ExerciseChoiceVariables,
@@ -61,17 +62,16 @@ export type AnyPlugin = NexusPlugin | NexusClientPlugin;
 /** Extracts the payload type T from a DamlTemplate<T, ...> */
 type ExtractTemplatePayload<T> = T extends DamlTemplate<infer P, infer _K, infer _I> ? P : unknown;
 
-// Internal helper types to infer mutation result shapes
-type UseCreateContractFn<T> = (opts?: UseCreateContractOptions<T>) => {
-	mutate: (vars: CreateContractVariables<T>, options?: unknown) => void;
-	mutateAsync: (vars: CreateContractVariables<T>, options?: unknown) => Promise<SubmitResult>;
-	[key: string]: unknown;
-};
-
-type UseExerciseChoiceFn<TArg> = (opts?: UseExerciseChoiceOptions) => {
-	mutate: (vars: ExerciseChoiceVariables<TArg>, options?: unknown) => void;
-	mutateAsync: (vars: ExerciseChoiceVariables<TArg>, options?: unknown) => Promise<SubmitResult>;
-	[key: string]: unknown;
+/**
+ * Minimal exercise variables without templateId or choice —
+ * both are pre-filled by the typed namespace via `useExercise(choice)`.
+ */
+type ExerciseCoreVars<TArg> = {
+	contractId: string;
+	choiceArgument: TArg;
+	actAs: string[];
+	readAs?: string[];
+	workflowId?: string;
 };
 
 /**
@@ -104,26 +104,37 @@ export type TypedContractNamespace<T> = {
 		opts: Omit<UseFetchByKeyOptions<T, K>, "templateId">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
-	useCreateContract: (opts?: UseCreateContractOptions<T>) => Omit<
-		ReturnType<UseCreateContractFn<T>>,
-		"mutate" | "mutateAsync"
-	> & {
-		mutate: (vars: Omit<CreateContractVariables<T>, "templateId">, options?: unknown) => void;
-		mutateAsync: (
-			vars: Omit<CreateContractVariables<T>, "templateId">,
-			options?: unknown,
-		) => Promise<SubmitResult>;
-	};
+	useCreateContract: (
+		opts?: UseCreateContractOptions<T>,
+	) => UseMutationResult<SubmitResult, Error, Omit<CreateContractVariables<T>, "templateId">>;
 
 	useExerciseChoice: <TArg = unknown>(
 		opts?: UseExerciseChoiceOptions,
-	) => Omit<ReturnType<UseExerciseChoiceFn<TArg>>, "mutate" | "mutateAsync"> & {
-		mutate: (vars: Omit<ExerciseChoiceVariables<TArg>, "templateId">, options?: unknown) => void;
-		mutateAsync: (
-			vars: Omit<ExerciseChoiceVariables<TArg>, "templateId">,
-			options?: unknown,
-		) => Promise<SubmitResult>;
-	};
+	) => UseMutationResult<SubmitResult, Error, Omit<ExerciseChoiceVariables<TArg>, "templateId">>;
+
+	/**
+	 * Pre-bound exercise: pass a `DamlChoice` object (or a choice name string) to
+	 * get a fully typed mutation. Both `templateId` **and** `choice` are automatically
+	 * injected — no need to pass them in `mutate()`.
+	 *
+	 * `TArg` is inferred from the `DamlChoice` type, so TypeScript knows exactly
+	 * what shape `choiceArgument` must be.
+	 *
+	 * @example
+	 * ```ts
+	 * // Fully typed — TArg = Transfer = { newOwner: string }
+	 * const { mutate } = nexus.Iou.useExercise(Iou.Iou.Transfer)
+	 * mutate({ contractId, choiceArgument: { newOwner: "alice" }, actAs })
+	 *
+	 * // String choice — TArg = unknown (still cleaner than useExerciseChoice)
+	 * const { mutate } = nexus.Iou.useExercise("Archive")
+	 * mutate({ contractId, choiceArgument: {}, actAs })
+	 * ```
+	 */
+	useExercise: <TArg = unknown>(
+		choice: string | DamlChoice<unknown, TArg, unknown, unknown>,
+		opts?: UseExerciseChoiceOptions,
+	) => UseMutationResult<SubmitResult, Error, ExerciseCoreVars<TArg>>;
 };
 
 /** Maps a record of DamlTemplates to their corresponding TypedContractNamespaces */
@@ -172,31 +183,66 @@ function buildTypedNamespace<T>(
 			>,
 
 		useCreateContract: (opts = {}) => {
-			const result = n.useCreateContract(opts) as ReturnType<UseCreateContractFn<T>>;
+			type MutVars = Omit<CreateContractVariables<T>, "templateId">;
+			const result = n.useCreateContract(opts) as UseMutationResult<
+				SubmitResult,
+				Error,
+				CreateContractVariables<T>
+			>;
 			return {
 				...result,
-				mutate: (vars, options) => result.mutate({ ...vars, templateId: template }, options),
-				mutateAsync: (vars, options) =>
+				mutate: (vars: MutVars, options) =>
+					result.mutate({ ...vars, templateId: template }, options),
+				mutateAsync: (vars: MutVars, options) =>
 					result.mutateAsync({ ...vars, templateId: template }, options),
-			};
+			} as UseMutationResult<SubmitResult, Error, MutVars>;
 		},
 
-		useExerciseChoice: (opts = {}) => {
-			const result = n.useExerciseChoice(opts) as ReturnType<UseExerciseChoiceFn<unknown>>;
+		useExerciseChoice: ((opts = {}) => {
+			const result = n.useExerciseChoice(opts) as UseMutationResult<
+				SubmitResult,
+				Error,
+				ExerciseChoiceVariables<unknown>
+			>;
 			return {
 				...result,
-				mutate: (vars, options) =>
+				mutate: (vars: Omit<ExerciseChoiceVariables<unknown>, "templateId">, options) =>
 					result.mutate(
 						{ ...vars, templateId: template } as ExerciseChoiceVariables<unknown>,
-						options,
+						// biome-ignore lint/suspicious/noExplicitAny: MutateOptions<TArg> → MutateOptions<unknown>
+						options as any,
 					),
-				mutateAsync: (vars, options) =>
+				mutateAsync: (vars: Omit<ExerciseChoiceVariables<unknown>, "templateId">, options) =>
 					result.mutateAsync(
 						{ ...vars, templateId: template } as ExerciseChoiceVariables<unknown>,
-						options,
+						// biome-ignore lint/suspicious/noExplicitAny: MutateOptions<TArg> → MutateOptions<unknown>
+						options as any,
 					),
 			};
-		},
+		}) as TypedContractNamespace<T>["useExerciseChoice"],
+
+		useExercise: ((choice, opts = {}) => {
+			const result = n.useExerciseChoice(opts) as UseMutationResult<
+				SubmitResult,
+				Error,
+				ExerciseChoiceVariables<unknown>
+			>;
+			return {
+				...result,
+				mutate: (vars: ExerciseCoreVars<unknown>, options) =>
+					result.mutate(
+						{ ...vars, templateId: template, choice } as ExerciseChoiceVariables<unknown>,
+						// biome-ignore lint/suspicious/noExplicitAny: MutateOptions<TArg> → MutateOptions<unknown>
+						options as any,
+					),
+				mutateAsync: (vars: ExerciseCoreVars<unknown>, options) =>
+					result.mutateAsync(
+						{ ...vars, templateId: template, choice } as ExerciseChoiceVariables<unknown>,
+						// biome-ignore lint/suspicious/noExplicitAny: MutateOptions<TArg> → MutateOptions<unknown>
+						options as any,
+					),
+			};
+		}) as TypedContractNamespace<T>["useExercise"],
 	};
 }
 

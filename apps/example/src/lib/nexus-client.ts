@@ -1,3 +1,4 @@
+import { Iou } from "@daml.js/nexus-example-0.0.1";
 import {
 	createNexusClient,
 	fetchMiddlewarePlugin,
@@ -23,6 +24,9 @@ export const nexus = await createNexusClient({
 		typeof window !== "undefined"
 			? "/api/ledger"
 			: (process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575"),
+	types: {
+		Iou: Iou.Iou,
+	},
 	plugins: [
 		sandboxAuth({
 			// WARNING: NEXT_PUBLIC_ prefix embeds this value in the client bundle.

@@ -3,6 +3,7 @@ import type {
 	ActiveContract,
 	ActiveContractsResponse,
 	DamlTemplate,
+	DamlTemplateIdentity,
 	NexusTemplateIdentifier,
 	TemplateDescriptor,
 	TemplateId,
@@ -32,8 +33,12 @@ export class ContractQuery {
 	) {}
 
 	private async resolve(t: NexusTemplateIdentifier): Promise<string | TemplateId> {
-		if (typeof t === "object" && "templateId" in t && "templateIdWithPackageId" in t) {
-			return t.templateIdWithPackageId;
+		if (typeof t === "object" && "templateId" in t && "decoder" in t) {
+			// DamlTemplate — use full package-qualified ID when available (v3+), fall back to templateId (v2)
+			return (
+				(t as DamlTemplateIdentity).templateIdWithPackageId ??
+				(t as DamlTemplateIdentity).templateId
+			);
 		}
 		if (this.packages && typeof t === "object" && "packageName" in t) {
 			return this.packages.resolveTemplateId(t as TemplateDescriptor);
