@@ -20,7 +20,10 @@ const IOU_TEMPLATE: TemplateDescriptor = {
 export function IouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);
 
-	const { contracts, isLoading } = nexus.useContracts<IouPayload>({ templateId: IOU_TEMPLATE, parties });
+	const { contracts, isLoading } = nexus.useContracts<IouPayload>({
+		templateId: IOU_TEMPLATE,
+		parties,
+	});
 
 	if (isLoading) {
 		return (
