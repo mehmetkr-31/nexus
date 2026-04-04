@@ -58,9 +58,12 @@ type UnionToIntersection<U> = (U extends unknown ? (k: U) => void : never) exten
 export type InferPluginContext<P> = P extends NexusPlugin<infer T> ? T : Record<string, never>;
 
 /** Merge all plugin contexts from an array into one intersection type. */
-export type InferNexusPlugins<P extends readonly NexusPlugin[]> = UnionToIntersection<
+export type InferNexusClientPlugins<P extends readonly NexusPlugin[]> = UnionToIntersection<
 	InferPluginContext<P[number]>
 >;
+
+/** @deprecated Use InferNexusClientPlugins instead */
+export type InferNexusPlugins<P extends readonly NexusPlugin[]> = InferNexusClientPlugins<P>;
 
 // ─── NexusPlugin ─────────────────────────────────────────────────────────────
 

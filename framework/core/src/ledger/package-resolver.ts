@@ -1,10 +1,5 @@
 import type { CantonClient } from "../client/canton-client.ts";
-
-export interface TemplateDescriptor {
-	packageName: string;
-	moduleName: string;
-	entityName: string;
-}
+import type { TemplateDescriptor } from "../types/index.ts";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -125,6 +120,8 @@ export class PackageResolver {
 	/**
 	 * Resolves a template name to a full Template ID (including Package ID).
 	 * Falls back to the name as-is if no resolution is found.
+	 * Also populates the internal templateCache so `getAllTemplates()` returns
+	 * a complete picture of all templates the application has resolved.
 	 */
 	async resolveTemplateId(descriptor: TemplateDescriptor | string): Promise<string> {
 		if (!this.isInitialized) {
@@ -143,7 +140,9 @@ export class PackageResolver {
 				const ids = pkgName ? this.packageCache.get(pkgName) : undefined;
 				if (ids && ids.length > 0) {
 					// Use the most recently uploaded version (last in list)
-					return `${ids[ids.length - 1]}:${mod}:${entity}`;
+					const resolved = `${ids[ids.length - 1]}:${mod}:${entity}`;
+					this.templateCache.set(descriptor, resolved);
+					return resolved;
 				}
 			}
 			return descriptor;
@@ -152,7 +151,10 @@ export class PackageResolver {
 		const { packageName, moduleName, entityName } = descriptor;
 		const ids = this.packageCache.get(packageName);
 		if (ids && ids.length > 0) {
-			return `${ids[ids.length - 1]}:${moduleName}:${entityName}`;
+			const resolved = `${ids[ids.length - 1]}:${moduleName}:${entityName}`;
+			// Also cache the descriptor form
+			this.templateCache.set(`${packageName}:${moduleName}:${entityName}`, resolved);
+			return resolved;
 		}
 
 		console.debug(
@@ -161,7 +163,10 @@ export class PackageResolver {
 		return `${packageName}:${moduleName}:${entityName}`;
 	}
 
-	/** Returns all discovered templates as a mapping of Human Readable Name -> Package ID Name */
+	/** Returns all templates that have been resolved during this session.
+	 * Populated lazily as `resolveTemplateId()` is called — useful for debugging and
+	 * tooling. Returns an empty object until at least one template is resolved.
+	 */
 	getAllTemplates(): Record<string, string> {
 		const result: Record<string, string> = {};
 		for (const [key, value] of this.templateCache.entries()) {

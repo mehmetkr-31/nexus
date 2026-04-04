@@ -180,11 +180,7 @@ export function fetchByIdOptions<T = unknown>(input: {
 	return queryOptions({
 		queryKey: nexusKeys.contractById(stableId, input.contractId, input.parties),
 		queryFn: () =>
-			input.client.ledger.contracts.fetchContractById<T>(
-				input.templateId,
-				input.contractId,
-				input.parties,
-			),
+			input.client.ledger.contracts.fetchContractById<T>(input.contractId, input.parties),
 		enabled: input.enabled,
 		staleTime: input.staleTime,
 	});

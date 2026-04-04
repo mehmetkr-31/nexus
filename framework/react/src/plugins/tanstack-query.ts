@@ -15,7 +15,7 @@ import type {
 	TemplateId,
 	TransactionStatus,
 } from "@nexus-framework/core";
-import { toStableTemplateId } from "@nexus-framework/core";
+import { DEFAULT_PAGE_SIZE, toStableTemplateId } from "@nexus-framework/core";
 import {
 	type InfiniteData,
 	type UseInfiniteQueryResult,
@@ -429,7 +429,7 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 							templateId: opts.templateId,
 							parties: opts.parties,
 							filter: opts.filter as Record<string, unknown>,
-							pageSize: opts.pageSize ?? 50,
+							pageSize: opts.pageSize ?? DEFAULT_PAGE_SIZE,
 							pageToken: pageParam as string | undefined,
 						});
 					},

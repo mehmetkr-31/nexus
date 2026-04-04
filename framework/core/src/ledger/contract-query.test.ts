@@ -84,7 +84,7 @@ describe("ContractQuery", () => {
 			getToken: async () => "token",
 		});
 		const query = new ContractQuery(client);
-		const contract = await query.fetchContractById("pkg:Mod:T", "c2");
+		const contract = await query.fetchContractById("c2");
 		server.stop();
 
 		expect(contract?.contractId).toBe("c2");
@@ -104,7 +104,7 @@ describe("ContractQuery", () => {
 			getToken: async () => "token",
 		});
 		const query = new ContractQuery(client);
-		const contract = await query.fetchContractById("pkg:Mod:T", "unknown-id");
+		const contract = await query.fetchContractById("unknown-id");
 		server.stop();
 
 		expect(contract).toBeUndefined();

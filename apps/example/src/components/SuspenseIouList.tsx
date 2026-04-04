@@ -4,14 +4,13 @@ import type { ActiveContract } from "@nexus-framework/react";
 import { Layers, Loader2, Target } from "lucide-react";
 import { Suspense, useMemo } from "react";
 import { nexus } from "../lib/nexus-client";
+import { IOU_TEMPLATE_ID } from "../lib/nexus";
 
 interface IouPayload {
 	owner: string;
 	amount: string;
 	currency: string;
 }
-
-const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
 
 export function SuspenseIouList({ partyId }: { partyId: string }) {
 	return (

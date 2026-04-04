@@ -1,5 +1,9 @@
 import { NexusAuthError } from "../types/index";
 
+function toBufferSource(buf: Uint8Array): ArrayBuffer {
+	return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+}
+
 // ─── JwtPayload ───────────────────────────────────────────────────────────────
 
 /**
@@ -278,10 +282,19 @@ async function _verifyHmac(
 	hash: string,
 ): Promise<void> {
 	const keyData = typeof secret === "string" ? new TextEncoder().encode(secret) : secret;
-	const key = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash }, false, [
-		"verify",
-	]);
-	const valid = await crypto.subtle.verify("HMAC", key, signature, data);
+	const key = await crypto.subtle.importKey(
+		"raw",
+		toBufferSource(keyData),
+		{ name: "HMAC", hash },
+		false,
+		["verify"],
+	);
+	const valid = await crypto.subtle.verify(
+		"HMAC",
+		key,
+		toBufferSource(signature),
+		toBufferSource(data),
+	);
 	if (!valid) {
 		throw new NexusAuthError("JWT signature verification failed (HS256)");
 	}
@@ -296,8 +309,8 @@ async function _verifyRsa(
 	const valid = await crypto.subtle.verify(
 		{ name: "RSASSA-PKCS1-v1_5", hash },
 		key,
-		signature,
-		data,
+		toBufferSource(signature),
+		toBufferSource(data),
 	);
 	if (!valid) {
 		throw new NexusAuthError("JWT signature verification failed (RSA)");
@@ -310,7 +323,12 @@ async function _verifyEcdsa(
 	key: CryptoKey,
 	hash: string,
 ): Promise<void> {
-	const valid = await crypto.subtle.verify({ name: "ECDSA", hash }, key, signature, data);
+	const valid = await crypto.subtle.verify(
+		{ name: "ECDSA", hash },
+		key,
+		toBufferSource(signature),
+		toBufferSource(data),
+	);
 	if (!valid) {
 		throw new NexusAuthError("JWT signature verification failed (ECDSA)");
 	}

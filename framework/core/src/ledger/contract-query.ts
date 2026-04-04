@@ -8,6 +8,7 @@ import type {
 	TemplateDescriptor,
 	TemplateId,
 } from "../types/index.ts";
+import { DEFAULT_PAGE_SIZE } from "../config.ts";
 import { fetchAllPages } from "../utils/pagination.ts";
 import type { PackageResolver } from "./package-resolver.ts";
 
@@ -88,7 +89,7 @@ export class ContractQuery {
 			const page = await this.client.queryContracts<T>(templateId, {
 				parties: options.parties,
 				filter: options.filter,
-				pageSize: options.pageSize ?? 100,
+				pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
 				pageToken,
 			});
 			return { items: page.contracts, nextPageToken: page.nextPageToken };
@@ -96,26 +97,25 @@ export class ContractQuery {
 	}
 
 	/**
-	 * Fetch a single contract by contractId from active contracts.
-	 * Returns undefined if not found.
+	 * Fetch a single contract by contract ID.
+	 * Uses the Canton native `POST /v2/contracts/contract-by-id` endpoint —
+	 * a single O(1) API call, no client-side filtering.
+	 * Returns undefined if the contract does not exist or is not visible.
 	 */
 	async fetchContractById<T = unknown>(
-		templateId: NexusTemplateIdentifier,
 		contractId: string,
 		parties?: string[],
 	): Promise<ActiveContract<T> | undefined> {
-		const resolvedId = await this.resolve(templateId);
-		const result = await this.client.queryContracts<T>(resolvedId, {
-			parties,
-			pageSize: 1000,
-		});
-		return result.contracts.find((c) => c.contractId === contractId);
+		return this.client.getContractById<T>(contractId, { parties });
 	}
 
 	/**
 	 * Fetch a contract by its Daml contract key.
 	 * Fetches all contracts for the template and finds the one matching the key.
 	 * Returns undefined if not found.
+	 *
+	 * Note: This is a full ACS scan. For high-volume templates, consider using
+	 * PQS (`pqsDatabasePlugin`) with the SQL `active()` function for efficient key lookups.
 	 */
 	async fetchContractByKey<T = unknown>(
 		templateId: NexusTemplateIdentifier,

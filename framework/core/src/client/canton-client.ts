@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+	type ActiveContract,
 	type ActiveContractsResponse,
 	type ActiveInterfacesResponse,
 	type CompletionStreamHandlers,
@@ -141,6 +142,19 @@ const activeInterfacesResponseSchema = z.union([
 			nextPageToken: obj.nextPageToken,
 		})),
 ]);
+
+const getContractByIdResponseSchema = z
+	.object({
+		createdEvent: cantonCreatedEventSchema,
+	})
+	.transform(({ createdEvent }) => ({
+		contractId: createdEvent.contractId,
+		templateId: parseTemplateId(createdEvent.templateId),
+		payload: createdEvent.createArgument,
+		createdAt: createdEvent.createdAt,
+		signatories: createdEvent.signatories,
+		observers: createdEvent.observers,
+	}));
 
 // ─── CantonClient ─────────────────────────────────────────────────────────────
 
@@ -347,6 +361,42 @@ export class CantonClient {
 		);
 	}
 
+	/**
+	 * Fetch a single contract by its contract ID using the Canton native endpoint.
+	 * Uses `POST /v2/contracts/contract-by-id` which returns the contract at the current ledger end.
+	 * Returns `undefined` if the contract does not exist or is not visible to the querying parties.
+	 *
+	 * This is the correct approach for by-ID lookups — the old `fetchContractById` in ContractQuery
+	 * used a full ACS query with pageSize=1000 and client-side filtering, which could silently
+	 * miss contracts when more than 1000 were active.
+	 */
+	async getContractById<T = Record<string, unknown>>(
+		contractId: string,
+		options?: {
+			parties?: string[];
+		},
+	): Promise<ActiveContract<T> | undefined> {
+		const body: Record<string, unknown> = { contractId };
+		if (options?.parties?.length) {
+			body.queryingParties = options.parties;
+		}
+
+		try {
+			return await this.request<ActiveContract<T>>(
+				"POST",
+				`${this.apiBase}/contracts/contract-by-id`,
+				body,
+				getContractByIdResponseSchema as z.ZodType<ActiveContract<T>>,
+			);
+		} catch (err) {
+			// Canton returns 404 when the contract is not found or not visible
+			if (err instanceof NexusLedgerError && err.statusCode === 404) {
+				return undefined;
+			}
+			throw err;
+		}
+	}
+
 	// ─── Command Submission ────────────────────────────────────────────────────
 
 	/** Extract the user ID (sub claim) from the current token for use as userId in commands. */
@@ -474,6 +524,7 @@ export class CantonClient {
 			) ?? {};
 
 		const finalInterfaceId = toStableTemplateId(interfaceId);
+		const ledgerEnd = await this.getLedgerEnd();
 
 		const body: Record<string, unknown> = {
 			filter: {
@@ -486,7 +537,7 @@ export class CantonClient {
 					},
 				],
 			},
-			activeAtOffset: "0",
+			activeAtOffset: String(ledgerEnd.offset),
 		};
 
 		if (options?.parties?.length) {
@@ -565,8 +616,13 @@ export class CantonClient {
 				}
 			};
 
-			socket.onerror = () => {
-				handlers.onError?.(new Error("WebSocket error"));
+			socket.onerror = (event) => {
+				const reason = event.type || "unknown";
+				handlers.onError?.(
+					new Error(
+						`Active contracts stream WebSocket error (url=${socket.url}, readyState=${socket.readyState}, type=${reason})`,
+					),
+				);
 			};
 
 			socket.onclose = () => {
@@ -654,8 +710,13 @@ export class CantonClient {
 				}
 			};
 
-			socket.onerror = () => {
-				handlers.onError?.(new Error("Completion stream WebSocket error"));
+			socket.onerror = (event) => {
+				const reason = event.type || "unknown";
+				handlers.onError?.(
+					new Error(
+						`Completion stream WebSocket error (url=${socket.url}, readyState=${socket.readyState}, type=${reason})`,
+					),
+				);
 			};
 
 			socket.onclose = () => {

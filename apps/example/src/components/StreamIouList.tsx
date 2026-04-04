@@ -4,14 +4,13 @@ import type { ActiveContract } from "@nexus-framework/react";
 import { Radio, RefreshCw, XCircle } from "lucide-react";
 import { useMemo } from "react";
 import { nexus } from "../lib/nexus-client";
+import { IOU_TEMPLATE_ID } from "../lib/nexus";
 
 interface IouPayload {
 	owner: string;
 	amount: string;
 	currency: string;
 }
-
-const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
 
 export function StreamIouList({ partyId }: { partyId: string }) {
 	const parties = useMemo(() => [partyId], [partyId]);

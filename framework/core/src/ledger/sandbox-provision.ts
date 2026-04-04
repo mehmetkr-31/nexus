@@ -76,11 +76,33 @@ export async function provisionSandboxUser(options: ProvisionSandboxUserOptions)
 		const text = await res.text();
 
 		if (text.includes("ALREADY_EXISTS") || text.includes("already exists")) {
-			// Party was already allocated — extract ID from error body if possible
-			const match =
-				text.match(/party\s+([^\s]+)\s+is already allocated/i) ??
-				text.match(/partyId\s+['"]([^'"]+)['"]\s+already exists/i);
-			if (match?.[1]) partyId = toDamlLFPartyId(match[1]);
+			// Party already allocated — try to extract party ID from JSON error body first
+			// (Canton 3.x returns structured JSON for most errors), then fall back to regex
+			let extracted = false;
+			try {
+				const errBody = JSON.parse(text) as Record<string, unknown>;
+				// Canton may embed the duplicate party ID in various fields
+				const candidate =
+					(errBody.party as string | undefined) ??
+					(errBody.details as string | undefined) ??
+					String(errBody.message ?? "").match(
+						/party\s+([A-Za-z][A-Za-z0-9:#_-]*::[A-Za-z0-9+=/]+)/,
+					)?.[1];
+				if (candidate) {
+					partyId = toDamlLFPartyId(candidate);
+					extracted = true;
+				}
+			} catch {
+				// Not JSON — fall through to regex
+			}
+
+			if (!extracted) {
+				// Text error — try regex patterns for known Canton formats
+				const match =
+					text.match(/party\s+([^\s]+)\s+is already allocated/i) ??
+					text.match(/partyId\s+['"]([^'"]+)['"]\s+already exists/i);
+				if (match?.[1]) partyId = toDamlLFPartyId(match[1]);
+			}
 			break;
 		}
 

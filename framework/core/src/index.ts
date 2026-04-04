@@ -16,6 +16,7 @@ export {
 	sandboxAuth,
 } from "./auth/plugins/sandbox-auth.ts";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
+export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config.ts";
 
 export { CantonClient } from "./client/canton-client.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
@@ -64,7 +65,7 @@ export {
 
 export type {
 	FetchMiddleware,
-	InferNexusPlugins,
+	InferNexusClientPlugins,
 	InferPluginContext,
 	NexusClient,
 	NexusConfig,
@@ -75,10 +76,8 @@ export type {
 export * from "./utils/jwt.ts";
 export * from "./utils/canton-jwt.ts";
 export * from "./utils/template.ts";
-export { JwksClient } from "./auth/jwks-client.ts";
-export type { NexusJwk, NexusJwkSet, JwksClientOptions } from "./auth/jwks-client.ts";
 
-import type { InferNexusPlugins } from "./types/plugin.ts";
+import type { InferNexusClientPlugins } from "./types/plugin.ts";
 
 /**
  * Initialize a Nexus client with the given configuration and plugins.
@@ -90,7 +89,7 @@ export async function createNexus<
 	apiPathPrefix?: string;
 	timeoutMs?: number;
 	plugins: TPlugins;
-}): Promise<NexusClient & InferNexusPlugins<TPlugins>> {
+}): Promise<NexusClient & InferNexusClientPlugins<TPlugins>> {
 	const authPlugin = options.plugins.find((p) => p.auth);
 	if (!authPlugin?.auth) {
 		throw new Error(
@@ -165,5 +164,5 @@ export async function createNexus<
 	return {
 		...client,
 		...context,
-	} as NexusClient & InferNexusPlugins<TPlugins>;
+	} as NexusClient & InferNexusClientPlugins<TPlugins>;
 }

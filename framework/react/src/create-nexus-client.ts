@@ -49,7 +49,7 @@ type ExtractGetActionsContext<P> = P extends { getActions?: (client: NexusClient
 	? T
 	: Record<string, never>;
 
-export type InferNexusPlugins<P extends AnyPlugin[]> = UnionToIntersection<
+export type InferNexusClientPlugins<P extends AnyPlugin[]> = UnionToIntersection<
 	| ExtractCorePluginContext<P[number]>
 	| ExtractReactPluginContext<P[number]>
 	| ExtractGetActionsContext<P[number]>
@@ -294,7 +294,7 @@ export async function createNexusClient<
 	plugins: TPlugins;
 	/** Map Daml templates to typed namespaces on the client instance. */
 	types?: TTypes;
-}): Promise<NexusClientInstance<InferNexusPlugins<TPlugins>, TTypes>> {
+}): Promise<NexusClientInstance<InferNexusClientPlugins<TPlugins>, TTypes>> {
 	const serverPlugins = options.plugins.filter(
 		(p): p is NexusPlugin<Record<string, unknown>> => "auth" in p || "init" in p,
 	);
@@ -325,7 +325,7 @@ export async function createNexusClient<
 		}
 	}
 
-	const mergedActions = Object.assign({}, ...allActions) as InferNexusPlugins<TPlugins> &
+	const mergedActions = Object.assign({}, ...allActions) as InferNexusClientPlugins<TPlugins> &
 		Record<string, unknown>;
 
 	// Second pass: re-run getActions with full merged context so plugins can cross-reference
@@ -335,10 +335,10 @@ export async function createNexusClient<
 			if (!p.getActions) return {};
 			return p.getActions({ ...coreClient, ...mergedActions } as NexusClient);
 		}),
-	) as InferNexusPlugins<TPlugins> & Record<string, unknown>;
+	) as InferNexusClientPlugins<TPlugins> & Record<string, unknown>;
 
 	const client = { ...coreClient, ...actions } as NexusClientInstance<
-		InferNexusPlugins<TPlugins>,
+		InferNexusClientPlugins<TPlugins>,
 		TTypes
 	>;
 
