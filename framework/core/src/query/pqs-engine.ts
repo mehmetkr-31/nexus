@@ -5,108 +5,154 @@ const { Pool } = pkg;
 
 import type { PqsFindOptions } from "../types/client.js";
 
-type GenericKyselyDb = Record<string, Record<string, unknown>>;
+/**
+ * Canton PQS (Participant Query Store) table schema.
+ * PQS writes all active contracts into a single `active_contracts` table.
+ *
+ * @see https://docs.digitalasset.com/build/3.4/sdlc-howtos/canton/participant-query-store
+ */
+interface ActiveContractsTable {
+	contract_id: string;
+	template_id_package_id: string;
+	template_id_module_name: string;
+	template_id_entity_name: string;
+	/** Daml contract payload stored as JSONB */
+	create_argument: Record<string, unknown>;
+	signatories: string[];
+	observers: string[];
+	created_at: string;
+}
+
+interface PqsDatabase {
+	active_contracts: ActiveContractsTable;
+}
 
 /**
- * PQS Database (PostgreSQL) engine utilizing Kysely and Postgres (pg).
- * Designed as an ultra-lightweight dynamic SQL builder.
+ * PQS Database (PostgreSQL) engine using Kysely.
+ *
+ * Queries the Canton PQS `active_contracts` table — the canonical table that
+ * Canton's Participant Query Store maintains. All contract types live in this
+ * single table, filtered by `template_id_*` columns.
+ *
+ * Row Level Security (RLS) is enforced by setting `app.current_user` before
+ * every query inside a transaction, matching the Canton PQS RLS policy convention.
  */
 export class KyselyPqsEngine {
-	private readonly db: Kysely<GenericKyselyDb>;
+	private readonly db: Kysely<PqsDatabase>;
 
 	constructor(pqsUrl: string) {
-		this.db = new Kysely<GenericKyselyDb>({
+		this.db = new Kysely<PqsDatabase>({
 			dialect: new PostgresDialect({
 				pool: new Pool({
 					connectionString: pqsUrl,
-					max: 10, // Default pool size suitable for typical deployments
+					max: 10,
 				}),
 			}),
 		});
 	}
 
 	/**
-	 * Scopes database queries within a transaction with an isolated session variable
-	 * for Row Level Security (RLS) enforcement.
+	 * Scopes queries inside a transaction with a session variable for RLS.
 	 */
 	private async withRls<T>(
 		partyId: string,
-		callback: (trx: Kysely<GenericKyselyDb>) => Promise<T>,
+		callback: (trx: Kysely<PqsDatabase>) => Promise<T>,
 	): Promise<T> {
 		return this.db.transaction().execute(async (trx) => {
-			// Ensure sub-transaction privacy by setting session variable for RLS
 			await sql`SET LOCAL app.current_user = ${partyId}`.execute(trx);
 			return callback(trx);
 		});
 	}
 
 	/**
-	 * Takes a generic options object (similar to modern ORM find parameters),
-	 * building Kysely query chains for extremely fast payload retrieval.
+	 * Parse a Canton template ID string into its components.
+	 * Accepts both "pkgId:Module:Entity" and TemplateDescriptor-style formats.
+	 */
+	private parseTemplateId(templateId: string): {
+		packageId: string;
+		moduleName: string;
+		entityName: string;
+	} {
+		const parts = templateId.split(":");
+		if (parts.length !== 3 || parts.some((p) => !p)) {
+			throw new Error(
+				`KyselyPqsEngine: invalid templateId "${templateId}". ` +
+					`Expected "packageId:ModuleName:EntityName".`,
+			);
+		}
+		return {
+			packageId: parts[0] as string,
+			moduleName: parts[1] as string,
+			entityName: parts[2] as string,
+		};
+	}
+
+	/**
+	 * Find many contracts in the PQS `active_contracts` table.
 	 *
-	 * @param partyId The authenticated participant requesting data
-	 * @param templateIdRaw The raw Daml generated format of the Template ID
-	 * @param options Query and filter constraints
-	 * @returns Array of resulting database rows (payloads)
+	 * @param partyId  Authenticated party — used for RLS enforcement
+	 * @param templateId  Canton template ID string "pkgId:Module:Entity"
+	 * @param options  Filter, limit, orderBy constraints
 	 */
 	public async findMany(
 		partyId: string,
-		templateIdRaw: string,
+		templateId: string,
 		options?: PqsFindOptions<unknown>,
-	): Promise<unknown[]> {
+	): Promise<{ contractId: string; payload: unknown }[]> {
+		const { packageId, moduleName, entityName } = this.parseTemplateId(templateId);
+
 		return this.withRls(partyId, async (trx) => {
-			const tableName = sanitizePqsTableName(templateIdRaw);
-			let query = trx.selectFrom(tableName).selectAll();
+			let query = trx
+				.selectFrom("active_contracts")
+				.selectAll()
+				.where("template_id_package_id", "=", packageId)
+				.where("template_id_module_name", "=", moduleName)
+				.where("template_id_entity_name", "=", entityName);
 
 			if (options?.where) {
-				query = applyWhere(query, options.where);
+				query = applyWhere(query, options.where as Record<string, unknown>);
 			}
 
 			if (options?.limit) {
-				query = query.limit(options.limit as number);
+				query = query.limit(options.limit);
 			}
 
 			if (options?.orderBy) {
 				for (const [key, direction] of Object.entries(options.orderBy)) {
-					query = query.orderBy(key, direction as "asc" | "desc");
+					// biome-ignore lint/suspicious/noExplicitAny: dynamic column names from user options
+					query = (query as any).orderBy(key, direction as "asc" | "desc");
 				}
 			}
 
 			const rows = await query.execute();
 
-			// PQS tables typically wrap the real data inside a 'payload' column or field
-			return rows.map((r: unknown) => {
-				const rec = r as Record<string, unknown>;
-				// We package the raw payload back with its contractId as expected by the SDK Contract type.
-				return {
-					contractId: rec.contract_id ?? "",
-					payload: rec.payload ?? rec,
-				};
-			});
+			return rows.map((r) => ({
+				contractId: r.contract_id,
+				payload: r.create_argument,
+			}));
 		});
 	}
 
 	/**
-	 * Fetches a single contract by its Ledger assigned ID.
+	 * Fetch a single contract from `active_contracts` by its contract ID.
+	 * Returns `null` if not found or archived.
 	 */
 	public async findById(
 		partyId: string,
-		templateIdRaw: string,
+		_templateId: string,
 		contractId: string,
-	): Promise<unknown | null> {
+	): Promise<{ contractId: string; payload: unknown } | null> {
 		return this.withRls(partyId, async (trx) => {
-			const tableName = sanitizePqsTableName(templateIdRaw);
 			const row = await trx
-				.selectFrom(tableName)
+				.selectFrom("active_contracts")
 				.selectAll()
 				.where("contract_id", "=", contractId)
 				.executeTakeFirst();
 
 			if (!row) return null;
-			const rec = row as Record<string, unknown>;
 			return {
-				contractId: rec.contract_id ?? "",
-				payload: rec.payload ?? rec,
+				contractId: row.contract_id,
+				payload: row.create_argument,
 			};
 		});
 	}
@@ -116,10 +162,9 @@ export class KyselyPqsEngine {
 	}
 }
 
-/**
- * Recursively applies OR/AND/Equal filters.
- */
-// biome-ignore lint/suspicious/noExplicitAny: Recursive Kysely query builders are extremely hard to type explicitly
+// ─── Where clause builder ─────────────────────────────────────────────────────
+
+// biome-ignore lint/suspicious/noExplicitAny: Kysely query builders require any for recursive chaining
 function applyWhere(query: any, whereObj: Record<string, unknown>): any {
 	for (const [key, val] of Object.entries(whereObj)) {
 		if (key === "AND" && Array.isArray(val)) {
@@ -143,12 +188,4 @@ function applyWhere(query: any, whereObj: Record<string, unknown>): any {
 		}
 	}
 	return query;
-}
-
-/**
- * Safely sanitizes default Canton Participant Query Store table names.
- */
-function sanitizePqsTableName(templateId: string): string {
-	// E.g., translates "98cc1...:NexusApp:Iou" into "nexusapp_iou"
-	return templateId.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
 }

@@ -1,11 +1,23 @@
 // /framework/core/src/command/ledger-fetch.ts
 
 /**
- * A native, completely lightweight fetch layer bypassing legacy dependency wrappers.
- * Safely delivers command payloads strictly adhering to the Canton JSON API v2 protocol.
+ * @deprecated Use `CantonClient` from `@nexus-framework/core` instead.
+ * This class uses incorrect endpoint paths and lacks middleware, retry logic,
+ * and Zod validation. It will be removed in a future release.
+ *
+ * Migration:
+ * ```ts
+ * // Before
+ * const client = new CantonJsonApiClient(baseUrl)
+ * await client.create(token, templateId, payload)
+ *
+ * // After
+ * import { createNexus, sandboxAuth } from "@nexus-framework/core"
+ * const nexus = await createNexus({ ledgerApiUrl: baseUrl, plugins: [sandboxAuth(...)] })
+ * await nexus.ledger.commands.createContract(templateId, payload, actAs)
+ * ```
  */
 export class CantonJsonApiClient {
-	// Root address of the targeted Canton Ledger API node.
 	private readonly baseUrl: string;
 
 	constructor(baseUrl: string) {
@@ -13,31 +25,27 @@ export class CantonJsonApiClient {
 	}
 
 	/**
-	 * Takes an active Daml Template ID and its generated encoded payload format,
-	 * pushing this CreateCommand to the Canton HTTP integration node.
-	 *
-	 * @param token An active, externally authenticated JWT or OAuth identity token
-	 * @param templateId The universally unique ledger template identifier
-	 * @param encodedPayload Verified and Daml-LF encoded payload representing template parameters
+	 * @deprecated Use `nexus.ledger.commands.createContract()` instead.
 	 */
 	public async create(
 		token: string | undefined,
 		templateId: string,
 		encodedPayload: unknown,
 	): Promise<{ contractId: string; payload: unknown }> {
-		const result = (await this.submitCommand(token, "/v2/command/submit", {
+		const result = (await this.submitCommand(token, "/v2/commands/submit-and-wait", {
 			commands: [
 				{
 					CreateCommand: {
-						templateId: templateId,
+						templateId,
 						createArguments: encodedPayload,
 					},
 				},
 			],
-		})) as { events?: Array<{ created?: { contractId?: string; payload?: unknown } }> };
+		})) as {
+			updateId?: string;
+			events?: Array<{ created?: { contractId?: string; payload?: unknown } }>;
+		};
 
-		// The Ledger usually responds by emitting multiple associated events.
-		// Returns solely the relevant originating payload created during submission.
 		const createdEvent = result?.events?.[0]?.created;
 
 		if (!createdEvent?.contractId) {
@@ -46,18 +54,12 @@ export class CantonJsonApiClient {
 
 		return {
 			contractId: createdEvent.contractId,
-			payload: createdEvent.payload || {},
+			payload: createdEvent.payload ?? {},
 		};
 	}
 
 	/**
-	 * Exercises a choice on an active ledger contract.
-	 *
-	 * @param token Authentication token.
-	 * @param templateId Template identifier of the contract.
-	 * @param contractId Ledger assigned unique ID of the contract.
-	 * @param choice Name of the choice to exercise.
-	 * @param choiceArgument Optional arguments for the choice.
+	 * @deprecated Use `nexus.ledger.commands.exerciseChoice()` instead.
 	 */
 	public async exercise(
 		token: string | undefined,
@@ -66,7 +68,7 @@ export class CantonJsonApiClient {
 		choice: string,
 		choiceArgument: unknown = {},
 	): Promise<unknown> {
-		const result = (await this.submitCommand(token, "/v2/command/submit", {
+		const result = (await this.submitCommand(token, "/v2/commands/submit-and-wait", {
 			commands: [
 				{
 					ExerciseCommand: {
@@ -82,12 +84,9 @@ export class CantonJsonApiClient {
 		const exercisedEvent = result?.events?.find(
 			(e: { exercised?: unknown }) => e.exercised,
 		)?.exercised;
-		return exercisedEvent?.exerciseResult || {};
+		return exercisedEvent?.exerciseResult ?? {};
 	}
 
-	/**
-	 * General purpose execution layer bridging node-to-ledger JSON communications.
-	 */
 	private async submitCommand(
 		token: string | undefined,
 		endpoint: string,
@@ -97,7 +96,6 @@ export class CantonJsonApiClient {
 			"Content-Type": "application/json",
 		};
 
-		// Safely appends Bearer schema should an authentication token be supplied.
 		if (token) {
 			headers.Authorization = `Bearer ${token}`;
 		}

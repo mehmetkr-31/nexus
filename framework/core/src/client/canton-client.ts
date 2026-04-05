@@ -397,6 +397,45 @@ export class CantonClient {
 		}
 	}
 
+	/**
+	 * Fetch a single contract by its Daml contract key using the Canton native endpoint.
+	 * Uses `POST /v2/contracts/contract-by-key` — a single O(1) API call.
+	 *
+	 * The `key` parameter must be the Daml-LF encoded key value as a plain JS object
+	 * matching the key type's Daml data representation (e.g., `{ owner: "Alice::..." }`).
+	 *
+	 * Returns `undefined` if no contract exists with that key or the party can't see it.
+	 */
+	async getContractByKey<T = Record<string, unknown>>(
+		templateId: string,
+		key: Record<string, unknown>,
+		options?: {
+			parties?: string[];
+		},
+	): Promise<ActiveContract<T> | undefined> {
+		const body: Record<string, unknown> = {
+			templateId: toStableTemplateId(templateId),
+			key,
+		};
+		if (options?.parties?.length) {
+			body.queryingParties = options.parties;
+		}
+
+		try {
+			return await this.request<ActiveContract<T>>(
+				"POST",
+				`${this.apiBase}/contracts/contract-by-key`,
+				body,
+				getContractByIdResponseSchema as z.ZodType<ActiveContract<T>>,
+			);
+		} catch (err) {
+			if (err instanceof NexusLedgerError && err.statusCode === 404) {
+				return undefined;
+			}
+			throw err;
+		}
+	}
+
 	// ─── Command Submission ────────────────────────────────────────────────────
 
 	/** Extract the user ID (sub claim) from the current token for use as userId in commands. */

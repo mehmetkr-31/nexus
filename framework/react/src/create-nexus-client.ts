@@ -108,13 +108,12 @@ export type TypedContractNamespace<T> = {
 			enabled?: boolean;
 			staleTime?: number;
 		}) => ReturnType<typeof fetchByIdOptions<T>>;
-		contractByKey: <K = unknown>(params: {
-			key: K;
-			keyPredicate: (payload: T) => boolean;
+		contractByKey: (params: {
+			key: Record<string, unknown>;
 			parties?: string[];
 			enabled?: boolean;
 			staleTime?: number;
-		}) => ReturnType<typeof fetchByKeyOptions<T, K>>;
+		}) => ReturnType<typeof fetchByKeyOptions<T>>;
 	};
 
 	/** @deprecated Use `useQuery(nexus.<Template>.query.contracts(...))` instead. */
@@ -136,8 +135,8 @@ export type TypedContractNamespace<T> = {
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
 	/** @deprecated Use `useQuery(nexus.<Template>.query.contractByKey(...))` instead. */
-	useFetchByKey: <K = unknown>(
-		opts: Omit<UseFetchByKeyOptions<T, K>, "templateId">,
+	useFetchByKey: (
+		opts: Omit<UseFetchByKeyOptions<T>, "templateId">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
 	useCreateContract: (

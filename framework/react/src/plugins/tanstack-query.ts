@@ -63,11 +63,10 @@ export interface UseFetchOptions<_T = unknown> {
 	staleTime?: number;
 }
 
-export interface UseFetchByKeyOptions<T = unknown, K = unknown> {
+export interface UseFetchByKeyOptions<T = unknown> {
 	templateId: NexusTemplateIdentifier;
-	key: K;
-	/** Function that returns true if the contract payload matches the key */
-	keyPredicate: (payload: T) => boolean;
+	/** The exact Daml contract key value — passed to `POST /v2/contracts/contract-by-key`. */
+	key: Record<string, unknown>;
 	parties?: string[];
 	enabled?: boolean;
 	staleTime?: number;
@@ -267,8 +266,8 @@ export interface UseRightsAsResult {
 	useFetch: <T = unknown>(
 		options: Omit<UseFetchOptions<T>, "parties">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
-	useFetchByKey: <T = unknown, K = unknown>(
-		options: Omit<UseFetchByKeyOptions<T, K>, "parties">,
+	useFetchByKey: <T = unknown>(
+		options: Omit<UseFetchByKeyOptions<T>, "parties">,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 	useInterface: <TView = unknown, TPayload = unknown>(
 		options: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
@@ -298,8 +297,8 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 		options: UseFetchOptions<T>,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
-	useFetchByKey: <T = unknown, K = unknown>(
-		options: UseFetchByKeyOptions<T, K>,
+	useFetchByKey: <T = unknown>(
+		options: UseFetchByKeyOptions<T>,
 	) => UseQueryResult<ActiveContract<T> | undefined>;
 
 	usePagedContracts: <T = unknown>(
@@ -358,14 +357,13 @@ export interface TanstackQueryActions extends Record<string, unknown> {
 			enabled?: boolean;
 			staleTime?: number;
 		}) => ReturnType<typeof fetchByIdOptions<T>>;
-		contractByKey: <T = unknown, K = unknown>(params: {
+		contractByKey: <T = unknown>(params: {
 			templateId: NexusTemplateIdentifier;
-			key: K;
-			keyPredicate: (payload: T) => boolean;
+			key: Record<string, unknown>;
 			parties?: string[];
 			enabled?: boolean;
 			staleTime?: number;
-		}) => ReturnType<typeof fetchByKeyOptions<T, K>>;
+		}) => ReturnType<typeof fetchByKeyOptions<T>>;
 		interfaces: <TView = unknown, TPayload = unknown>(
 			params: InterfaceQueryOptionsParams<TView, TPayload>,
 		) => ReturnType<typeof interfaceQueryOptions<TView, TPayload>>;
@@ -414,14 +412,13 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					enabled?: boolean;
 					staleTime?: number;
 				}) => fetchByIdOptions<T>({ client, ...params }),
-				contractByKey: <T = unknown, K = unknown>(params: {
+				contractByKey: <T = unknown>(params: {
 					templateId: NexusTemplateIdentifier;
-					key: K;
-					keyPredicate: (payload: T) => boolean;
+					key: Record<string, unknown>;
 					parties?: string[];
 					enabled?: boolean;
 					staleTime?: number;
-				}) => fetchByKeyOptions<T, K>({ client, ...params }),
+				}) => fetchByKeyOptions<T>({ client, ...params }),
 				interfaces: <TView = unknown, TPayload = unknown>(
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),
@@ -458,8 +455,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				useQuery(fetchByIdOptions<T>({ client, ...opts })),
 
 			/** @deprecated Use `useQuery(nexus.query.contractByKey(...))` instead. */
-			useFetchByKey: <T = unknown, K = unknown>(opts: UseFetchByKeyOptions<T, K>) =>
-				useQuery(fetchByKeyOptions<T, K>({ client, ...opts })),
+			useFetchByKey: <T = unknown>(opts: UseFetchByKeyOptions<T>) =>
+				useQuery(fetchByKeyOptions<T>({ client, ...opts })),
 
 			/** @deprecated Use `useInfiniteQuery(nexus.query.pagedContracts(...))` instead. */
 			usePagedContracts: <T = unknown>(
@@ -660,9 +657,8 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 				},
 				useFetch: <T = unknown>(opts: Omit<UseFetchOptions<T>, "parties">) =>
 					useQuery(fetchByIdOptions<T>({ client, ...opts, parties: [party] })),
-				useFetchByKey: <T = unknown, K = unknown>(
-					opts: Omit<UseFetchByKeyOptions<T, K>, "parties">,
-				) => useQuery(fetchByKeyOptions<T, K>({ client, ...opts, parties: [party] })),
+				useFetchByKey: <T = unknown>(opts: Omit<UseFetchByKeyOptions<T>, "parties">) =>
+					useQuery(fetchByKeyOptions<T>({ client, ...opts, parties: [party] })),
 				useInterface: <TView = unknown, TPayload = unknown>(
 					opts: Omit<UseInterfaceOptions<TView, TPayload>, "parties">,
 				) =>
@@ -886,14 +882,13 @@ export function tanstackQueryPlugin(): NexusPlugin<{
 					enabled?: boolean;
 					staleTime?: number;
 				}) => fetchByIdOptions<T>({ client, ...params }),
-				contractByKey: <T = unknown, K = unknown>(params: {
+				contractByKey: <T = unknown>(params: {
 					templateId: NexusTemplateIdentifier;
-					key: K;
-					keyPredicate: (payload: T) => boolean;
+					key: Record<string, unknown>;
 					parties?: string[];
 					enabled?: boolean;
 					staleTime?: number;
-				}) => fetchByKeyOptions<T, K>({ client, ...params }),
+				}) => fetchByKeyOptions<T>({ client, ...params }),
 				interfaces: <TView = unknown, TPayload = unknown>(
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),

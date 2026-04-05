@@ -70,12 +70,17 @@ describe("ContractQuery", () => {
 		const server = Bun.serve({
 			port: 0,
 			fetch() {
-				return Response.json(
-					makeContractPage([
-						{ contractId: "c1", payload: { name: "Alice" } },
-						{ contractId: "c2", payload: { name: "Bob" } },
-					]),
-				);
+				// Simulate POST /v2/contracts/contract-by-id response
+				return Response.json({
+					createdEvent: {
+						contractId: "c2",
+						templateId: "pkg:Mod:T",
+						createArgument: { name: "Bob" },
+						createdAt: "2024-01-01T00:00:00Z",
+						signatories: ["Bob"],
+						observers: [],
+					},
+				});
 			},
 		});
 
@@ -95,7 +100,7 @@ describe("ContractQuery", () => {
 		const server = Bun.serve({
 			port: 0,
 			fetch() {
-				return Response.json(makeContractPage([{ contractId: "c1" }]));
+				return new Response(JSON.stringify({ code: 5, message: "NOT_FOUND" }), { status: 404 });
 			},
 		});
 
@@ -110,17 +115,21 @@ describe("ContractQuery", () => {
 		expect(contract).toBeUndefined();
 	});
 
-	test("fetchContractByKey finds contract matching predicate", async () => {
+	test("fetchContractByKey returns contract matching exact key", async () => {
 		const server = Bun.serve({
 			port: 0,
-			fetch() {
-				return Response.json(
-					makeContractPage([
-						{ contractId: "c1", payload: { owner: "Alice", amount: "100" } },
-						{ contractId: "c2", payload: { owner: "Bob", amount: "200" } },
-						{ contractId: "c3", payload: { owner: "Alice", amount: "50" } },
-					]),
-				);
+			fetch(req) {
+				// Simulate /v2/contracts/contract-by-key returning a single contract
+				return Response.json({
+					createdEvent: {
+						contractId: "c2",
+						templateId: "pkg:Mod:T",
+						createArgument: { owner: "Bob", amount: "200" },
+						createdAt: "2024-01-01T00:00:00Z",
+						signatories: ["Bob"],
+						observers: [],
+					},
+				});
 			},
 		});
 
@@ -130,18 +139,18 @@ describe("ContractQuery", () => {
 		});
 		const query = new ContractQuery(client);
 		type Payload = { owner: string; amount: string };
-		const contract = await query.fetchContractByKey<Payload>("pkg:Mod:T", (p) => p.owner === "Bob");
+		const contract = await query.fetchContractByKey<Payload>("pkg:Mod:T", { owner: "Bob" });
 		server.stop();
 
 		expect(contract?.contractId).toBe("c2");
 		expect(contract?.payload.owner).toBe("Bob");
 	});
 
-	test("fetchContractByKey returns undefined when no match", async () => {
+	test("fetchContractByKey returns undefined for unknown key", async () => {
 		const server = Bun.serve({
 			port: 0,
 			fetch() {
-				return Response.json(makeContractPage([{ contractId: "c1", payload: { owner: "Alice" } }]));
+				return new Response(JSON.stringify({ code: 5, message: "NOT_FOUND" }), { status: 404 });
 			},
 		});
 
@@ -150,10 +159,9 @@ describe("ContractQuery", () => {
 			getToken: async () => "token",
 		});
 		const query = new ContractQuery(client);
-		const contract = await query.fetchContractByKey<{ owner: string }>(
-			"pkg:Mod:T",
-			(p) => p.owner === "Charlie",
-		);
+		const contract = await query.fetchContractByKey<{ owner: string }>("pkg:Mod:T", {
+			owner: "Charlie",
+		});
 		server.stop();
 
 		expect(contract).toBeUndefined();
@@ -163,12 +171,16 @@ describe("ContractQuery", () => {
 		const server = Bun.serve({
 			port: 0,
 			fetch() {
-				return Response.json(
-					makeContractPage([
-						{ contractId: "c1", payload: { owner: "Alice", seq: 1 } },
-						{ contractId: "c2", payload: { owner: "Alice", seq: 2 } },
-					]),
-				);
+				return Response.json({
+					createdEvent: {
+						contractId: "c1",
+						templateId: "pkg:Mod:T",
+						createArgument: { owner: "Alice", seq: 1 },
+						createdAt: "2024-01-01T00:00:00Z",
+						signatories: ["Alice"],
+						observers: [],
+					},
+				});
 			},
 		});
 
@@ -178,10 +190,9 @@ describe("ContractQuery", () => {
 		});
 		const query = new ContractQuery(client);
 		type P = { owner: string; seq: number };
-		const contract = await query.fetchContractByKey<P>("pkg:Mod:T", (p) => p.owner === "Alice");
+		const contract = await query.fetchContractByKey<P>("pkg:Mod:T", { owner: "Alice" });
 		server.stop();
 
-		// Returns the first match
 		expect(contract?.contractId).toBe("c1");
 	});
 });

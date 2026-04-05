@@ -110,19 +110,33 @@ export class ContractQuery {
 	}
 
 	/**
-	 * Fetch a contract by its Daml contract key.
-	 * Fetches all contracts for the template and finds the one matching the key.
-	 * Returns undefined if not found.
+	 * Fetch a contract by its Daml contract key using the Canton native O(1) endpoint.
+	 * Uses `POST /v2/contracts/contract-by-key`.
 	 *
-	 * Note: This is a full ACS scan. For high-volume templates, consider using
-	 * PQS (`pqsDatabasePlugin`) with the SQL `active()` function for efficient key lookups.
+	 * The key must be the **exact key value** as a plain JS object matching the Daml key type.
+	 * For example, if the Daml key is `(Party -> Text)`, pass `{ owner: "Alice::...", reference: "ref-1" }`.
+	 *
+	 * Returns `undefined` if no contract has that key or the party can't see it.
+	 *
+	 * @example
+	 * ```ts
+	 * const contract = await query.fetchContractByKey<IouPayload>(
+	 *   "nexus-example:Iou:Iou",
+	 *   { owner: "alice::...123" },
+	 *   [partyId],
+	 * );
+	 * ```
 	 */
 	async fetchContractByKey<T = unknown>(
 		templateId: NexusTemplateIdentifier,
-		keyPredicate: (payload: T) => boolean,
+		key: Record<string, unknown>,
 		parties?: string[],
 	): Promise<ActiveContract<T> | undefined> {
-		const all = await this.fetchAllActiveContracts<T>({ templateId, parties });
-		return all.find((c) => keyPredicate(c.payload));
+		const resolvedId = await this.resolve(templateId);
+		const stableId =
+			typeof resolvedId === "string"
+				? resolvedId
+				: `${resolvedId.packageId}:${resolvedId.moduleName}:${resolvedId.entityName}`;
+		return this.client.getContractByKey<T>(stableId, key, { parties });
 	}
 }

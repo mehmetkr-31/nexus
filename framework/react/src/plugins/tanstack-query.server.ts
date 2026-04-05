@@ -41,14 +41,13 @@ export function tanstackQueryServerPlugin(): NexusPlugin<{
 					enabled?: boolean;
 					staleTime?: number;
 				}) => fetchByIdOptions<T>({ client, ...params }),
-				contractByKey: <T = Record<string, unknown>, K = unknown>(params: {
+				contractByKey: <T = Record<string, unknown>>(params: {
 					templateId: NexusTemplateIdentifier;
-					key: K;
-					keyPredicate: (payload: T) => boolean;
+					key: Record<string, unknown>;
 					parties?: string[];
 					enabled?: boolean;
 					staleTime?: number;
-				}) => fetchByKeyOptions<T, K>({ client, ...params }),
+				}) => fetchByKeyOptions<T>({ client, ...params }),
 				interfaces: <TView = Record<string, unknown>, TPayload = Record<string, unknown>>(
 					params: InterfaceQueryOptionsParams<TView, TPayload>,
 				) => interfaceQueryOptions<TView, TPayload>({ client, ...params }),

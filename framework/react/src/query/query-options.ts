@@ -187,11 +187,11 @@ export function fetchByIdOptions<T = unknown>(input: {
 	});
 }
 
-export function fetchByKeyOptions<T = unknown, K = unknown>(input: {
+export function fetchByKeyOptions<T = unknown>(input: {
 	client: NexusClient;
 	templateId: NexusTemplateIdentifier;
-	key: K;
-	keyPredicate: (payload: T) => boolean;
+	/** The exact Daml contract key value to look up. */
+	key: Record<string, unknown>;
 	parties?: string[];
 	enabled?: boolean;
 	staleTime?: number;
@@ -203,7 +203,7 @@ export function fetchByKeyOptions<T = unknown, K = unknown>(input: {
 		queryFn: () =>
 			input.client.ledger.contracts.fetchContractByKey<T>(
 				input.templateId,
-				input.keyPredicate,
+				input.key,
 				input.parties,
 			),
 		enabled: input.enabled,
