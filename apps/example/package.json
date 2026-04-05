@@ -11,14 +11,18 @@
 	"dependencies": {
 		"@daml/types": "^2.10.4",
 		"@daml.js/nexus-example-0.0.1": "workspace:*",
+		"@nexus/api": "workspace:*",
 		"@nexus-framework/core": "workspace:*",
 		"@nexus-framework/react": "workspace:*",
+		"@orpc/server": "catalog:",
+		"@orpc/client": "catalog:",
 		"@tanstack/react-query": "catalog:",
 		"framer-motion": "^12",
 		"lucide-react": "catalog:",
 		"next": "catalog:",
 		"react": "catalog:",
-		"react-dom": "catalog:"
+		"react-dom": "catalog:",
+		"zod": "catalog:"
 	},
 	"devDependencies": {
 		"@tailwindcss/postcss": "^4",

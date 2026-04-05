@@ -1,6 +1,13 @@
-import { createNexus, provisionSandboxUser, sandboxAuth } from "@nexus-framework/core";
+/**
+ * Server-side Nexus helpers for Next.js Server Components and Actions.
+ *
+ * Uses the unified `nexus` instance from nexus-server.ts.
+ * Auto-provisions the sandbox user on first run.
+ */
+import { provisionSandboxUser } from "@nexus-framework/core";
 import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 import { cookies } from "next/headers";
+import { nexus } from "./nexus-server";
 
 export const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
 export const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
@@ -9,34 +16,21 @@ export const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
 const SANDBOX_SECRET = process.env.SANDBOX_SECRET ?? "secret";
 
 /**
- * Server-side Nexus client for use in Server Components and Actions.
- * Pass `partyId` once you have it to include it in the auth token.
- */
-export async function getServerClient(partyId?: string) {
-	await cookies();
-	return createNexus({
-		ledgerApiUrl: CANTON_API_URL,
-		plugins: [
-			sandboxAuth({
-				userId: SANDBOX_USER_ID,
-				partyId,
-				secret: SANDBOX_SECRET,
-			}),
-			tanstackQueryPlugin(),
-		],
-	});
-}
-
-/**
  * Resolves the current server session (client + partyId).
  * Auto-provisions the sandbox user if they don't exist yet.
+ *
+ * Returns the unified NexusClient from the nexus server instance,
+ * scoped to the resolved partyId.
  */
 export async function resolveServerSession() {
-	const client = await getServerClient();
+	// Touch cookies() to opt this into dynamic rendering in Next.js
+	await cookies();
+
+	const client = nexus.client;
 
 	try {
 		const partyId = await client.auth.partyId.resolvePartyId(SANDBOX_USER_ID);
-		return { client: await getServerClient(partyId), partyId };
+		return { client, partyId };
 	} catch (err: unknown) {
 		const msg = String((err as { message?: string })?.message ?? err);
 		const isNotFound =
@@ -46,12 +40,12 @@ export async function resolveServerSession() {
 
 		if (!isNotFound) throw err;
 
-		console.log(`Provisioning sandbox user "${SANDBOX_USER_ID}"...`);
+		console.log(`[Nexus] Provisioning sandbox user "${SANDBOX_USER_ID}"...`);
 		const partyId = await provisionSandboxUser({
 			ledgerApiUrl: CANTON_API_URL,
 			userId: SANDBOX_USER_ID,
 			secret: SANDBOX_SECRET,
 		});
-		return { client: await getServerClient(partyId), partyId };
+		return { client, partyId };
 	}
 }

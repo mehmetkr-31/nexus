@@ -118,19 +118,6 @@ export interface NexusServerPlugin<T extends Record<string, unknown> = Record<st
 	) => CommandQueryOperations<unknown>;
 }
 
-/**
- * Interface defining what a Server Plugin can do.
- */
-export interface NexusServerPlugin<T extends Record<string, unknown> = Record<string, unknown>> {
-	id: string;
-	onInit?: (config: NexusServerConfig<T>) => void;
-	/** Intercepts operations to route them to different backends (Ledger vs PQS) */
-	extendOperations?: (
-		baseOps: CommandQueryOperations<unknown>,
-		ctx: { partyId: string; token?: string; templateId: string; template: DamlTemplate<unknown> },
-	) => CommandQueryOperations<unknown>;
-}
-
 export interface NexusServerConfig<T extends Record<string, unknown>> {
 	types: T;
 	plugins?: NexusServerPlugin<Record<string, unknown>>[];

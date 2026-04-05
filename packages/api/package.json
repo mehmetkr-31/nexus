@@ -6,6 +6,15 @@
 		".": {
 			"default": "./src/index.ts"
 		},
+		"./routers": {
+			"default": "./src/routers/index.ts"
+		},
+		"./routers/iou": {
+			"default": "./src/routers/iou.ts"
+		},
+		"./context": {
+			"default": "./src/context.ts"
+		},
 		"./*": {
 			"default": "./src/*.ts"
 		}
@@ -19,6 +28,7 @@
 		"@nexus/auth": "workspace:*",
 		"@nexus/db": "workspace:*",
 		"@nexus/env": "workspace:*",
+		"@nexus-framework/core": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",

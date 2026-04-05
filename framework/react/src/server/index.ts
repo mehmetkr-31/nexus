@@ -1,12 +1,18 @@
 /**
  * @nexus-framework/react/server
  *
- * Next.js Server-side utilities for Canton ledger integration.
- * Import from "@nexus-framework/react/server" in Server Components and Server Actions.
+ * Server-side utilities for Canton ledger integration.
+ * Works with Next.js App Router, Hono, and TanStack Start.
  *
  * IMPORTANT: Do NOT import this in client components ("use client" files).
  */
 
+export {
+	createHonoLedgerMiddleware,
+	createHonoLedgerRoutes,
+	createTanStackLedgerContext,
+	type NexusAdapterConfig,
+} from "./adapters.ts";
 export {
 	createLedgerRouteHandler,
 	type LedgerRouteHandler,

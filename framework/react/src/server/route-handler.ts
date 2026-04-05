@@ -3,25 +3,29 @@ import type { ServerNexusConfig } from "./server-client.ts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface LedgerRouteHandlerConfig extends ServerNexusConfig {
+export interface LedgerRouteHandlerConfig {
+	/** Canton JSON Ledger API URL */
+	ledgerApiUrl: string;
 	/**
-	 * The path prefix where this handler is mounted in your Next.js app.
+	 * The path prefix where this handler is mounted.
 	 * Stripped before forwarding to Canton.
-	 *
-	 * @example
-	 * // Route file: app/api/ledger/[...path]/route.ts
-	 * // Canton path: /api/ledger/v2/state/ledger-end → /v2/state/ledger-end
-	 * mountPath: "/api/ledger"
+	 * @example "/api/ledger"
 	 */
 	mountPath: string;
 	/**
-	 * Allowlist of Canton path prefixes. If provided, requests to any other
-	 * path are rejected with 403. Useful for exposing read-only endpoints only.
-	 *
-	 * @example
-	 * allowedPaths: ["/v2/state/", "/v2/packages"]
+	 * Allowlist of Canton path prefixes.
+	 * @example ["/v2/state/", "/v2/packages"]
 	 */
 	allowedPaths?: string[];
+	/**
+	 * Provide an existing SessionManager instance (preferred).
+	 * If not provided, one will be created from `sessionEncryptionKey`.
+	 */
+	sessionManager?: SessionManager;
+	/** AES-GCM encryption key for session cookies (used when sessionManager is not provided) */
+	sessionEncryptionKey?: string;
+	/** Cookie name override */
+	sessionCookieName?: string;
 }
 
 /** Next.js App Router compatible request handler */
@@ -53,11 +57,15 @@ export type LedgerRouteHandler = (req: Request) => Promise<Response>;
  * ```
  */
 export function createLedgerRouteHandler(config: LedgerRouteHandlerConfig): LedgerRouteHandler {
-	const sessionMgr = new SessionManager({
-		encryptionKey: config.sessionEncryptionKey,
-		cookieName: config.sessionCookieName,
-		secure: process.env.NODE_ENV === "production",
-	});
+	// Prefer an externally provided SessionManager (shares state with the app).
+	// Fall back to creating a new one from config keys.
+	const sessionMgr =
+		config.sessionManager ??
+		new SessionManager({
+			encryptionKey: config.sessionEncryptionKey,
+			cookieName: config.sessionCookieName,
+			secure: process.env.NODE_ENV === "production",
+		});
 
 	const baseUrl = config.ledgerApiUrl.replace(/\/$/, "");
 	const mountPath = config.mountPath.replace(/\/$/, "");

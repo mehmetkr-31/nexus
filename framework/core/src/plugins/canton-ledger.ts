@@ -1,67 +1,106 @@
-import { CantonJsonApiClient } from "../command/ledger-fetch.js";
+import { CantonClient } from "../client/canton-client.js";
+import { toStableTemplateId } from "../utils/template.js";
 import type { NexusServerPlugin } from "../types/client.js";
 
 export interface CantonLedgerPluginOptions {
-	/** Target HTTP JSON API (e.g., http://localhost:7575) */
+	/** Canton JSON Ledger API base URL (e.g., http://localhost:7575) */
 	url: string;
+	timeoutMs?: number;
 }
 
 /**
- * Provides Ledger write operations (create, exercise, archive)
- * via the Canton HTTP JSON V2 API.
+ * Server plugin: provides Ledger write operations (create, exercise, archive)
+ * via the Canton HTTP JSON Ledger API v2.
+ *
+ * Uses `CantonClient` for proper auth, Zod validation, retry logic, and
+ * deduplication — not the deprecated `CantonJsonApiClient`.
+ *
+ * The `token` from context is passed as a static token factory so each
+ * per-request `withUser(partyId, token)` call gets a fresh `CantonClient`
+ * bound to that user's JWT.
  */
 export function cantonLedgerPlugin(
 	options: CantonLedgerPluginOptions,
 ): NexusServerPlugin<Record<string, unknown>> {
-	let ledgerClient: CantonJsonApiClient;
-
 	return {
 		id: "canton-ledger",
 
-		onInit: () => {
-			ledgerClient = new CantonJsonApiClient(options.url);
-		},
-
 		extendOperations: (baseOps, ctx) => {
+			// Build a per-request CantonClient that uses this user's token.
+			// The client is lightweight — no connection pooling needed for HTTP.
+			const client = new CantonClient({
+				baseUrl: options.url,
+				timeoutMs: options.timeoutMs,
+				getToken: async () => {
+					if (!ctx.token) {
+						throw new Error(
+							"cantonLedgerPlugin: no token in context. Ensure sessionAuthPlugin runs first.",
+						);
+					}
+					return ctx.token;
+				},
+			});
+
+			const templateId = toStableTemplateId(ctx.templateId);
+			const actAs = [ctx.partyId];
+
 			return {
 				...baseOps,
 
 				create: async (payload: unknown) => {
-					if (!ledgerClient) throw new Error("CantonLedgerPlugin not initialized");
-
+					// Validate + encode via the Daml codegen template
 					const result = ctx.template.decoder.run(payload) as {
 						ok: boolean;
 						result?: unknown;
 						error?: { message: string };
 					};
-
 					if (!result.ok || result.result === undefined) {
 						throw new Error(
-							`Daml Schema Validation Error (${ctx.templateId}): ${result.error?.message ?? "Unknown validation failure"}`,
+							`Daml schema validation failed for ${ctx.templateId}: ` +
+								(result.error?.message ?? "unknown error"),
 						);
 					}
+					const encoded = ctx.template.encode(result.result);
 
-					const encodedArg = ctx.template.encode(result.result);
-					return ledgerClient.create(ctx.token, ctx.templateId, encodedArg) as Promise<{
-						contractId: string;
-						payload: Record<string, unknown>;
-					}>;
+					const submitResult = await client.submitAndWait({
+						commands: [{ type: "create", templateId, createArguments: encoded }],
+						actAs,
+					});
+
+					return {
+						contractId: submitResult.updateId, // updateId from submit-and-wait
+						payload: encoded as Record<string, unknown>,
+					};
 				},
 
 				exercise: async (contractId: string, choiceName: string, choiceArgument: unknown) => {
-					if (!ledgerClient) throw new Error("CantonLedgerPlugin not initialized");
-					return ledgerClient.exercise(
-						ctx.token,
-						ctx.templateId,
-						contractId,
-						choiceName,
-						choiceArgument,
-					);
+					return client.submitAndWait({
+						commands: [
+							{
+								type: "exercise",
+								templateId,
+								contractId,
+								choice: choiceName,
+								choiceArgument,
+							},
+						],
+						actAs,
+					});
 				},
 
 				archive: async (contractId: string) => {
-					if (!ledgerClient) throw new Error("CantonLedgerPlugin not initialized");
-					return ledgerClient.exercise(ctx.token, ctx.templateId, contractId, "Archive", {});
+					return client.submitAndWait({
+						commands: [
+							{
+								type: "exercise",
+								templateId,
+								contractId,
+								choice: "Archive",
+								choiceArgument: {},
+							},
+						],
+						actAs,
+					});
 				},
 			};
 		},

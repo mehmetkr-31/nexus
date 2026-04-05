@@ -11,7 +11,7 @@ import { orpc, queryClient } from "@/utils/orpc";
 
 export default function Home() {
 	const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-	const privateData = useQuery(orpc.privateData.queryOptions());
+	const me = useQuery(orpc.me.queryOptions());
 	const isConnected = healthCheck?.data === "OK";
 	const isLoading = healthCheck?.isLoading;
 	const { data: session } = authClient.useSession();
@@ -80,8 +80,8 @@ export default function Home() {
 			</Card>
 
 			<Card variant="secondary" className="mt-6 p-4">
-				<Card.Title className="mb-3">Private Data</Card.Title>
-				{privateData && <Card.Description>{privateData.data?.message}</Card.Description>}
+				<Card.Title className="mb-3">User Info</Card.Title>
+				{me.data && <Card.Description>ID: {me.data?.id}</Card.Description>}
 			</Card>
 
 			{!session?.user && (

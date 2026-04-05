@@ -1,48 +1,26 @@
-import type { NextRequest } from "next/server";
+/**
+ * Canton Ledger API proxy — BFF (Backend for Frontend) pattern.
+ *
+ * Requests from the browser go through here. The server:
+ *   1. Validates the session cookie
+ *   2. Injects the Canton JWT (never exposed to the browser)
+ *   3. Forwards the request to Canton
+ *
+ * The browser never sees the Canton JWT.
+ */
+import { createLedgerRouteHandler } from "@nexus-framework/react/server";
+import { sessionManager } from "../../../lib/nexus-server";
 
-const CANTON_URL =
-	process.env.CANTON_API_URL ?? process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575";
+const handler = createLedgerRouteHandler({
+	ledgerApiUrl: process.env.CANTON_API_URL ?? "http://localhost:7575",
+	mountPath: "/api/ledger",
+	sessionManager,
+	// Optional: restrict to read-only paths
+	// allowedPaths: ["/v2/state/", "/v2/packages"],
+});
 
-const HOP_BY_HOP = new Set(["connection", "keep-alive", "transfer-encoding", "upgrade"]);
-
-async function proxy(
-	req: NextRequest,
-	{ params }: { params: Promise<{ path: string[] }> },
-): Promise<Response> {
-	const { path } = await params;
-	const url = `${CANTON_URL}/${path.join("/")}${req.nextUrl.search}`;
-
-	const headers = new Headers();
-	req.headers.forEach((value, key) => {
-		if (!HOP_BY_HOP.has(key.toLowerCase()) && key.toLowerCase() !== "host") {
-			headers.set(key, value);
-		}
-	});
-
-	const hasBody = req.method !== "GET" && req.method !== "HEAD";
-	const body = hasBody ? await req.arrayBuffer() : undefined;
-
-	const upstream = await fetch(url, {
-		method: req.method,
-		headers,
-		body: body && body.byteLength > 0 ? body : undefined,
-	});
-
-	const resHeaders = new Headers();
-	upstream.headers.forEach((value, key) => {
-		if (!HOP_BY_HOP.has(key.toLowerCase())) {
-			resHeaders.set(key, value);
-		}
-	});
-
-	return new Response(upstream.body, {
-		status: upstream.status,
-		headers: resHeaders,
-	});
-}
-
-export const GET = proxy;
-export const POST = proxy;
-export const PUT = proxy;
-export const DELETE = proxy;
-export const PATCH = proxy;
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const DELETE = handler;
+export const PATCH = handler;

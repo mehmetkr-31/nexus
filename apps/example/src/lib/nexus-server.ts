@@ -1,55 +1,47 @@
 import { Iou } from "@daml.js/nexus-example-0.0.1";
-import { SessionManager } from "@nexus-framework/core/auth/session-manager";
-import {
-	cantonLedgerPlugin,
-	createNexusContextExtractor,
-	createNexusServerClient,
-	pqsDatabasePlugin,
-	sessionAuthPlugin,
-} from "@nexus-framework/core/server";
+import { SessionManager, sandboxAuth } from "@nexus-framework/core";
+import { createNexusServer } from "@nexus-framework/core/server";
 
 const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
-
-// Canton Participant Node usually opens a dummy postgres on 5432.
-// You can enter your own production PQS here.
 const PQS_URL = process.env.PQS_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
-
-// Optional: Provide an encryption key via Env var for secure AES-GCM session cookies
 const SESSION_SECRET = process.env.SESSION_SECRET;
+const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
+const SANDBOX_SECRET = process.env.SANDBOX_SECRET ?? "secret";
 
 /**
- * Standard Session Manager configured for the example app.
- * It will parse "nexus_session" cookies or Authorization headers automatically.
+ * Nexus session manager — handles `nexus_session` cookie serialization.
+ * Shared between the server client and the ledger route handler proxy.
  */
 export const sessionManager = new SessionManager({
 	encryptionKey: SESSION_SECRET,
 });
 
 /**
- * Our Isomorphic Server Client (for Server Actions, API routes, and ORPC/Trpc)
- * It is completely HIDDEN from the Browser (Frontend bundle).
+ * Unified Nexus server instance.
  *
- * We map the real Daml templates from @daml.js packages to the keys we want.
- * We are using the highly modular config where plugins can be attached.
+ * - `nexus.client`          → Canton HTTP NexusClient (TanStack prefetch, ledger queries)
+ * - `nexus.forParty(id)`    → PQS reads + Canton writes for a specific party
+ * - `nexus.forRequest(req)` → Session cookie → forParty() (use in Server Actions, Hono, etc.)
  */
-export const backendSDK = createNexusServerClient({
-	types: {
-		Iou: Iou.Iou,
-	},
-	plugins: [
-		sessionAuthPlugin({ sessionManager }),
-		pqsDatabasePlugin({ url: PQS_URL }),
-		cantonLedgerPlugin({ url: CANTON_API_URL }),
-	],
+export const nexus = await createNexusServer({
+	ledgerApiUrl: CANTON_API_URL,
+	pqsUrl: PQS_URL,
+	auth: sandboxAuth({ userId: SANDBOX_USER_ID, secret: SANDBOX_SECRET }),
+	// biome-ignore lint/suspicious/noExplicitAny: Daml codegen template types are covariant
+	types: { Iou: Iou.Iou },
+	sessionManager,
 });
 
 /**
- * HIGHEST ABSTRACTION LEVEL:
- * Use this helper inside your Next.js Server Actions, Route Handlers or Hono Middlewares.
- * It automatically parses the JWT/session from the Request and returns the initialized Nexus SDK.
- *
- * @example
- * const nexus = await requireNexusContext(req);
- * const myIous = await nexus.Iou.findMany();
+ * Legacy: requireNexusContext — for backward compatibility with existing code.
+ * @deprecated Use `nexus.forRequest(req)` instead.
  */
-export const requireNexusContext = createNexusContextExtractor(backendSDK, sessionManager);
+export const requireNexusContext = (req: Request) => nexus.forRequest(req);
+
+/**
+ * Legacy: backendSDK — for backward compatibility with existing code.
+ * @deprecated Use `nexus.forParty(partyId, token)` instead.
+ */
+export const backendSDK = {
+	withUser: (partyId: string, token?: string) => nexus.forParty(partyId, token),
+};
