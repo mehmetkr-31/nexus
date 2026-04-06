@@ -980,43 +980,106 @@ Three variants:
 
 ## Architecture Diagram
 
+```mermaid
+flowchart TB
+    subgraph App["🖥️  Your Application"]
+        direction LR
+        SC["Server Component / Action<br/><code>nexus.client.query.*</code><br/><code>nexus.forParty(p)</code><br/><code>nexus.forRequest(req)</code>"]
+        CC["Client Component<br/><code>nexus.Iou.useContracts()</code><br/><code>nexus.Iou.useExercise(Transfer)</code><br/><code>nexus.useStreamContracts()</code>"]
+    end
+
+    subgraph React["📦  @nexus-framework/react"]
+        direction LR
+        TQ["tanstackQueryPlugin<br/>Hooks + queryOptions"]
+        ST["streamingPlugin<br/>WebSocket state"]
+        ID["identityPlugin<br/>useUser / useParties"]
+        OP["optimisticUiPlugin<br/>Declarative updates"]
+    end
+
+    subgraph Core["🧠  @nexus-framework/core"]
+        direction TB
+        subgraph Transport["Transport Layer"]
+            CantonClient["CantonClient<br/>HTTP + WebSocket + Middleware"]
+            PR["PackageResolver<br/>DALF parser + cache"]
+        end
+        subgraph Auth["Auth Layer"]
+            AP["Auth Plugins<br/>sandbox · jwt · oidc + JWKS"]
+            JM["JwtManager<br/>refresh + grace + dispatcher"]
+            SM["SessionManager<br/>AES-256-GCM cookies"]
+        end
+        subgraph Data["Data Layer"]
+            Kysely["KyselyPqsEngine<br/>SQL reads + RLS"]
+        end
+    end
+
+    subgraph Canton["⛓️  Canton Network"]
+        direction LR
+        API["Canton JSON Ledger API<br/>HTTP + WebSocket (v2)"]
+        PQS[("Canton PQS<br/>PostgreSQL replica")]
+    end
+
+    SC --> React
+    CC --> React
+    React --> Core
+    Transport --> API
+    Data --> PQS
+    Auth -.token.-> Transport
+
+    classDef app fill:#e1f5ff,stroke:#0369a1,stroke-width:2px,color:#000
+    classDef react fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#000
+    classDef core fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#000
+    classDef canton fill:#fce7f3,stroke:#be185d,stroke-width:2px,color:#000
+    class App app
+    class React react
+    class Core,Transport,Auth,Data core
+    class Canton canton
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Your Application                             │
-│                                                                      │
-│  ┌─────────────────────────┐       ┌──────────────────────────────┐ │
-│  │   Server Component /    │       │    Client Component           │ │
-│  │   Server Action         │       │                               │ │
-│  │                         │       │   nexus.Iou.useContracts()    │ │
-│  │   nexus.client.query.*  │       │   nexus.Iou.useExercise(      │ │
-│  │   nexus.forParty(p)     │       │     Iou.Iou.Transfer          │ │
-│  │   nexus.forRequest(req) │       │   )                           │ │
-│  │                         │       │   nexus.useStreamContracts()  │ │
-│  └────────────┬────────────┘       └─────────────┬─────────────────┘ │
-└───────────────┼──────────────────────────────────┼───────────────────┘
-                │                                  │
-                ▼                                  ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                     @nexus-framework/core                            │
-│                                                                      │
-│  ┌──────────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ CantonClient │  │ PackageResolver │  │ SessionManager          │ │
-│  │ HTTP + WS    │  │ DALF parser +   │  │ AES-256-GCM HttpOnly    │ │
-│  │ + middleware │  │ package cache   │  │ cookie sessions         │ │
-│  └──────┬───────┘  └─────────────────┘  └────────────────────────┘ │
-│         │                                                            │
-│  ┌──────┴────────┐  ┌─────────────────┐  ┌────────────────────────┐ │
-│  │ Auth Plugins  │  │ JwtManager      │  │ KyselyPqsEngine         │ │
-│  │ sandbox / jwt │  │ refresh + grace │  │ SQL reads + RLS         │ │
-│  │ / oidc + JWKS │  │ + dispatcher    │  │ per-party isolation     │ │
-│  └───────────────┘  └─────────────────┘  └────────────────────────┘ │
-└──────────┬────────────────────────────────────────┬──────────────────┘
-           │                                        │
-           ▼                                        ▼
-┌──────────────────────────┐         ┌──────────────────────────────┐
-│  Canton JSON Ledger API  │         │  Canton PQS (Postgres)        │
-│  HTTP + WebSocket (v2)   │         │  active_contracts table       │
-└──────────────────────────┘         └──────────────────────────────┘
+
+### Request Flow — Create an IOU
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Client Component
+    participant Hook as nexus.Iou.useCreateContract
+    participant Client as NexusClient
+    participant Middleware as Fetch Middleware
+    participant Canton as Canton API
+    participant TQ as TanStack Query Cache
+
+    UI->>Hook: mutate({ createArguments, actAs })
+    Hook->>Client: submitAndWait(commands)
+    Client->>Client: JwtManager.getToken() (refresh if < 10s)
+    Client->>Client: PackageResolver.resolve("my-pkg:Iou:Iou")
+    Client->>Middleware: onRequest(config)
+    Middleware->>Canton: POST /v2/commands/submit-and-wait
+    Canton-->>Middleware: { updateId, completionOffset }
+    Middleware->>Client: onResponse / onAfterResponse
+    Client-->>Hook: SubmitResult
+    Hook->>TQ: invalidateQueries(nexusKeys.contractsByTemplate)
+    TQ-->>UI: Re-render with fresh contracts
+```
+
+### Consensus-Aware Mutation Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Submitting: mutate()
+    Submitting --> HttpAccepted: POST /submit-and-wait → 200
+    Submitting --> DuplicateCommand: 409 DUPLICATE_COMMAND
+    Submitting --> InFlight: 425 SUBMISSION_ALREADY_IN_FLIGHT
+    Submitting --> Failed: 4xx / 5xx
+
+    DuplicateCommand --> HttpAccepted: return original updateId
+    InFlight --> Submitting: retry w/ fresh submissionId (500ms)
+
+    HttpAccepted --> Pending: transactionStatusQueryOptions
+    Pending --> Pending: poll /v2/updates
+    Pending --> Finalized: transactionId found
+    Pending --> Failed: timeout
+
+    Finalized --> [*]: onSuccess
+    Failed --> [*]: onError
 ```
 
 ---
