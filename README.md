@@ -83,10 +83,9 @@ Nexus ships as a small set of focused packages. Pick what you need.
 |---|---|---|
 | **[`@nexus-framework/core`](./framework/core)** | `CantonClient`, auth plugins (`sandboxAuth` / `jwtAuth` / `oidcAuth`), `SessionManager`, `PackageResolver`, `createNexusServer`. Pure TypeScript, no React. | Any backend, Bun, Node, edge runtimes, CLIs, or isomorphic libraries. |
 | **[`@nexus-framework/react`](./framework/react)** | `createNexusClient`, TanStack Query hooks, WebSocket streaming, identity hooks, optimistic UI, Next.js SSR adapters. | React 18+/19 apps, Next.js 15+, TanStack Start. |
-| **[`@nexus-framework/pqs`](./framework/pqs)** | Lightweight PQS client using `Bun.SQL` (no ORM). | Bun-native projects that want PQS reads without Kysely. |
-| **[`@nexus/cli`](./framework/cli)** | `create-nexus-app` interactive scaffolder. | New projects. |
+| **[`@nexus-framework/cli`](./framework/cli)** | `create-nexus-app` interactive scaffolder. | New projects. |
 
-> **Note:** The core package *already* ships a Kysely-based PQS engine — you only need `@nexus-framework/pqs` if you want the lighter `Bun.SQL`-only client.
+> **PQS integration** ships inside `@nexus-framework/core` as `pqsDatabasePlugin` (Kysely + `pg`), querying Canton's documented `active()` table function with automatic Row-Level Security per party. The legacy `@nexus-framework/pqs` standalone package is **deprecated** — use the core plugin instead.
 
 ---
 
@@ -554,7 +553,7 @@ const state = nexus.useMultiStream({
 
 ### PQS (Participant Query Store)
 
-PQS is Canton's Postgres read replica — the right tool for complex filtering, sorting, and pagination. Nexus speaks it through Kysely with automatic Row Level Security.
+PQS is Canton's Postgres read replica — the right tool for complex filtering, sorting, and pagination. Nexus speaks it through Kysely + `pg` with automatic Row Level Security, targeting Canton's documented stable `active()` table function (not the internal `active_contracts` table) so queries remain forward-compatible across Canton releases.
 
 Enable it by passing `pqsUrl` to `createNexusServer`:
 
