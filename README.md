@@ -423,7 +423,7 @@ When `jwksUri` is set, Nexus uses `crypto.subtle.verify` to validate the signatu
 
 ### Sessions & Cookies
 
-`SessionManager` persists the `{ partyId, token, expiresAt }` tuple as an **encrypted HttpOnly cookie** using AES-256-GCM. Compatible with any runtime that supports Web Crypto.
+`SessionManager` persists the `{ token, partyId, userId?, expiresAt }` tuple as an **encrypted HttpOnly cookie** using AES-256-GCM. Compatible with any runtime that supports Web Crypto.
 
 ```ts
 import { SessionManager, generateEncryptionKey } from "@nexus-framework/core";
