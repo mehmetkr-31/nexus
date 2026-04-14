@@ -50,12 +50,14 @@ function NavMainItems() {
 				<SidebarMenu>
 					{mainNavItems.map((item) => (
 						<SidebarMenuItem key={item.label}>
-							<SidebarMenuButton asChild tooltip={item.label}>
-								<Link {...item} preload="intent">
-									{item.icon}
-									<span>{item.label}</span>
-								</Link>
-							</SidebarMenuButton>
+							<Link {...item} preload="intent">
+								{({ isActive }) => (
+									<SidebarMenuButton tooltip={item.label} isActive={isActive}>
+										{item.icon}
+										<span>{item.label}</span>
+									</SidebarMenuButton>
+								)}
+							</Link>
 						</SidebarMenuItem>
 					))}
 				</SidebarMenu>
@@ -72,12 +74,14 @@ function NavSecondaryItems() {
 				<SidebarMenu>
 					{secondaryNavItems.map((item) => (
 						<SidebarMenuItem key={item.label}>
-							<SidebarMenuButton asChild tooltip={item.label}>
-								<Link {...item}>
-									{item.icon}
-									<span>{item.label}</span>
-								</Link>
-							</SidebarMenuButton>
+							<Link {...item}>
+								{({ isActive }) => (
+									<SidebarMenuButton tooltip={item.label} isActive={isActive}>
+										{item.icon}
+										<span>{item.label}</span>
+									</SidebarMenuButton>
+								)}
+							</Link>
 						</SidebarMenuItem>
 					))}
 				</SidebarMenu>
@@ -98,12 +102,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton asChild className="">
-							<Link to="/">
-								<CommandIcon className="size-5!" />
-								<span className="text-base font-semibold">Nexus</span>
-							</Link>
-						</SidebarMenuButton>
+						<Link to="/">
+							{({ isActive }) => (
+								<SidebarMenuButton isActive={isActive} className="">
+									<CommandIcon className="size-5!" />
+									<span className="text-base font-semibold">Nexus</span>
+								</SidebarMenuButton>
+							)}
+						</Link>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
