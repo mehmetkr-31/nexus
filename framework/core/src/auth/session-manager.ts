@@ -21,7 +21,7 @@ interface SessionManagerOptions {
 // ─── SessionManager ──────────────────────────────────────────────────────────
 
 export class SessionManager {
-	private readonly cookieName: string;
+	public readonly cookieName: string;
 	private readonly ttlMs: number;
 	private readonly secure: boolean;
 	private readonly domain?: string;

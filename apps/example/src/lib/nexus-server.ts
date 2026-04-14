@@ -3,7 +3,7 @@ import { SessionManager, sandboxAuth } from "@nexus-framework/core";
 import { createNexusServer } from "@nexus-framework/core/server";
 import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 
-const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
+const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://127.0.0.1:7575";
 const PQS_URL = process.env.PQS_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
@@ -32,12 +32,6 @@ export const nexus = await createNexusServer({
 	sessionManager,
 	plugins: [tanstackQueryPlugin()],
 });
-
-/**
- * Legacy: requireNexusContext — for backward compatibility with existing code.
- * @deprecated Use `nexus.forRequest(req)` instead.
- */
-export const requireNexusContext = (req: Request) => nexus.forRequest(req);
 
 /**
  * Legacy: backendSDK — for backward compatibility with existing code.

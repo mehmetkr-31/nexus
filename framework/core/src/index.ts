@@ -9,6 +9,7 @@ import type { NexusClient } from "./types/index";
 import type { FetchMiddleware, NexusPlugin } from "./types/plugin";
 
 export { PartyIdResolver } from "./auth/party-id-resolver";
+export { JwtManager } from "./auth/jwt-manager";
 export { type JwtAuthOptions, jwtAuth } from "./auth/plugins/jwt-auth";
 export { type OidcAuthOptions, oidcAuth } from "./auth/plugins/oidc-auth";
 export {
@@ -73,6 +74,7 @@ export type {
 } from "./types/plugin";
 export * from "./utils/canton-jwt";
 export * from "./utils/jwt";
+export * from "./utils/sandbox-helpers";
 export * from "./utils/template";
 
 import type { InferNexusClientPlugins } from "./types/plugin";
