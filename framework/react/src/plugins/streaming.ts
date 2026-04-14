@@ -8,7 +8,7 @@ import type {
 } from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NexusClientPlugin } from "./tanstack-query.ts";
+import type { NexusClientPlugin } from "./tanstack-query";
 
 // ─── Single-stream state ──────────────────────────────────────────────────────
 

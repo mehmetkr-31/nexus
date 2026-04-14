@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { QueryClient } from "@tanstack/react-query";
-import { createNexusClient } from "../create-nexus-client.ts";
-import { tanstackQueryPlugin } from "../plugins/tanstack-query.ts";
-import { nexusKeys } from "./query-keys.ts";
+import { createNexusClient } from "../create-nexus-client";
+import { tanstackQueryPlugin } from "../plugins/tanstack-query";
+import { nexusKeys } from "./query-keys";
 
 function makeMockServer(handlers: Record<string, unknown>) {
 	return Bun.serve({

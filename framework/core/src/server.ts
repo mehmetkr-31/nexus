@@ -1,8 +1,9 @@
 // /framework/core/src/server.ts
 // Server-only exports — DO NOT import in browser bundles.
 
-import type { FetchMiddleware, NexusPlugin } from "./types/plugin.ts";
-import type { SessionManager } from "./auth/session-manager.ts";
+import type { SessionManager } from "./auth/session-manager";
+import { CantonClient } from "./client/canton-client";
+import { KyselyPqsEngine } from "./query/pqs-engine";
 import type {
 	CommandQueryOperations,
 	ConstructNexusApi,
@@ -10,18 +11,16 @@ import type {
 	NexusServerConfig,
 	NexusUniversalClient,
 	PqsFindOptions,
-} from "./types/client.ts";
-import { CantonClient } from "./client/canton-client.ts";
-import { KyselyPqsEngine } from "./query/pqs-engine.ts";
-import type { NexusClient } from "./types/index.ts";
-import type { InferNexusClientPlugins } from "./types/plugin.ts";
+} from "./types/client";
+import type { NexusClient } from "./types/index";
+import type { FetchMiddleware, InferNexusClientPlugins, NexusPlugin } from "./types/plugin";
 
-export * from "./command/ledger-fetch.ts";
-export * from "./plugins/canton-ledger.ts";
-export * from "./plugins/pqs-database.ts";
-export * from "./plugins/session-auth.ts";
-export * from "./query/pqs-engine.ts";
-export * from "./types/client.ts";
+export * from "./command/ledger-fetch";
+export * from "./plugins/canton-ledger";
+export * from "./plugins/pqs-database";
+export * from "./plugins/session-auth";
+export * from "./query/pqs-engine";
+export * from "./types/client";
 
 // ─── createNexusServerClient (low-level plugin API) ──────────────────────────
 
@@ -223,7 +222,7 @@ export async function createNexusServer<
 	TTypes extends Record<string, DamlTemplate<any>>,
 	TPlugins extends NexusPlugin<Record<string, unknown>>[],
 >(options: NexusServerOptions<TTypes, TPlugins>): Promise<NexusServer<TTypes, TPlugins>> {
-	const { createNexus } = await import("./index.ts");
+	const { createNexus } = await import("./index");
 
 	// Build the NexusClient (Canton HTTP + TanStack query factories)
 	const allPlugins = [options.auth, ...(options.plugins ?? [])] as TPlugins;

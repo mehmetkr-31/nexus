@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { generateEncryptionKey, SessionManager } from "./session-manager.ts";
+import { generateEncryptionKey, SessionManager } from "./session-manager";
 
 const baseSession = {
 	token: "test.jwt.token",

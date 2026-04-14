@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { CantonClient } from "../client/canton-client.ts";
-import { NexusAuthError } from "../types/index.ts";
-import { PartyIdResolver } from "./party-id-resolver.ts";
+import { CantonClient } from "../client/canton-client";
+import { NexusAuthError } from "../types/index";
+import { PartyIdResolver } from "./party-id-resolver";
 
 function makeMockCanton(handlers: Record<string, unknown>) {
 	return Bun.serve({

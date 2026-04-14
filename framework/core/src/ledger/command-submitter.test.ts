@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { CantonClient } from "../client/canton-client.ts";
-import { NexusLedgerError } from "../types/index.ts";
-import { CommandSubmitter } from "./command-submitter.ts";
+import { CantonClient } from "../client/canton-client";
+import { NexusLedgerError } from "../types/index";
+import { CommandSubmitter } from "./command-submitter";
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 

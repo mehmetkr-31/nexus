@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createNexus, jwtAuth, sandboxAuth } from "./index.ts";
+import { createNexus, jwtAuth, sandboxAuth } from "./index";
 
 describe("createNexus", () => {
 	test("creates a client with all expected namespaces", async () => {

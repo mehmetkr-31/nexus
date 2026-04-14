@@ -68,5 +68,5 @@ export function createLedgerProcedure<TLedger>(extractor: (req: Request) => Prom
 
 // ─── Re-export ────────────────────────────────────────────────────────────────
 
-export type { Context };
 export { baseAppRouter } from "./routers/index";
+export type { Context };

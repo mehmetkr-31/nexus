@@ -16,5 +16,5 @@
  * manual SQL composition. The plugin approach provides type-safe queries with
  * automatic RLS enforcement.
  */
-export { PqsClient } from "./pqs-client.ts";
-export type { ActiveContractRow, PqsContract, PqsQueryOptions } from "./types.ts";
+export { PqsClient } from "./pqs-client";
+export type { ActiveContractRow, PqsContract, PqsQueryOptions } from "./types";

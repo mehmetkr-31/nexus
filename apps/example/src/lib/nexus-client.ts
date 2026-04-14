@@ -10,7 +10,9 @@ import {
 	tanstackQueryPlugin,
 } from "@nexus-framework/react";
 
-export const NEXUS_USER_ID = process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? "alice";
+import { CANTON_API_URL, SANDBOX_USER_ID } from "./constants";
+
+export { CANTON_API_URL, SANDBOX_USER_ID as NEXUS_USER_ID };
 
 /**
  * Client-side Nexus instance.
@@ -20,10 +22,7 @@ export const NEXUS_USER_ID = process.env.NEXT_PUBLIC_SANDBOX_USER_ID ?? "alice";
  */
 export const nexus = await createNexusClient({
 	// Use the Next.js proxy in the browser to bypass CORS, fall back to direct URL on server
-	baseUrl:
-		typeof window !== "undefined"
-			? "/api/ledger"
-			: (process.env.NEXT_PUBLIC_CANTON_API_URL ?? "http://localhost:7575"),
+	baseUrl: typeof window !== "undefined" ? "/api/ledger" : CANTON_API_URL,
 	types: {
 		Iou: Iou.Iou,
 	},
@@ -32,7 +31,7 @@ export const nexus = await createNexusClient({
 			// WARNING: NEXT_PUBLIC_ prefix embeds this value in the client bundle.
 			// This is intentional for sandbox/dev only — never use a real secret here.
 			secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? "secret",
-			userId: NEXUS_USER_ID,
+			userId: SANDBOX_USER_ID,
 		}),
 		fetchMiddlewarePlugin({
 			onRequest: (config) => {

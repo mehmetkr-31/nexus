@@ -1,5 +1,5 @@
-import type { CantonClient } from "../client/canton-client.ts";
-import type { LedgerEnd, SynchronizerInfo } from "../types/index.ts";
+import type { CantonClient } from "../client/canton-client";
+import type { LedgerEnd, SynchronizerInfo } from "../types/index";
 
 // ─── LedgerIdentity ───────────────────────────────────────────────────────────
 

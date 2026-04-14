@@ -1,4 +1,4 @@
-import { Iou } from "@daml.js/nexus-example-0.0.1";
+import type { Iou } from "@daml.js/nexus-example-0.0.1";
 import type { ConstructNexusApi } from "@nexus-framework/core/server";
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";

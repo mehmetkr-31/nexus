@@ -1,6 +1,6 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { JwtManager } from "../auth/jwt-manager.ts";
-import { provisionSandboxUser } from "./sandbox-provision.ts";
+import { JwtManager } from "../auth/jwt-manager";
+import { provisionSandboxUser } from "./sandbox-provision";
 
 describe("provisionSandboxUser", () => {
 	const options = {

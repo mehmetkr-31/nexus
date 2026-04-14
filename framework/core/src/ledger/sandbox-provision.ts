@@ -1,5 +1,5 @@
-import { JwtManager } from "../auth/jwt-manager.ts";
-import { NexusLedgerError } from "../types/index.ts";
+import { JwtManager } from "../auth/jwt-manager";
+import { NexusLedgerError } from "../types/index";
 
 export interface ProvisionSandboxUserOptions {
 	/** Canton Ledger API base URL */

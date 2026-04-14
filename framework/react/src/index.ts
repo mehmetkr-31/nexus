@@ -36,17 +36,17 @@ export {
 export type {
 	AnyPlugin,
 	NexusClientInstance,
-} from "./create-nexus-client.ts";
-export { createNexusClient } from "./create-nexus-client.ts";
+} from "./create-nexus-client";
+export { createNexusClient } from "./create-nexus-client";
 export {
 	type IdentityActions,
 	identityPlugin,
-} from "./plugins/identity.ts";
+} from "./plugins/identity";
 export {
 	type OptimisticUiPluginOptions,
 	type OptimisticUpdateConfig,
 	optimisticUiPlugin,
-} from "./plugins/optimistic-ui-plugin.ts";
+} from "./plugins/optimistic-ui-plugin";
 // ─── Plugins ──────────────────────────────────────────────────────────────────
 export type {
 	MultiStreamContractsState,
@@ -55,8 +55,8 @@ export type {
 	StreamingActions,
 	UseMultiStreamOptions,
 	UseStreamContractsOptions,
-} from "./plugins/streaming.ts";
-export { streamingPlugin } from "./plugins/streaming.ts";
+} from "./plugins/streaming";
+export { streamingPlugin } from "./plugins/streaming";
 export type {
 	CommandStatusState,
 	CreateContractVariables,
@@ -75,13 +75,13 @@ export type {
 	UseLedgerMutationOptions,
 	UsePagedContractsResult,
 	UseRightsAsResult,
-} from "./plugins/tanstack-query.ts";
-export { tanstackQueryPlugin } from "./plugins/tanstack-query.ts";
+} from "./plugins/tanstack-query";
+export { tanstackQueryPlugin } from "./plugins/tanstack-query";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
-export type { ContractQueryFilters, NexusQueryKey } from "./query/query-keys.ts";
+export type { ContractQueryFilters, NexusQueryKey } from "./query/query-keys";
 export {
 	invalidateAllNexusQueries,
 	invalidateContractQueries,
 	nexusKeys,
-} from "./query/query-keys.ts";
+} from "./query/query-keys";

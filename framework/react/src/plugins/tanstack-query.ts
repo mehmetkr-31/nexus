@@ -29,7 +29,7 @@ import {
 	useSuspenseQuery,
 } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { invalidateContractQueries, nexusKeys } from "../query/query-keys.ts";
+import { invalidateContractQueries, nexusKeys } from "../query/query-keys";
 import {
 	type ContractQueryOptionsParams,
 	contractQueryOptions,
@@ -38,13 +38,13 @@ import {
 	type InterfaceQueryOptionsParams,
 	interfaceQueryOptions,
 	ledgerEndQueryOptions,
-	type PartyIdQueryOptionsParams,
-	partyIdQueryOptions,
-	pagedContractsQueryOptions,
 	type PagedContractsQueryOptionsParams,
+	type PartyIdQueryOptionsParams,
+	pagedContractsQueryOptions,
+	partyIdQueryOptions,
 	synchronizersQueryOptions,
 	transactionStatusQueryOptions,
-} from "../query/query-options.ts";
+} from "../query/query-options";
 
 export interface UseContractsOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;

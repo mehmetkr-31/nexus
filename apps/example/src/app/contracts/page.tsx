@@ -1,6 +1,7 @@
 import { dehydrate, HydrationBoundary, QueryClient } from "@tanstack/react-query";
 import { DashboardView } from "../../components/DashboardView";
-import { IOU_TEMPLATE_ID, resolveServerSession } from "../../lib/nexus";
+import { IOU_TEMPLATE_ID } from "../../lib/constants";
+import { resolveServerSession } from "../../lib/nexus";
 
 export const dynamic = "force-dynamic";
 

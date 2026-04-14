@@ -1,6 +1,7 @@
 import { Iou } from "@daml.js/nexus-example-0.0.1";
 import { SessionManager, sandboxAuth } from "@nexus-framework/core";
 import { createNexusServer } from "@nexus-framework/core/server";
+import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 
 const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
 const PQS_URL = process.env.PQS_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
@@ -27,9 +28,9 @@ export const nexus = await createNexusServer({
 	ledgerApiUrl: CANTON_API_URL,
 	pqsUrl: PQS_URL,
 	auth: sandboxAuth({ userId: SANDBOX_USER_ID, secret: SANDBOX_SECRET }),
-	// biome-ignore lint/suspicious/noExplicitAny: Daml codegen template types are covariant
 	types: { Iou: Iou.Iou },
 	sessionManager,
+	plugins: [tanstackQueryPlugin()],
 });
 
 /**

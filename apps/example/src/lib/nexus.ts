@@ -5,13 +5,9 @@
  * Auto-provisions the sandbox user on first run.
  */
 import { provisionSandboxUser } from "@nexus-framework/core";
-import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 import { cookies } from "next/headers";
+import { CANTON_API_URL, SANDBOX_USER_ID } from "./constants";
 import { nexus } from "./nexus-server";
-
-export const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
-export const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
-export const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
 
 const SANDBOX_SECRET = process.env.SANDBOX_SECRET ?? "secret";
 

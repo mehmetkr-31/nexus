@@ -1,4 +1,4 @@
-import type { NexusClient, NexusLedgerError } from "./index.ts";
+import type { NexusClient, NexusLedgerError } from "./index";
 
 // ─── Fetch Middleware ─────────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ export type {
 	TemplateId,
 	TransactionResult,
 	TransactionStatus,
-} from "./index.ts";
+} from "./index";
 
 export interface FetchMiddleware {
 	onRequest?: (config: RequestConfig) => RequestConfig | Promise<RequestConfig>;
