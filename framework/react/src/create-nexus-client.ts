@@ -24,12 +24,12 @@ import type {
 	UsePagedContractsOptions,
 	UsePagedContractsResult,
 } from "./plugins/tanstack-query.ts";
-import {
-	type ContractQueryOptionsParams,
+import type {
+	ContractQueryOptionsParams,
 	contractQueryOptions,
 	fetchByIdOptions,
 	fetchByKeyOptions,
-	type PagedContractsQueryOptionsParams,
+	PagedContractsQueryOptionsParams,
 	pagedContractsQueryOptions,
 } from "./query/query-options.ts";
 

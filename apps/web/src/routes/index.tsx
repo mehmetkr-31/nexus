@@ -1,51 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { AppSidebar } from "@nexus/ui/components/app-sidebar";
+import { ChartAreaInteractive } from "@nexus/ui/components/chart-area-interactive";
+import { DataTable } from "@nexus/ui/components/data-table";
+import { SectionCards } from "@nexus/ui/components/section-cards";
+import { SidebarInset, SidebarProvider } from "@nexus/ui/components/sidebar";
+import { SiteHeader } from "@nexus/ui/components/site-header";
 
-import { orpc } from "@/utils/orpc";
+import { createFileRoute } from "@tanstack/react-router";
+import data from "@/dashboard/data.json";
 
 export const Route = createFileRoute("/")({
-	component: HomeComponent,
+	component: Page,
 });
 
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
-
-function HomeComponent() {
-	const healthCheck = useQuery(orpc.healthCheck.queryOptions());
-
+function Page() {
 	return (
-		<div className="container mx-auto max-w-3xl px-4 py-2">
-			<pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-			<div className="grid gap-6">
-				<section className="rounded-lg border p-4">
-					<h2 className="mb-2 font-medium">API Status</h2>
-					<div className="flex items-center gap-2">
-						<div
-							className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-						/>
-						<span className="text-muted-foreground text-sm">
-							{healthCheck.isLoading
-								? "Checking..."
-								: healthCheck.data
-									? "Connected"
-									: "Disconnected"}
-						</span>
+		<SidebarProvider
+			style={
+				{
+					"--sidebar-width": "calc(var(--spacing) * 72)",
+					"--header-height": "calc(var(--spacing) * 12)",
+				} as React.CSSProperties
+			}
+		>
+			<AppSidebar variant="inset" />
+			<SidebarInset>
+				<SiteHeader />
+				<div className="flex flex-1 flex-col">
+					<div className="@container/main flex flex-1 flex-col gap-2">
+						<div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+							<SectionCards />
+							<div className="px-4 lg:px-6">
+								<ChartAreaInteractive />
+							</div>
+							<DataTable data={data} />
+						</div>
 					</div>
-				</section>
-			</div>
-		</div>
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
 	);
 }

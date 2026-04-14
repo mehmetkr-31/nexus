@@ -1,4 +1,5 @@
 import type { CantonClient } from "../client/canton-client.ts";
+import { DEFAULT_PAGE_SIZE } from "../config.ts";
 import type {
 	ActiveContract,
 	ActiveContractsResponse,
@@ -8,7 +9,6 @@ import type {
 	TemplateDescriptor,
 	TemplateId,
 } from "../types/index.ts";
-import { DEFAULT_PAGE_SIZE } from "../config.ts";
 import { fetchAllPages } from "../utils/pagination.ts";
 import type { PackageResolver } from "./package-resolver.ts";
 

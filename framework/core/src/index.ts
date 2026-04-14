@@ -16,9 +16,8 @@ export {
 	sandboxAuth,
 } from "./auth/plugins/sandbox-auth.ts";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
-export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config.ts";
-
 export { CantonClient } from "./client/canton-client.ts";
+export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config.ts";
 export { CommandSubmitter } from "./ledger/command-submitter.ts";
 export { ContractQuery } from "./ledger/contract-query.ts";
 export { InterfaceQuery } from "./ledger/interface-query.ts";
@@ -72,9 +71,8 @@ export type {
 	NexusPlugin,
 	RequestConfig,
 } from "./types/plugin.ts";
-
-export * from "./utils/jwt.ts";
 export * from "./utils/canton-jwt.ts";
+export * from "./utils/jwt.ts";
 export * from "./utils/template.ts";
 
 import type { InferNexusClientPlugins } from "./types/plugin.ts";

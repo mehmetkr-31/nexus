@@ -11,6 +11,7 @@
 		}
 	},
 	"scripts": {
+		"dev": "drizzle-kit studio",
 		"typecheck": "tsc --noEmit",
 		"lint": "biome lint .",
 		"build": "tsc",

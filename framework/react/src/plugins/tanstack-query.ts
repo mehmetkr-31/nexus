@@ -38,10 +38,10 @@ import {
 	type InterfaceQueryOptionsParams,
 	interfaceQueryOptions,
 	ledgerEndQueryOptions,
-	type PartyIdQueryOptionsParams,
-	partyIdQueryOptions,
-	pagedContractsQueryOptions,
 	type PagedContractsQueryOptionsParams,
+	type PartyIdQueryOptionsParams,
+	pagedContractsQueryOptions,
+	partyIdQueryOptions,
 	synchronizersQueryOptions,
 	transactionStatusQueryOptions,
 } from "../query/query-options.ts";

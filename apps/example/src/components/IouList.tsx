@@ -2,9 +2,9 @@
 
 import { Iou } from "@daml.js/nexus-example-0.0.1";
 import type { ActiveContract } from "@nexus-framework/react";
+import { useQuery } from "@tanstack/react-query";
 import { Clock, Trash2, Wallet } from "lucide-react";
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { nexus } from "../lib/nexus-client";
 
 type IouPayload = Iou.Iou;

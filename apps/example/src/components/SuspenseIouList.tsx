@@ -1,9 +1,9 @@
 "use client";
 
 import type { ActiveContract } from "@nexus-framework/react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { Layers, Loader2, Target } from "lucide-react";
 import { Suspense, useMemo } from "react";
-import { useSuspenseQuery } from "@tanstack/react-query";
 import { nexus } from "../lib/nexus-client";
 
 interface IouPayload {

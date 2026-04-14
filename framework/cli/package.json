@@ -13,7 +13,7 @@
 		"templates"
 	],
 	"scripts": {
-		"dev": "bun run src/index.ts",
+		"dev": "tsup src/index.ts --format esm --watch",
 		"build": "tsup src/index.ts --format esm --clean --minify --dts",
 		"typecheck": "tsc --noEmit"
 	},

@@ -1,7 +1,12 @@
 #!/bin/bash
 set -e
 
-DAML=~/.daml/bin/daml
+# Check if daml is in PATH, otherwise fallback to default location
+if command -v daml &> /dev/null; then
+  DAML=daml
+else
+  DAML=~/.daml/bin/daml
+fi
 DAR=".daml/dist/nexus-example-0.0.1.dar"
 
 # Kill any lingering sandbox on startup
