@@ -1,5 +1,6 @@
 "use client";
 
+import { nexus } from "@/lib/nexus-client";
 import { useState } from "react";
 
 interface UserSwitcherProps {
@@ -9,17 +10,14 @@ interface UserSwitcherProps {
 
 export function UserSwitcher({ currentUser, partyId }: UserSwitcherProps) {
 	const [isOpen, setIsOpen] = useState(false);
-	const [isLoggingOut, setIsLoggingOut] = useState(false);
+	const logout = nexus.auth.useLogout();
 
-	const handleLogout = async () => {
-		setIsLoggingOut(true);
-		try {
-			await fetch("/api/auth/logout", { method: "POST" });
-			window.location.href = "/login";
-		} catch (error) {
-			console.error("Logout failed:", error);
-			setIsLoggingOut(false);
-		}
+	const handleLogout = () => {
+		logout.mutate(undefined, {
+			onSuccess: () => {
+				window.location.href = "/login";
+			},
+		});
 	};
 
 	return (
@@ -79,13 +77,13 @@ export function UserSwitcher({ currentUser, partyId }: UserSwitcherProps) {
 							<button
 								type="button"
 								onClick={handleLogout}
-								disabled={isLoggingOut}
+								disabled={logout.isPending}
 								className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 
                          hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md
                          transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                          flex items-center gap-2"
 							>
-								{isLoggingOut ? (
+								{logout.isPending ? (
 									<>
 										<svg
 											className="animate-spin h-4 w-4"

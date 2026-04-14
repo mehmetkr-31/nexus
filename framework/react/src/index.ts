@@ -38,6 +38,15 @@ export type {
 	NexusClientInstance,
 } from "./create-nexus-client";
 export { createNexusClient } from "./create-nexus-client";
+export type {
+	AuthActions,
+	AuthPluginConfig,
+	LoginRequest,
+	LoginResponse,
+	LogoutResponse,
+	SessionResponse,
+} from "./plugins/auth-plugin";
+export { authPlugin } from "./plugins/auth-plugin";
 export {
 	type IdentityActions,
 	identityPlugin,

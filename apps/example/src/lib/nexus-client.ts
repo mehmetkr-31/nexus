@@ -1,5 +1,6 @@
 import { Iou } from "@daml.js/nexus-example-0.0.1";
 import {
+	authPlugin,
 	createNexusClient,
 	fetchMiddlewarePlugin,
 	identityPlugin,
@@ -32,6 +33,15 @@ export const nexus = await createNexusClient({
 			// This is intentional for sandbox/dev only — never use a real secret here.
 			secret: process.env.NEXT_PUBLIC_SANDBOX_SECRET ?? "secret",
 			userId: SANDBOX_USER_ID,
+		}),
+		authPlugin({
+			basePath: "/api/auth",
+			onLoginSuccess: (data) => {
+				console.log(`[Auth] Logged in: ${data.userId} → ${data.partyId}`);
+			},
+			onLogoutSuccess: () => {
+				console.log("[Auth] Logged out");
+			},
 		}),
 		fetchMiddlewarePlugin({
 			onRequest: (config) => {

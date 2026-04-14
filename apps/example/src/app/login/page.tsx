@@ -1,6 +1,7 @@
 "use client";
 
 import { SANDBOX_USERS } from "@/lib/constants";
+import { nexus } from "@/lib/nexus-client";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
@@ -9,32 +10,18 @@ export default function LoginPage() {
 	const redirectTo = searchParams.get("redirect") || "/";
 
 	const [selectedUser, setSelectedUser] = useState<string>("alice");
-	const [isLoading, setIsLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+	const login = nexus.auth.useLogin();
 
-	const handleLogin = async () => {
-		setIsLoading(true);
-		setError(null);
-
-		try {
-			const response = await fetch("/api/auth/sandbox-login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ userId: selectedUser }),
-			});
-
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.error || "Login failed");
-			}
-
-			// Success - redirect to original page or home
-			window.location.href = redirectTo;
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Login failed");
-			setIsLoading(false);
-		}
+	const handleLogin = () => {
+		login.mutate(
+			{ userId: selectedUser },
+			{
+				onSuccess: () => {
+					// Redirect to original page or home
+					window.location.href = redirectTo;
+				},
+			},
+		);
 	};
 
 	return (
@@ -60,7 +47,7 @@ export default function LoginPage() {
 							id="user-select"
 							value={selectedUser}
 							onChange={(e) => setSelectedUser(e.target.value)}
-							disabled={isLoading}
+							disabled={login.isPending}
 							className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
                      focus:ring-2 focus:ring-blue-500 focus:border-transparent
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -85,9 +72,9 @@ export default function LoginPage() {
 					</div>
 
 					{/* Error Message */}
-					{error && (
+					{login.error && (
 						<div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-							<p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+							<p className="text-sm text-red-800 dark:text-red-300">{login.error.message}</p>
 						</div>
 					)}
 
@@ -95,14 +82,14 @@ export default function LoginPage() {
 					<button
 						type="button"
 						onClick={handleLogin}
-						disabled={isLoading}
+						disabled={login.isPending}
 						className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 
                      text-white font-semibold py-3 px-4 rounded-lg
                      transition-colors duration-200
                      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
                      disabled:cursor-not-allowed"
 					>
-						{isLoading ? (
+						{login.isPending ? (
 							<span className="flex items-center justify-center">
 								<svg
 									className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"

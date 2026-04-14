@@ -18,6 +18,7 @@ export {
 } from "./auth/plugins/sandbox-auth";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager";
 export { CantonClient } from "./client/canton-client";
+export { createAuthHandler, type AuthHandlerConfig } from "./server/auth-handler";
 export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config";
 export { CommandSubmitter } from "./ledger/command-submitter";
 export { ContractQuery } from "./ledger/contract-query";
