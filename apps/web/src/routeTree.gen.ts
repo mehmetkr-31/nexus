@@ -10,15 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
-import { Route as DashboardTestRouteImport } from './routes/dashboard/test'
+import { Route as AppDashboardIndexRouteImport } from './routes/_app/dashboard/index'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppDashboardTestRouteImport } from './routes/_app/dashboard/test'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -26,15 +37,10 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardIndexRoute = DashboardIndexRouteImport.update({
+const AppDashboardIndexRoute = AppDashboardIndexRouteImport.update({
   id: '/dashboard/',
   path: '/dashboard/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardTestRoute = DashboardTestRouteImport.update({
-  id: '/dashboard/test',
-  path: '/dashboard/test',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
   id: '/api/rpc/$',
@@ -46,64 +52,75 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppDashboardTestRoute = AppDashboardTestRouteImport.update({
+  id: '/dashboard/test',
+  path: '/dashboard/test',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/dashboard/test': typeof DashboardTestRoute
-  '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/test': typeof AppDashboardTestRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/dashboard/': typeof AppDashboardIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof AppDashboardIndexRoute
   '/login': typeof LoginRoute
-  '/dashboard/test': typeof DashboardTestRoute
-  '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/test': typeof AppDashboardTestRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteRouteWithChildren
+  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
-  '/dashboard/test': typeof DashboardTestRoute
-  '/dashboard/': typeof DashboardIndexRoute
+  '/_app/dashboard/test': typeof AppDashboardTestRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/_app/dashboard/': typeof AppDashboardIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/dashboard'
     | '/login'
     | '/dashboard/test'
-    | '/dashboard/'
     | '/api/auth/$'
     | '/api/rpc/$'
+    | '/dashboard/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/dashboard'
     | '/login'
     | '/dashboard/test'
-    | '/dashboard'
     | '/api/auth/$'
     | '/api/rpc/$'
   id:
     | '__root__'
     | '/'
+    | '/_app'
+    | '/dashboard'
     | '/login'
-    | '/dashboard/test'
-    | '/dashboard/'
+    | '/_app/dashboard/test'
     | '/api/auth/$'
     | '/api/rpc/$'
+    | '/_app/dashboard/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
+  DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
-  DashboardTestRoute: typeof DashboardTestRoute
-  DashboardIndexRoute: typeof DashboardIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
 }
@@ -117,6 +134,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -124,19 +155,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard/': {
-      id: '/dashboard/'
+    '/_app/dashboard/': {
+      id: '/_app/dashboard/'
       path: '/dashboard'
       fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/test': {
-      id: '/dashboard/test'
-      path: '/dashboard/test'
-      fullPath: '/dashboard/test'
-      preLoaderRoute: typeof DashboardTestRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppDashboardIndexRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/api/rpc/$': {
       id: '/api/rpc/$'
@@ -152,14 +176,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/dashboard/test': {
+      id: '/_app/dashboard/test'
+      path: '/dashboard/test'
+      fullPath: '/dashboard/test'
+      preLoaderRoute: typeof AppDashboardTestRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
+interface AppRouteRouteChildren {
+  AppDashboardTestRoute: typeof AppDashboardTestRoute
+  AppDashboardIndexRoute: typeof AppDashboardIndexRoute
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppDashboardTestRoute: AppDashboardTestRoute,
+  AppDashboardIndexRoute: AppDashboardIndexRoute,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
+  DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
-  DashboardTestRoute: DashboardTestRoute,
-  DashboardIndexRoute: DashboardIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
 }
