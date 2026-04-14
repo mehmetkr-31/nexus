@@ -42,8 +42,7 @@ function RootDocument() {
 			</head>
 			<body>
 				<TooltipProvider>
-					<div className="grid h-svh grid-rows-[auto_1fr]">
-						<Header />
+					<div className="">
 						<Outlet />
 					</div>
 					<Toaster richColors />
