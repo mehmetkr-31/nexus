@@ -3,13 +3,15 @@
 import {
 	SidebarGroup,
 	SidebarGroupContent,
+	SidebarGroupLabel,
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@nexus/ui/components/sidebar";
+import { memo } from "react";
 import type * as React from "react";
 
-export function NavSecondary({
+export const NavSecondary = memo(function NavSecondary({
 	items,
 	...props
 }: {
@@ -17,15 +19,17 @@ export function NavSecondary({
 		title: string;
 		url: string;
 		icon: React.ReactNode;
+		isActive?: boolean;
 	}[];
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
 	return (
 		<SidebarGroup {...props}>
+			<SidebarGroupLabel>More</SidebarGroupLabel>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					{items.map((item) => (
 						<SidebarMenuItem key={item.title}>
-							<SidebarMenuButton asChild>
+							<SidebarMenuButton asChild tooltip={item.title} isActive={item.isActive}>
 								<a href={item.url}>
 									{item.icon}
 									<span>{item.title}</span>
@@ -37,4 +41,4 @@ export function NavSecondary({
 			</SidebarGroupContent>
 		</SidebarGroup>
 	);
-}
+});

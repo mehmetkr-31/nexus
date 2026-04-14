@@ -7,7 +7,6 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import type { orpc } from "@/utils/orpc";
 
-import Header from "../components/header";
 import "../index.css";
 export interface RouterAppContext {
 	orpc: typeof orpc;

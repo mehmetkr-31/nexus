@@ -1,0 +1,119 @@
+"use client";
+
+import {
+	Sidebar,
+	SidebarContent,
+	SidebarFooter,
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarGroupLabel,
+	SidebarHeader,
+	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
+} from "@nexus/ui/components/sidebar";
+import { NavUser } from "@nexus/ui/components/nav-user";
+import { Link, linkOptions } from "@tanstack/react-router";
+import { CircleHelpIcon, CommandIcon, LayoutDashboardIcon } from "lucide-react";
+import type * as React from "react";
+
+// Define navigation items with linkOptions for type safety
+const mainNavItems = linkOptions([
+	{
+		to: "/dashboard",
+		label: "Dashboard",
+		icon: <LayoutDashboardIcon />,
+		activeOptions: { exact: true },
+	},
+	{
+		to: "/dashboard/test",
+		label: "Test",
+		icon: <LayoutDashboardIcon />,
+		activeOptions: { exact: true },
+	},
+]);
+
+const secondaryNavItems = linkOptions([
+	{
+		to: "/",
+		label: "Get Help",
+		icon: <CircleHelpIcon />,
+		activeOptions: { exact: true },
+	},
+]);
+
+function NavMainItems() {
+	return (
+		<SidebarGroup>
+			<SidebarGroupLabel>Main</SidebarGroupLabel>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					{mainNavItems.map((item) => (
+						<SidebarMenuItem key={item.label}>
+							<SidebarMenuButton asChild tooltip={item.label}>
+								<Link {...item} preload="intent">
+									{item.icon}
+									<span>{item.label}</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					))}
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+	);
+}
+
+function NavSecondaryItems() {
+	return (
+		<SidebarGroup className="mt-auto">
+			<SidebarGroupLabel>More</SidebarGroupLabel>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					{secondaryNavItems.map((item) => (
+						<SidebarMenuItem key={item.label}>
+							<SidebarMenuButton asChild tooltip={item.label}>
+								<Link {...item}>
+									{item.icon}
+									<span>{item.label}</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+					))}
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+	);
+}
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const user = {
+		name: "User",
+		email: "user@example.com",
+		avatar: "/avatars/user.jpg",
+	};
+
+	return (
+		<Sidebar collapsible="icon" {...props}>
+			<SidebarHeader>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton asChild className="">
+							<Link to="/">
+								<CommandIcon className="size-5!" />
+								<span className="text-base font-semibold">Nexus</span>
+							</Link>
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarHeader>
+			<SidebarContent>
+				<NavMainItems />
+				<NavSecondaryItems />
+			</SidebarContent>
+			<SidebarFooter>
+				<NavUser user={user} />
+			</SidebarFooter>
+		</Sidebar>
+	);
+}
