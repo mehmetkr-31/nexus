@@ -12,7 +12,7 @@ export const CreateWalletSchema = z.object({
 			role: z.enum(["Owner", "Admin", "Signer", "Viewer"]),
 		}),
 	),
-	threshold: z.number().int().min(1),
+	threshold: z.coerce.string(), // Daml Int → JS string
 	custodian: z.string(),
 });
 
@@ -20,7 +20,7 @@ export const ProposeTransferSchema = z.object({
 	walletCid: z.string().min(1),
 	proposer: z.string().min(1),
 	recipient: z.string().min(1),
-	txAmount: z.string().min(1),
+	txAmount: z.coerce.number().positive(), // String input → number (Daml Decimal)
 	txCurrency: z.string().min(1),
 	description: z.string(),
 });
@@ -49,4 +49,47 @@ export const WalletQuerySchema = z.object({
 export const ProposalQuerySchema = z.object({
 	limit: z.number().int().min(1).max(1000).optional().default(50),
 	walletId: z.string().optional(),
+});
+
+// ─── Governance Proposal Schemas ──────────────────────────────────────────────
+
+export const ProposeAddMemberSchema = z.object({
+	walletCid: z.string().min(1),
+	proposer: z.string().min(1),
+	newMemberParty: z.string().min(1),
+	newMemberRole: z.enum(["Owner", "Admin", "Signer", "Viewer"]),
+});
+
+export const ProposeRemoveMemberSchema = z.object({
+	walletCid: z.string().min(1),
+	proposer: z.string().min(1),
+	memberToRemove: z.string().min(1),
+});
+
+export const ProposeChangeThresholdSchema = z.object({
+	walletCid: z.string().min(1),
+	proposer: z.string().min(1),
+	newThreshold: z.coerce.string(), // Daml Int → JS string
+});
+
+export const ApproveGovernanceSchema = z.object({
+	proposalCid: z.string().min(1),
+	approver: z.string().min(1),
+});
+
+export const ExecuteGovernanceSchema = z.object({
+	proposalCid: z.string().min(1),
+	executor: z.string().min(1),
+	walletCid: z.string().min(1),
+});
+
+export const RejectGovernanceSchema = z.object({
+	proposalCid: z.string().min(1),
+	rejector: z.string().min(1),
+});
+
+// ─── PendingWalletUpdate Schemas ──────────────────────────────────────────────
+
+export const AcceptMembershipSchema = z.object({
+	pendingUpdateCid: z.string().min(1),
 });

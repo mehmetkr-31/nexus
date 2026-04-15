@@ -1,8 +1,16 @@
 import {
+	AcceptMembershipSchema,
+	ApproveGovernanceSchema,
 	ApproveProposalSchema,
+	CreateWalletSchema,
+	ExecuteGovernanceSchema,
 	ExecuteTransactionSchema,
+	ProposeAddMemberSchema,
+	ProposeChangeThresholdSchema,
+	ProposeRemoveMemberSchema,
 	ProposalQuerySchema,
 	ProposeTransferSchema,
+	RejectGovernanceSchema,
 	RejectProposalSchema,
 	WalletQuerySchema,
 } from "@nexus/api/schemas/signet";
@@ -39,6 +47,17 @@ export const signetRouter = {
 			return contract;
 		}),
 
+	// ─── Wallet Creation ────────────────────────────────────────────────────────
+
+	createWallet: ledgerProcedure.input(CreateWalletSchema).handler(({ input, context }) => {
+		return context.ledger.MultisigWallet.create({
+			walletId: input.walletId,
+			members: input.members,
+			threshold: input.threshold,
+			custodian: input.custodian,
+		});
+	}),
+
 	// ─── Proposal Queries ───────────────────────────────────────────────────────
 
 	listTransactionProposals: ledgerProcedure
@@ -59,7 +78,7 @@ export const signetRouter = {
 			});
 		}),
 
-	// ─── Actions ────────────────────────────────────────────────────────────────
+	// ─── Transaction Actions ────────────────────────────────────────────────────
 
 	proposeTransfer: ledgerProcedure.input(ProposeTransferSchema).handler(({ input, context }) => {
 		return context.ledger.MultisigWallet.exercise(input.walletCid, "ProposeTransfer", {
@@ -91,5 +110,68 @@ export const signetRouter = {
 		return context.ledger.TransactionProposal.exercise(input.proposalCid, "Reject", {
 			rejector: input.rejector,
 		});
+	}),
+
+	// ─── Governance Actions ─────────────────────────────────────────────────────
+
+	proposeAddMember: ledgerProcedure.input(ProposeAddMemberSchema).handler(({ input, context }) => {
+		return context.ledger.MultisigWallet.exercise(input.walletCid, "ProposeAddMember", {
+			proposer: input.proposer,
+			newMember: {
+				party: input.newMemberParty,
+				role: input.newMemberRole,
+			},
+		});
+	}),
+
+	proposeRemoveMember: ledgerProcedure
+		.input(ProposeRemoveMemberSchema)
+		.handler(({ input, context }) => {
+			return context.ledger.MultisigWallet.exercise(input.walletCid, "ProposeRemoveMember", {
+				proposer: input.proposer,
+				memberToRemove: input.memberToRemove,
+			});
+		}),
+
+	proposeChangeThreshold: ledgerProcedure
+		.input(ProposeChangeThresholdSchema)
+		.handler(({ input, context }) => {
+			return context.ledger.MultisigWallet.exercise(input.walletCid, "ProposeChangeThreshold", {
+				proposer: input.proposer,
+				newThreshold: input.newThreshold,
+			});
+		}),
+
+	approveGovernance: ledgerProcedure
+		.input(ApproveGovernanceSchema)
+		.handler(({ input, context }) => {
+			return context.ledger.GovernanceProposal.exercise(input.proposalCid, "ApproveGovernance", {
+				approver: input.approver,
+			});
+		}),
+
+	executeGovernance: ledgerProcedure
+		.input(ExecuteGovernanceSchema)
+		.handler(({ input, context }) => {
+			return context.ledger.GovernanceProposal.exercise(input.proposalCid, "ExecuteGovernance", {
+				executor: input.executor,
+				walletCid: input.walletCid,
+			});
+		}),
+
+	rejectGovernance: ledgerProcedure.input(RejectGovernanceSchema).handler(({ input, context }) => {
+		return context.ledger.GovernanceProposal.exercise(input.proposalCid, "RejectGovernance", {
+			rejector: input.rejector,
+		});
+	}),
+
+	// ─── PendingWalletUpdate Actions ────────────────────────────────────────────
+
+	acceptMembership: ledgerProcedure.input(AcceptMembershipSchema).handler(({ input, context }) => {
+		return context.ledger.PendingWalletUpdate.exercise(
+			input.pendingUpdateCid,
+			"AcceptMembership",
+			{},
+		);
 	}),
 };
