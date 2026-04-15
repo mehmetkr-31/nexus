@@ -12,19 +12,19 @@ export {
 	createHonoLedgerRoutes,
 	createTanStackLedgerContext,
 	type NexusAdapterConfig,
-} from "./adapters.ts";
+} from "./adapters";
 export {
 	createLedgerRouteHandler,
 	type LedgerRouteHandler,
 	type LedgerRouteHandlerConfig,
-} from "./route-handler.ts";
-export { type LedgerActionResult, withLedgerAction } from "./server-actions.ts";
-export type { ServerNexusConfig } from "./server-client.ts";
-export { createServerNexusClient, createServerNexusClientFromSession } from "./server-client.ts";
+} from "./route-handler";
+export { type LedgerActionResult, withLedgerAction } from "./server-actions";
+export type { ServerNexusConfig } from "./server-client";
+export { createServerNexusClient, createServerNexusClientFromSession } from "./server-client";
 export {
 	type GetLedgerDataOptions,
 	getLedgerData,
 	type PrefetchContractOptions,
 	type PrefetchInterfaceOptions,
 	prefetchNexusQuery,
-} from "./server-queries.ts";
+} from "./server-queries";

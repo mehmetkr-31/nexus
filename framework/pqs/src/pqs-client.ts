@@ -1,4 +1,4 @@
-import type { ActiveContractRow, PqsContract, PqsQueryOptions } from "./types.ts";
+import type { ActiveContractRow, PqsContract, PqsQueryOptions } from "./types";
 
 // ─── Row mapper ───────────────────────────────────────────────────────────────
 

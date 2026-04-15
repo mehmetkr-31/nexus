@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { QueryClient } from "@tanstack/react-query";
-import { invalidateAllNexusQueries, invalidateContractQueries, nexusKeys } from "./query-keys.ts";
+import { invalidateAllNexusQueries, invalidateContractQueries, nexusKeys } from "./query-keys";
 
 describe("nexusKeys", () => {
 	test("all() returns correct root key", () => {

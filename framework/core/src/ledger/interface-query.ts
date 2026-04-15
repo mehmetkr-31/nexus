@@ -1,12 +1,12 @@
-import type { CantonClient } from "../client/canton-client.ts";
+import type { CantonClient } from "../client/canton-client";
 import type {
 	ActivateInterfaceOptions,
 	ActiveInterfacesResponse,
 	TemplateDescriptor,
 	TemplateId,
-} from "../types/index.ts";
-import { fetchAllPages } from "../utils/pagination.ts";
-import type { PackageResolver } from "./package-resolver.ts";
+} from "../types/index";
+import { fetchAllPages } from "../utils/pagination";
+import type { PackageResolver } from "./package-resolver";
 
 /**
  * Provides methods for querying active contracts through a Daml interface.

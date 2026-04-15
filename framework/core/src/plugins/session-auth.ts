@@ -1,5 +1,5 @@
-import type { SessionManager } from "../auth/session-manager.js";
-import type { NexusServerPlugin } from "../types/client.js";
+import type { SessionManager } from "../auth/session-manager";
+import type { NexusServerPlugin } from "../types/client";
 
 export interface SessionAuthPluginOptions {
 	sessionManager: SessionManager;

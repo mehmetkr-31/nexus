@@ -1,4 +1,4 @@
-import { type CantonParty, NexusAuthError, NexusLedgerError } from "../types/index.ts";
+import { type CantonParty, NexusAuthError, NexusLedgerError } from "../types/index";
 
 // Canton v2 (3.x): rights are in a flat array of { type, partyId } objects
 // Older Canton / legacy: { canActAs: string[], canReadAs: string[] }
@@ -22,7 +22,7 @@ export class PartyIdResolver {
 	private readonly cacheTtlMs: number;
 
 	constructor(
-		private readonly client: import("../client/canton-client.ts").CantonClient,
+		private readonly client: import("../client/canton-client").CantonClient,
 		options?: { cacheTtlMs?: number },
 	) {
 		this.cacheTtlMs = options?.cacheTtlMs ?? 5 * 60 * 1000; // 5 min default

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { NexusLedgerError } from "../types/index.ts";
-import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
-import { CantonClient } from "./canton-client.ts";
+import { NexusLedgerError } from "../types/index";
+import type { FetchMiddleware, RequestConfig } from "../types/plugin";
+import { CantonClient } from "./canton-client";
 
 // ─── Mock Canton Server ───────────────────────────────────────────────────────
 

@@ -22,9 +22,10 @@
  * const ious = await orpc.iou.list({ limit: 10 })
  * ```
  */
+
+import { createContext } from "@nexus/api/context";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
-import { createContext } from "@nexus/api/context";
 import { appRouter } from "../../../lib/api";
 
 const rpcHandler = new RPCHandler(appRouter, {

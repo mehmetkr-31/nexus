@@ -1,6 +1,15 @@
 "use client";
 
-import type { JwtPayload } from "@nexus-framework/core";
+interface JwtPayload {
+	iss?: string;
+	sub?: string;
+	aud?: string[] | string;
+	exp?: number;
+	nbf?: number;
+	iat?: number;
+	jti?: string;
+}
+
 import { CheckCircle2, Globe, Key, Shield, User } from "lucide-react";
 import { nexus } from "../lib/nexus-client";
 import { GlassCard } from "./GlassCard";

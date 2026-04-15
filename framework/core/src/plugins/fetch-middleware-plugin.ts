@@ -1,4 +1,4 @@
-import type { FetchMiddleware, NexusPlugin } from "../types/plugin.ts";
+import type { FetchMiddleware, NexusPlugin } from "../types/plugin";
 
 /**
  * Create a plugin that attaches fetch middleware hooks (onRequest, onResponse, onError)

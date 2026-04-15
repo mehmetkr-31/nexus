@@ -8,7 +8,7 @@ import type {
 } from "@nexus-framework/core";
 import { DEFAULT_PAGE_SIZE, toStableTemplateId } from "@nexus-framework/core";
 import { queryOptions } from "@tanstack/react-query";
-import { type ContractQueryFilters, nexusKeys } from "./query-keys.ts";
+import { type ContractQueryFilters, nexusKeys } from "./query-keys";
 
 // ─── Contract queryOptions factory ───────────────────────────────────────────
 

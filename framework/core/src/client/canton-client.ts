@@ -12,10 +12,10 @@ import {
 	type TemplateDescriptor,
 	type TemplateId,
 	type TransactionResult,
-} from "../types/index.ts";
-import type { FetchMiddleware, RequestConfig } from "../types/plugin.ts";
-import { decodeJwtPayload } from "../utils/jwt.ts";
-import { toStableTemplateId } from "../utils/template.ts";
+} from "../types/index";
+import type { FetchMiddleware, RequestConfig } from "../types/plugin";
+import { decodeJwtPayload } from "../utils/jwt";
+import { toStableTemplateId } from "../utils/template";
 
 // ─── Zod Schemas ─────────────────────────────────────────────────────────────
 
@@ -608,15 +608,15 @@ export class CantonClient {
 	async streamActiveContracts<T = Record<string, unknown>>(
 		templateId: string | TemplateId | TemplateDescriptor,
 		handlers: {
-			onCreate?: (contract: import("../types/index.ts").ActiveContract<T>) => void;
-			onArchive?: (contractId: string, templateId: import("../types/index.ts").TemplateId) => void;
+			onCreate?: (contract: import("../types/index").ActiveContract<T>) => void;
+			onArchive?: (contractId: string, templateId: import("../types/index").TemplateId) => void;
 			onLive?: () => void;
 			onError?: (error: Error) => void;
 			onClose?: () => void;
 			onConnectedChange?: (connected: boolean) => void;
 		},
 		options?: { parties?: string[] },
-	): Promise<import("../types/index.ts").StreamHandle> {
+	): Promise<import("../types/index").StreamHandle> {
 		const token = await this.getToken();
 		const stableId = toStableTemplateId(templateId);
 		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/state/active-contracts/stream`;
@@ -640,11 +640,11 @@ export class CantonClient {
 				try {
 					const msg = JSON.parse(event.data as string) as Record<string, unknown>;
 					if ("created" in msg) {
-						handlers.onCreate?.(msg.created as import("../types/index.ts").ActiveContract<T>);
+						handlers.onCreate?.(msg.created as import("../types/index").ActiveContract<T>);
 					} else if ("archived" in msg) {
 						const archived = msg.archived as {
 							contractId: string;
-							templateId: import("../types/index.ts").TemplateId;
+							templateId: import("../types/index").TemplateId;
 						};
 						handlers.onArchive?.(archived.contractId, archived.templateId);
 					} else if ("live_marker" in msg || msg.type === "live") {
@@ -673,7 +673,7 @@ export class CantonClient {
 
 		subscribe(ws);
 
-		const handle: import("../types/index.ts").StreamHandle = {
+		const handle: import("../types/index").StreamHandle = {
 			close: () => ws.close(),
 			/**
 			 * Re-connect the stream with a new bearer token.
@@ -710,7 +710,7 @@ export class CantonClient {
 		parties: string[],
 		fromOffset: string | number,
 		handlers: CompletionStreamHandlers,
-	): Promise<import("../types/index.ts").StreamHandle> {
+	): Promise<import("../types/index").StreamHandle> {
 		const token = await this.getToken();
 		const wsUrl = `${this.baseUrl.replace(/^http/, "ws")}${this.apiBase}/commands/completions`;
 

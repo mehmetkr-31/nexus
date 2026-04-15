@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { NexusAuthError } from "../types/index.ts";
-import { JwksClient } from "./jwks-client.ts";
+import { NexusAuthError } from "../types/index";
+import { JwksClient } from "./jwks-client";
 
 // ─── Mock JWKS server helpers ─────────────────────────────────────────────────
 
@@ -184,7 +184,7 @@ describe("JwksClient", () => {
 			jwksUri: `http://localhost:${server.port}/.well-known/jwks.json`,
 		});
 
-		const { verifyJwt, decodeJwtHeader } = await import("../utils/jwt.ts");
+		const { verifyJwt, decodeJwtHeader } = await import("../utils/jwt");
 		const header = decodeJwtHeader(token);
 		const key = await client.getKey(header.kid);
 		const payload = await verifyJwt(token, {

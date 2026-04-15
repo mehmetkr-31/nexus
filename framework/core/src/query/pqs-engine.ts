@@ -3,7 +3,7 @@ import pkg from "pg";
 
 const { Pool } = pkg;
 
-import type { PqsFindOptions } from "../types/client.js";
+import type { PqsFindOptions } from "../types/client";
 
 /**
  * Canton PQS (Participant Query Store) table schema.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { NexusAuthError } from "../types/index.ts";
+import { NexusAuthError } from "../types/index";
 import {
 	base64urlToBytes,
 	decodeJwtHeader,
@@ -8,7 +8,7 @@ import {
 	isExpiringSoon,
 	type JwtPayload,
 	verifyJwt,
-} from "./jwt.ts";
+} from "./jwt";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

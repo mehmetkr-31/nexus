@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { NexusSession } from "@nexus-framework/core";
+import { UserSwitcher } from "./UserSwitcher";
 
 const navItems = [
 	{ name: "Dashboard", icon: LayoutDashboard, href: "/contracts" },
@@ -20,7 +22,11 @@ const navItems = [
 	{ name: "Activity", icon: Activity, href: "/history" },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+	session?: NexusSession | null;
+}
+
+export function Sidebar({ session }: SidebarProps) {
 	const pathname = usePathname();
 
 	return (
@@ -75,6 +81,13 @@ export function Sidebar() {
 			</nav>
 
 			<div className="space-y-4">
+				{/* User Switcher */}
+				{session?.userId && session?.partyId && (
+					<div className="mb-4">
+						<UserSwitcher currentUser={session.userId} partyId={session.partyId} />
+					</div>
+				)}
+
 				<div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
 					<p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">
 						System Status

@@ -3,8 +3,8 @@
 import type { ActiveContract } from "@nexus-framework/react";
 import { Radio, RefreshCw, XCircle } from "lucide-react";
 import { useMemo } from "react";
+import { IOU_TEMPLATE_ID } from "../lib/constants";
 import { nexus } from "../lib/nexus-client";
-import { IOU_TEMPLATE_ID } from "../lib/nexus";
 
 interface IouPayload {
 	owner: string;

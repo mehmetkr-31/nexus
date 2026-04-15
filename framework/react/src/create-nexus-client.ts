@@ -23,15 +23,15 @@ import type {
 	UseFetchOptions,
 	UsePagedContractsOptions,
 	UsePagedContractsResult,
-} from "./plugins/tanstack-query.ts";
-import {
-	type ContractQueryOptionsParams,
+} from "./plugins/tanstack-query";
+import type {
+	ContractQueryOptionsParams,
 	contractQueryOptions,
 	fetchByIdOptions,
 	fetchByKeyOptions,
-	type PagedContractsQueryOptionsParams,
+	PagedContractsQueryOptionsParams,
 	pagedContractsQueryOptions,
-} from "./query/query-options.ts";
+} from "./query/query-options";
 
 // ─── Plugin type helpers ───────────────────────────────────────────────────────
 

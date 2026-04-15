@@ -1,32 +1,33 @@
-import { PartyIdResolver } from "./auth/party-id-resolver.ts";
-import { CantonClient } from "./client/canton-client.ts";
-import { CommandSubmitter } from "./ledger/command-submitter.ts";
-import { ContractQuery } from "./ledger/contract-query.ts";
-import { InterfaceQuery } from "./ledger/interface-query.ts";
-import { LedgerIdentity } from "./ledger/ledger-identity.ts";
-import { PackageResolver } from "./ledger/package-resolver.ts";
-import type { NexusClient } from "./types/index.ts";
-import type { FetchMiddleware, NexusPlugin } from "./types/plugin.ts";
+import { PartyIdResolver } from "./auth/party-id-resolver";
+import { CantonClient } from "./client/canton-client";
+import { CommandSubmitter } from "./ledger/command-submitter";
+import { ContractQuery } from "./ledger/contract-query";
+import { InterfaceQuery } from "./ledger/interface-query";
+import { LedgerIdentity } from "./ledger/ledger-identity";
+import { PackageResolver } from "./ledger/package-resolver";
+import type { NexusClient } from "./types/index";
+import type { FetchMiddleware, NexusPlugin } from "./types/plugin";
 
-export { PartyIdResolver } from "./auth/party-id-resolver.ts";
-export { type JwtAuthOptions, jwtAuth } from "./auth/plugins/jwt-auth.ts";
-export { type OidcAuthOptions, oidcAuth } from "./auth/plugins/oidc-auth.ts";
+export { PartyIdResolver } from "./auth/party-id-resolver";
+export { JwtManager } from "./auth/jwt-manager";
+export { type JwtAuthOptions, jwtAuth } from "./auth/plugins/jwt-auth";
+export { type OidcAuthOptions, oidcAuth } from "./auth/plugins/oidc-auth";
 export {
 	type SandboxAuthOptions,
 	sandboxAuth,
-} from "./auth/plugins/sandbox-auth.ts";
-export { generateEncryptionKey, SessionManager } from "./auth/session-manager.ts";
-export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config.ts";
-
-export { CantonClient } from "./client/canton-client.ts";
-export { CommandSubmitter } from "./ledger/command-submitter.ts";
-export { ContractQuery } from "./ledger/contract-query.ts";
-export { InterfaceQuery } from "./ledger/interface-query.ts";
-export { LedgerIdentity } from "./ledger/ledger-identity.ts";
-export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin.ts";
-export { PackageResolver } from "./ledger/package-resolver.ts";
-export { provisionSandboxUser } from "./ledger/sandbox-provision.ts";
-export { fetchMiddlewarePlugin } from "./plugins/fetch-middleware-plugin.ts";
+} from "./auth/plugins/sandbox-auth";
+export { generateEncryptionKey, SessionManager } from "./auth/session-manager";
+export { CantonClient } from "./client/canton-client";
+export { createAuthHandler, type AuthHandlerConfig } from "./server/auth-handler";
+export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config";
+export { CommandSubmitter } from "./ledger/command-submitter";
+export { ContractQuery } from "./ledger/contract-query";
+export { InterfaceQuery } from "./ledger/interface-query";
+export { LedgerIdentity } from "./ledger/ledger-identity";
+export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin";
+export { PackageResolver } from "./ledger/package-resolver";
+export { provisionSandboxUser } from "./ledger/sandbox-provision";
+export { fetchMiddlewarePlugin } from "./plugins/fetch-middleware-plugin";
 export type {
 	ActiveContract,
 	ActiveContractsResponse,
@@ -56,12 +57,12 @@ export type {
 	TransactionEvent,
 	TransactionResult,
 	TransactionStatus,
-} from "./types/index.ts";
+} from "./types/index";
 export {
 	NexusAuthError,
 	NexusError,
 	NexusLedgerError,
-} from "./types/index.ts";
+} from "./types/index";
 
 export type {
 	FetchMiddleware,
@@ -71,13 +72,13 @@ export type {
 	NexusConfig,
 	NexusPlugin,
 	RequestConfig,
-} from "./types/plugin.ts";
+} from "./types/plugin";
+export * from "./utils/canton-jwt";
+export * from "./utils/jwt";
+export * from "./utils/sandbox-helpers";
+export * from "./utils/template";
 
-export * from "./utils/jwt.ts";
-export * from "./utils/canton-jwt.ts";
-export * from "./utils/template.ts";
-
-import type { InferNexusClientPlugins } from "./types/plugin.ts";
+import type { InferNexusClientPlugins } from "./types/plugin";
 
 /**
  * Initialize a Nexus client with the given configuration and plugins.

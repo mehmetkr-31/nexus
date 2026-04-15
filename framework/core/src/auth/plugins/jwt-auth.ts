@@ -1,5 +1,5 @@
-import type { NexusPlugin } from "../../types/plugin.ts";
-import { JwtManager } from "../jwt-manager.ts";
+import type { NexusPlugin } from "../../types/plugin";
+import { JwtManager } from "../jwt-manager";
 
 // ─── JwtAuthOptions ───────────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import {
 	contractQueryOptions,
 	type InterfaceQueryOptionsParams,
 	interfaceQueryOptions,
-} from "../query/query-options.ts";
+} from "../query/query-options";
 
 export interface GetLedgerDataOptions<_T = Record<string, unknown>> {
 	templateId: string;

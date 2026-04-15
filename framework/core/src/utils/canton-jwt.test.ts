@@ -6,8 +6,8 @@ import {
 	getParticipantIdFromToken,
 	isAudienceBasedToken,
 	isScopeBasedToken,
-} from "./canton-jwt.ts";
-import type { JwtPayload } from "./jwt.ts";
+} from "./canton-jwt";
+import type { JwtPayload } from "./jwt";
 
 // ─── isAudienceBasedToken ─────────────────────────────────────────────────────
 

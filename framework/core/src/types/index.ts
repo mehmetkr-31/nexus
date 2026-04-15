@@ -421,14 +421,14 @@ export class NexusLedgerError extends NexusError {
 
 // ─── Nexus Client & Config ───────────────────────────────────────────────────
 
-import type { PartyIdResolver } from "../auth/party-id-resolver.ts";
-import type { SessionManager } from "../auth/session-manager.ts";
-import type { CantonClient } from "../client/canton-client.ts";
-import type { CommandSubmitter } from "../ledger/command-submitter.ts";
-import type { ContractQuery } from "../ledger/contract-query.ts";
-import type { InterfaceQuery } from "../ledger/interface-query.ts";
-import type { LedgerIdentity } from "../ledger/ledger-identity.ts";
-import type { PackageResolver } from "../ledger/package-resolver.ts";
+import type { PartyIdResolver } from "../auth/party-id-resolver";
+import type { SessionManager } from "../auth/session-manager";
+import type { CantonClient } from "../client/canton-client";
+import type { CommandSubmitter } from "../ledger/command-submitter";
+import type { ContractQuery } from "../ledger/contract-query";
+import type { InterfaceQuery } from "../ledger/interface-query";
+import type { LedgerIdentity } from "../ledger/ledger-identity";
+import type { PackageResolver } from "../ledger/package-resolver";
 
 export interface NexusConfig {
 	/** Canton JSON Ledger API base URL, e.g. http://localhost:7575 */
