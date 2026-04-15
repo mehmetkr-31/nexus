@@ -8,8 +8,8 @@ import { PackageResolver } from "./ledger/package-resolver";
 import type { NexusClient } from "./types/index";
 import type { FetchMiddleware, NexusPlugin } from "./types/plugin";
 
-export { PartyIdResolver } from "./auth/party-id-resolver";
 export { JwtManager } from "./auth/jwt-manager";
+export { PartyIdResolver } from "./auth/party-id-resolver";
 export { type JwtAuthOptions, jwtAuth } from "./auth/plugins/jwt-auth";
 export { type OidcAuthOptions, oidcAuth } from "./auth/plugins/oidc-auth";
 export {
@@ -18,7 +18,6 @@ export {
 } from "./auth/plugins/sandbox-auth";
 export { generateEncryptionKey, SessionManager } from "./auth/session-manager";
 export { CantonClient } from "./client/canton-client";
-export { createAuthHandler, type AuthHandlerConfig } from "./server/auth-handler";
 export { DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT_MS, DEFAULT_WS_PING_INTERVAL_MS } from "./config";
 export { CommandSubmitter } from "./ledger/command-submitter";
 export { ContractQuery } from "./ledger/contract-query";
@@ -28,6 +27,7 @@ export { packageDiscoveryPlugin } from "./ledger/package-discovery-plugin";
 export { PackageResolver } from "./ledger/package-resolver";
 export { provisionSandboxUser } from "./ledger/sandbox-provision";
 export { fetchMiddlewarePlugin } from "./plugins/fetch-middleware-plugin";
+export { type AuthHandlerConfig, createAuthHandler } from "./server/auth-handler";
 export type {
 	ActiveContract,
 	ActiveContractsResponse,

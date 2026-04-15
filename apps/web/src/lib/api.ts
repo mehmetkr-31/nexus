@@ -1,7 +1,7 @@
 import { baseAppRouter, createLedgerProcedure } from "@nexus/api";
 import { createContext } from "@nexus/api/context";
-import { signetRouter } from "./signet-router";
 import { nexus } from "./nexus-server";
+import { signetRouter } from "./signet-router";
 
 /**
  * Typed ledger procedure with automatic context injection.

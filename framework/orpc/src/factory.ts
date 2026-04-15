@@ -1,9 +1,9 @@
+import type { ConstructNexusApi, DamlTemplate, NexusServer } from "@nexus-framework/core/server";
 import { os } from "@orpc/server";
-import type { NexusServer, ConstructNexusApi, DamlTemplate } from "@nexus-framework/core/server";
 import { 
-  createRequireRoleMiddleware, 
+  createErrorHandlerMiddleware, 
   createRateLimitMiddleware, 
-  createErrorHandlerMiddleware 
+  createRequireRoleMiddleware 
 } from "./middleware/index";
 
 /**
