@@ -1,5 +1,6 @@
 "use client";
 
+import type { NexusSession } from "@nexus-framework/core";
 import { motion } from "framer-motion";
 import {
 	Activity,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { NexusSession } from "@nexus-framework/core";
 import { UserSwitcher } from "./UserSwitcher";
 
 const navItems = [

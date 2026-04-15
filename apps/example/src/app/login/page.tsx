@@ -1,9 +1,9 @@
 "use client";
 
-import { SANDBOX_USERS } from "@/lib/constants";
-import { nexus } from "@/lib/nexus-client";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { SANDBOX_USERS } from "@/lib/constants";
+import { nexus } from "@/lib/nexus-client";
 
 export default function LoginPage() {
 	const searchParams = useSearchParams();
