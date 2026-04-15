@@ -47,7 +47,7 @@ function RootDocument() {
 							<Outlet />
 						</div>
 						<Toaster richColors />
-						<TanStackRouterDevtools position="bottom-left" />
+						<TanStackRouterDevtools position="bottom-right" />
 						<ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
 						<Scripts />
 					</TooltipProvider>

@@ -14,7 +14,7 @@ import {
 	SidebarMenuItem,
 } from "@nexus/ui/components/sidebar";
 import { Link, linkOptions } from "@tanstack/react-router";
-import { CircleHelpIcon, CommandIcon, LayoutDashboardIcon } from "lucide-react";
+import { CommandIcon, LayoutDashboardIcon, SettingsIcon } from "lucide-react";
 import type * as React from "react";
 
 // Define navigation items with linkOptions for type safety
@@ -25,19 +25,19 @@ const mainNavItems = linkOptions([
 		icon: <LayoutDashboardIcon />,
 		activeOptions: { exact: true },
 	},
+]);
+
+const secondaryNavItems = linkOptions([
 	{
 		to: "/dashboard/components_lib",
 		label: "Components",
 		icon: <LayoutDashboardIcon />,
 		activeOptions: { exact: true },
 	},
-]);
-
-const secondaryNavItems = linkOptions([
 	{
-		to: "/",
-		label: "Get Help",
-		icon: <CircleHelpIcon />,
+		to: "/dashboard/settings",
+		label: "Settings",
+		icon: <SettingsIcon />,
 		activeOptions: { exact: true },
 	},
 ]);
