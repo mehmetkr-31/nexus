@@ -1,0 +1,29 @@
+{
+  "name": "@nexus-framework/orpc",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./middleware": {
+      "types": "./dist/middleware/index.d.ts",
+      "default": "./dist/middleware/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint ."
+  },
+  "peerDependencies": {
+    "@nexus-framework/core": "workspace:*",
+    "@orpc/server": "^1.13.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@nexus/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

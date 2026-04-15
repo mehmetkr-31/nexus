@@ -196,6 +196,9 @@ importers:
       '@nexus-framework/core':
         specifier: workspace:*
         version: link:../../framework/core
+      '@nexus-framework/orpc':
+        specifier: workspace:*
+        version: link:../../framework/orpc
       '@nexus-framework/react':
         specifier: workspace:*
         version: link:../../framework/react
@@ -421,9 +424,21 @@ importers:
 
   apps/web:
     dependencies:
+      '@daml.js/nexus-example-0.0.1':
+        specifier: workspace:*
+        version: link:../../sandbox/daml.js/nexus-example-0.0.1
+      '@daml/types':
+        specifier: ^2.10.4
+        version: 2.10.4
       '@libsql/client':
         specifier: 'catalog:'
         version: 0.14.0
+      '@nexus-framework/core':
+        specifier: workspace:*
+        version: link:../../framework/core
+      '@nexus-framework/orpc':
+        specifier: workspace:*
+        version: link:../../framework/orpc
       '@nexus/api':
         specifier: workspace:*
         version: link:../../packages/api
@@ -611,6 +626,25 @@ importers:
         specifier: 'catalog:'
         version: 5.9.3
 
+  framework/orpc:
+    dependencies:
+      '@nexus-framework/core':
+        specifier: workspace:*
+        version: link:../core
+      '@orpc/server':
+        specifier: ^1.13.0
+        version: 1.13.13(@opentelemetry/api@1.9.1)(crossws@0.4.4(srvx@0.11.13))(ws@7.5.10)
+      zod:
+        specifier: ^3.0.0
+        version: 3.25.76
+    devDependencies:
+      '@nexus/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+
   framework/pqs:
     devDependencies:
       '@types/bun':
@@ -647,6 +681,12 @@ importers:
       '@nexus-framework/core':
         specifier: workspace:*
         version: link:../../framework/core
+      '@nexus-framework/orpc':
+        specifier: workspace:*
+        version: link:../../framework/orpc
+      '@nexus-framework/react':
+        specifier: workspace:*
+        version: link:../../framework/react
       '@nexus/auth':
         specifier: workspace:*
         version: link:../auth
@@ -932,12 +972,12 @@ importers:
 
   sandbox/daml.js/daml-stdlib-DA-Validation-Types-1.0.0:
     dependencies:
-      '@daml.js/daml-stdlib-DA-NonEmpty-Types-1.0.0':
-        specifier: file:../daml-stdlib-DA-NonEmpty-Types-1.0.0
-        version: link:../daml-stdlib-DA-NonEmpty-Types-1.0.0
       '@mojotech/json-type-validation':
         specifier: ^3.1.0
         version: 3.1.0
+      daml.js/daml-stdlib-DA-NonEmpty-Types-1.0.0:
+        specifier: file:../daml-stdlib-DA-NonEmpty-Types-1.0.0
+        version: link:../daml-stdlib-DA-NonEmpty-Types-1.0.0
 
   sandbox/daml.js/ghc-stdlib-DA-Internal-Template-1.0.0:
     dependencies:
@@ -947,15 +987,15 @@ importers:
 
   sandbox/daml.js/nexus-example-0.0.1:
     dependencies:
-      '@daml.js/daml-prim-DA-Types-1.0.0':
-        specifier: file:../daml-prim-DA-Types-1.0.0
-        version: link:../daml-prim-DA-Types-1.0.0
-      '@daml.js/ghc-stdlib-DA-Internal-Template-1.0.0':
-        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
-        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
       '@mojotech/json-type-validation':
         specifier: ^3.1.0
         version: 3.1.0
+      daml.js/daml-prim-DA-Types-1.0.0:
+        specifier: file:../daml-prim-DA-Types-1.0.0
+        version: link:../daml-prim-DA-Types-1.0.0
+      daml.js/ghc-stdlib-DA-Internal-Template-1.0.0:
+        specifier: file:../ghc-stdlib-DA-Internal-Template-1.0.0
+        version: link:../ghc-stdlib-DA-Internal-Template-1.0.0
 
 packages:
 

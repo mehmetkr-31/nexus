@@ -14,6 +14,7 @@
 		"@daml.js/nexus-example-0.0.1": "workspace:*",
 		"@libsql/client": "catalog:",
 		"@nexus-framework/core": "workspace:*",
+		"@nexus-framework/orpc": "workspace:*",
 		"@nexus/api": "workspace:*",
 		"@nexus/auth": "workspace:*",
 		"@nexus/env": "workspace:*",

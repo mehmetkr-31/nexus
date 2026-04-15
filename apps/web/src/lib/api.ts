@@ -1,11 +1,10 @@
-import { baseAppRouter, createLedgerProcedure } from "@nexus/api";
+import { baseAppRouter } from "@nexus/api";
 import { createContext } from "@nexus/api/context";
-import { createSignetRouter } from "@nexus/api/routers/signet";
-import { nexus } from "./nexus-server";
+import { signetRouter } from "./signet-router";
 
 export const appRouter = {
 	...baseAppRouter,
-	signet: createSignetRouter(createLedgerProcedure(nexus.forRequest)),
+	signet: signetRouter,
 };
 
 export type AppRouter = typeof appRouter;

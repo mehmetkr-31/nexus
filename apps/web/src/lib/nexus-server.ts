@@ -1,6 +1,6 @@
-import { MultisigWallet } from "@daml.js/nexus-example-0.0.1";
 import { SessionManager, sandboxAuth } from "@nexus-framework/core";
 import { createNexusServer } from "@nexus-framework/core/server";
+import { nexusTypes } from "./nexus-types";
 
 const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://127.0.0.1:7575";
 const PQS_URL = process.env.PQS_URL ?? "postgres://postgres:postgres@localhost:5432/postgres";
@@ -16,11 +16,6 @@ export const nexus = await createNexusServer({
 	ledgerApiUrl: CANTON_API_URL,
 	pqsUrl: PQS_URL,
 	auth: sandboxAuth({ userId: SANDBOX_USER_ID, secret: SANDBOX_SECRET }),
-	types: {
-		MultisigWallet: MultisigWallet.MultisigWallet,
-		TransactionProposal: MultisigWallet.TransactionProposal,
-		GovernanceProposal: MultisigWallet.GovernanceProposal,
-		PendingWalletUpdate: MultisigWallet.PendingWalletUpdate,
-	},
+	types: nexusTypes,
 	sessionManager,
 });
