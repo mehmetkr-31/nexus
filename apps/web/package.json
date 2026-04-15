@@ -10,7 +10,10 @@
 		"lint": "biome lint ."
 	},
 	"dependencies": {
+		"@daml/types": "^2.10.4",
+		"@daml.js/nexus-example-0.0.1": "workspace:*",
 		"@libsql/client": "catalog:",
+		"@nexus-framework/core": "workspace:*",
 		"@nexus/api": "workspace:*",
 		"@nexus/auth": "workspace:*",
 		"@nexus/env": "workspace:*",

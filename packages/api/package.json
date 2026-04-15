@@ -12,6 +12,9 @@
 		"./routers/iou": {
 			"default": "./src/routers/iou.ts"
 		},
+		"./routers/signet": {
+			"default": "./src/routers/signet.ts"
+		},
 		"./context": {
 			"default": "./src/context.ts"
 		},

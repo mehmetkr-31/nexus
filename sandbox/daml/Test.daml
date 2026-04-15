@@ -9,10 +9,13 @@ test_simple = script do
   alice <- allocateParty "Alice"
   bob <- allocateParty "Bob"
   charlie <- allocateParty "Charlie"
+  let aliceMember = Member with party = alice, role = Owner
+  let bobMember = Member with party = bob, role = Admin
+  let charlieMember = Member with party = charlie, role = Signer
   walletCid <- submitMulti [alice, bob, charlie] [] do
     createCmd MultisigWallet with
       walletId  = "test-wallet"
-      owners    = [alice, bob, charlie]
+      members   = [aliceMember, bobMember, charlieMember]
       threshold = 2
       custodian = alice
   debug "TEST SIMPLE END"
