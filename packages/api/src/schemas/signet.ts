@@ -20,7 +20,9 @@ export const ProposeTransferSchema = z.object({
 	walletCid: z.string().min(1),
 	proposer: z.string().min(1),
 	recipient: z.string().min(1),
-	txAmount: z.coerce.number().positive(), // String input → number (Daml Decimal)
+	txAmount: z
+		.union([z.string(), z.number()])
+		.transform((val) => (typeof val === "number" ? val.toString() : val)), // Daml Numeric = string
 	txCurrency: z.string().min(1),
 	description: z.string(),
 });
