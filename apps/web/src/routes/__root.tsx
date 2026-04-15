@@ -1,4 +1,5 @@
 import { Toaster } from "@nexus/ui/components/sonner";
+import { ThemeProvider } from "@nexus/ui/components/theme-provider";
 import { TooltipProvider } from "@nexus/ui/components/tooltip";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -35,20 +36,22 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootDocument() {
 	return (
-		<html lang="en" className="dark">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
 			</head>
 			<body>
-				<TooltipProvider>
-					<div className="">
-						<Outlet />
-					</div>
-					<Toaster richColors />
-					<TanStackRouterDevtools position="bottom-left" />
-					<ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
-					<Scripts />
-				</TooltipProvider>
+				<ThemeProvider>
+					<TooltipProvider>
+						<div className="">
+							<Outlet />
+						</div>
+						<Toaster richColors />
+						<TanStackRouterDevtools position="bottom-left" />
+						<ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+						<Scripts />
+					</TooltipProvider>
+				</ThemeProvider>
 			</body>
 		</html>
 	);
