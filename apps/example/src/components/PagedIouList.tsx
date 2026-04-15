@@ -12,7 +12,7 @@ type IouPayload = {
 	currency: string;
 };
 
-const IOU_TEMPLATE: TemplateDescriptor = {
+const _IOU_TEMPLATE: TemplateDescriptor = {
 	packageName: "nexus-example",
 	moduleName: "Iou",
 	entityName: "Iou",

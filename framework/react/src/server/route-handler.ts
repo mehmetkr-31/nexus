@@ -1,5 +1,4 @@
 import { NexusAuthError, SessionManager } from "@nexus-framework/core";
-import type { ServerNexusConfig } from "./server-client.ts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

@@ -27,7 +27,6 @@ export const nexus = await createNexusServer({
 	ledgerApiUrl: CANTON_API_URL,
 	pqsUrl: PQS_URL,
 	auth: sandboxAuth({ userId: SANDBOX_USER_ID, secret: SANDBOX_SECRET }),
-	// biome-ignore lint/suspicious/noExplicitAny: Daml codegen template types are covariant
 	types: { Iou: Iou.Iou },
 	sessionManager,
 });

@@ -5,7 +5,6 @@
  * Auto-provisions the sandbox user on first run.
  */
 import { provisionSandboxUser } from "@nexus-framework/core";
-import { tanstackQueryPlugin } from "@nexus-framework/react/server";
 import { cookies } from "next/headers";
 import { nexus } from "./nexus-server";
 

@@ -40,7 +40,7 @@ async function makeRs256Token(
 	kid?: string,
 ): Promise<string> {
 	const headerObj: Record<string, string> = { alg: "RS256", typ: "JWT" };
-	if (kid) headerObj["kid"] = kid;
+	if (kid) headerObj.kid = kid;
 
 	const header = btoa(JSON.stringify(headerObj))
 		.replace(/=/g, "")

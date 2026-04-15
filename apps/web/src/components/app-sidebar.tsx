@@ -1,5 +1,6 @@
 "use client";
 
+import { NavUser } from "@nexus/ui/components/nav-user";
 import {
 	Sidebar,
 	SidebarContent,
@@ -12,7 +13,6 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@nexus/ui/components/sidebar";
-import { NavUser } from "@nexus/ui/components/nav-user";
 import { Link, linkOptions } from "@tanstack/react-router";
 import { CircleHelpIcon, CommandIcon, LayoutDashboardIcon } from "lucide-react";
 import type * as React from "react";
@@ -26,8 +26,8 @@ const mainNavItems = linkOptions([
 		activeOptions: { exact: true },
 	},
 	{
-		to: "/dashboard/test",
-		label: "Test",
+		to: "/dashboard/components_lib",
+		label: "Components",
 		icon: <LayoutDashboardIcon />,
 		activeOptions: { exact: true },
 	},

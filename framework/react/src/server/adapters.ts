@@ -1,6 +1,5 @@
-import type { DamlTemplate, NexusPlugin, SessionManager } from "@nexus-framework/core";
+import type { SessionManager } from "@nexus-framework/core";
 import { NexusAuthError } from "@nexus-framework/core";
-import type { NexusServer } from "@nexus-framework/core/server";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

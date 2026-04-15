@@ -63,7 +63,7 @@ export interface UseFetchOptions<_T = unknown> {
 	staleTime?: number;
 }
 
-export interface UseFetchByKeyOptions<T = unknown> {
+export interface UseFetchByKeyOptions<_T = unknown> {
 	templateId: NexusTemplateIdentifier;
 	/** The exact Daml contract key value — passed to `POST /v2/contracts/contract-by-key`. */
 	key: Record<string, unknown>;

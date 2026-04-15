@@ -8,8 +8,8 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@nexus/ui/components/sidebar";
-import { memo } from "react";
 import type * as React from "react";
+import { memo } from "react";
 
 export const NavSecondary = memo(function NavSecondary({
 	items,

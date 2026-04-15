@@ -15,7 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppDashboardIndexRouteImport } from './routes/_app/dashboard/index'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as AppDashboardTestRouteImport } from './routes/_app/dashboard/test'
+import { Route as AppDashboardComponents_libRouteImport } from './routes/_app/dashboard/components_lib'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -46,16 +46,17 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppDashboardTestRoute = AppDashboardTestRouteImport.update({
-  id: '/dashboard/test',
-  path: '/dashboard/test',
-  getParentRoute: () => AppRouteRoute,
-} as any)
+const AppDashboardComponents_libRoute =
+  AppDashboardComponents_libRouteImport.update({
+    id: '/dashboard/components_lib',
+    path: '/dashboard/components_lib',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/dashboard/test': typeof AppDashboardTestRoute
+  '/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/dashboard/': typeof AppDashboardIndexRoute
@@ -63,7 +64,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/dashboard/test': typeof AppDashboardTestRoute
+  '/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/dashboard': typeof AppDashboardIndexRoute
@@ -73,7 +74,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
-  '/_app/dashboard/test': typeof AppDashboardTestRoute
+  '/_app/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
   '/_app/dashboard/': typeof AppDashboardIndexRoute
@@ -83,7 +84,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
-    | '/dashboard/test'
+    | '/dashboard/components_lib'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/dashboard/'
@@ -91,7 +92,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
-    | '/dashboard/test'
+    | '/dashboard/components_lib'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/dashboard'
@@ -100,7 +101,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/login'
-    | '/_app/dashboard/test'
+    | '/_app/dashboard/components_lib'
     | '/api/auth/$'
     | '/api/rpc/$'
     | '/_app/dashboard/'
@@ -158,23 +159,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/dashboard/test': {
-      id: '/_app/dashboard/test'
-      path: '/dashboard/test'
-      fullPath: '/dashboard/test'
-      preLoaderRoute: typeof AppDashboardTestRouteImport
+    '/_app/dashboard/components_lib': {
+      id: '/_app/dashboard/components_lib'
+      path: '/dashboard/components_lib'
+      fullPath: '/dashboard/components_lib'
+      preLoaderRoute: typeof AppDashboardComponents_libRouteImport
       parentRoute: typeof AppRouteRoute
     }
   }
 }
 
 interface AppRouteRouteChildren {
-  AppDashboardTestRoute: typeof AppDashboardTestRoute
+  AppDashboardComponents_libRoute: typeof AppDashboardComponents_libRoute
   AppDashboardIndexRoute: typeof AppDashboardIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
-  AppDashboardTestRoute: AppDashboardTestRoute,
+  AppDashboardComponents_libRoute: AppDashboardComponents_libRoute,
   AppDashboardIndexRoute: AppDashboardIndexRoute,
 }
 

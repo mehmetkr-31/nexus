@@ -50,14 +50,13 @@ function BreadcrumbLink({
 	);
 }
 
-function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
+function BreadcrumbPage({ className, ...props }: React.ComponentProps<"a">) {
 	return (
-		<span
+		<a
 			data-slot="breadcrumb-page"
-			role="link"
-			aria-disabled="true"
 			aria-current="page"
-			className={cn("font-normal text-foreground", className)}
+			className={cn("font-normal text-foreground cursor-default pointer-events-none", className)}
+			tabIndex={-1}
 			{...props}
 		/>
 	);
