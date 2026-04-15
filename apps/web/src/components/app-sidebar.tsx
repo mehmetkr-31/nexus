@@ -14,8 +14,10 @@ import {
 	SidebarMenuItem,
 } from "@nexus/ui/components/sidebar";
 import { Link, linkOptions } from "@tanstack/react-router";
-import { CommandIcon, LayoutDashboardIcon, SettingsIcon } from "lucide-react";
+import { LayoutDashboardIcon, SettingsIcon, UsersIcon } from "lucide-react";
+import { useTheme } from "next-themes";
 import type * as React from "react";
+import { useEffect, useState } from "react";
 
 // Define navigation items with linkOptions for type safety
 const mainNavItems = linkOptions([
@@ -23,6 +25,12 @@ const mainNavItems = linkOptions([
 		to: "/dashboard",
 		label: "Dashboard",
 		icon: <LayoutDashboardIcon />,
+		activeOptions: { exact: true },
+	},
+	{
+		to: "/dashboard/users",
+		label: "Users",
+		icon: <UsersIcon />,
 		activeOptions: { exact: true },
 	},
 ]);
@@ -96,6 +104,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		email: "user@example.com",
 		avatar: "/avatars/user.jpg",
 	};
+	const { resolvedTheme } = useTheme();
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
+
+	const isDark = mounted && resolvedTheme === "dark";
 
 	return (
 		<Sidebar collapsible="icon" {...props}>
@@ -104,9 +120,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<Link to="/">
 							{({ isActive }) => (
-								<SidebarMenuButton isActive={isActive} className="">
-									<CommandIcon className="size-5!" />
-									<span className="text-base font-semibold">Nexus</span>
+								<SidebarMenuButton isActive={isActive} className="py-5">
+									<img
+										src={isDark ? "/assets/logo_white.png" : "/assets/logo_black.png"}
+										alt="Nexus Logo"
+										className="h-10 w-auto object-contain"
+									/>
 								</SidebarMenuButton>
 							)}
 						</Link>
