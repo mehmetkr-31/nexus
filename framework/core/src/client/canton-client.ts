@@ -94,22 +94,6 @@ const errorResponseSchema = z.object({
 	details: z.array(z.unknown()).optional(),
 });
 
-const _exercisedEventSchema = z.object({
-	nodeId: z.number(),
-	offset: z.number(),
-	contractId: z.string(),
-	templateId: templateIdSchema,
-	interfaceId: z.string().optional(),
-	choice: z.string(),
-	choiceArgument: z.unknown(),
-	actingParties: z.array(z.string()),
-	consuming: z.boolean(),
-	witnessParties: z.array(z.string()),
-	exerciseResult: z.unknown(),
-	childNodeIds: z.array(z.number()),
-	packageName: z.string(),
-});
-
 const transactionResultSchema = z.object({
 	transactionId: z.string(),
 	commandId: z.string(),

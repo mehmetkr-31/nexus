@@ -16,7 +16,21 @@ export const protectedProcedure = o.use(async ({ context, next }) => {
 	return next({ context: { session: context.session } });
 });
 
-// ─── createLedgerProcedure ────────────────────────────────────────────────────
+// ─── Ledger Procedure Pattern ─────────────────────────────────────────────────
+//
+// The procedure-based approach provides maximum flexibility:
+//
+// 1. Each app creates its own ledgerProcedure with nexus.forRequest
+// 2. Router definitions directly use the procedure
+// 3. Full type inference without factory overhead
+// 4. Compatible with all oRPC middleware
+//
+// Benefits over factory pattern:
+// - No app-specific factory needed
+// - Easier to compose with other middlewares
+// - More explicit control flow
+// - Smaller bundle size (no unused factory code)
+// - Zero manual type annotations in handlers
 
 /**
  * Creates a fully-typed oRPC procedure that injects a Nexus ledger context.
@@ -25,29 +39,36 @@ export const protectedProcedure = o.use(async ({ context, next }) => {
  * context (the result of `nexus.forRequest(req)` or `nexus.forParty(id, token)`).
  * The resulting `context.ledger` field is typed as `TLedger` in every handler.
  *
- * No `any` — the full type flows through oRPC's middleware chain.
+ * **No manual type annotations needed** — full type inference through oRPC's middleware chain.
+ *
+ * @template TLedger - The ledger API type from ConstructNexusApi<T>
+ * @param extractor - Function to extract ledger from request (nexus.forRequest)
+ * @returns An oRPC procedure with ledger context automatically injected
  *
  * @example
  * ```ts
- * // lib/api.ts
+ * // Step 1: Export ledgerProcedure from your api.ts
  * import { createLedgerProcedure } from "@nexus/api"
  * import { nexus } from "~/lib/nexus-server"
  *
  * export const ledgerProcedure = createLedgerProcedure(nexus.forRequest)
  *
- * // In a router file:
- * export const iouRouter = {
+ * // Step 2: Use in router files (no type annotations needed!)
+ * import { ledgerProcedure } from "./api"
+ *
+ * export const myRouter = {
  *   list: ledgerProcedure
- *     .handler(({ context }) => context.ledger.Iou.findMany()),
+ *     .input(z.object({ limit: z.number() }))
+ *     .handler(({ input, context }) =>
+ *       // ✓ context.ledger is fully typed - no manual annotations!
+ *       context.ledger.MyTemplate.findMany({ limit: input.limit })
+ *     ),
  *
  *   create: ledgerProcedure
- *     .input(z.object({ amount: z.string(), currency: z.string() }))
+ *     .input(CreateSchema)
  *     .handler(({ input, context }) =>
- *       context.ledger.Iou.create({
- *         owner: context.session.user.id,
- *         amount: input.amount,
- *         currency: input.currency,
- *       })
+ *       // ✓ Full type inference for all ledger operations
+ *       context.ledger.MyTemplate.create(input)
  *     ),
  * }
  * ```
@@ -66,7 +87,6 @@ export function createLedgerProcedure<TLedger>(extractor: (req: Request) => Prom
 	});
 }
 
-// ─── Re-export ────────────────────────────────────────────────────────────────
 
 export { baseAppRouter } from "./routers/index";
 export type { Context };
