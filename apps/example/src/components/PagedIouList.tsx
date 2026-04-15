@@ -1,6 +1,6 @@
 "use client";
 
-import type { ActiveContract, TemplateDescriptor } from "@nexus-framework/react";
+import type { ActiveContract } from "@nexus-framework/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Loader2, Plus, Wallet } from "lucide-react";
 import { useMemo } from "react";
@@ -10,12 +10,6 @@ type IouPayload = {
 	owner: string;
 	amount: string;
 	currency: string;
-};
-
-const _IOU_TEMPLATE: TemplateDescriptor = {
-	packageName: "nexus-example",
-	moduleName: "Iou",
-	entityName: "Iou",
 };
 
 export function PagedIouList({ partyId }: { partyId: string }) {

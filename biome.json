@@ -69,7 +69,8 @@
 				".turbo",
 				".next",
 				"**/framework/cli/templates/**",
-				"**/sandbox/daml.js/**"
+				"**/sandbox/daml.js/**",
+				"framework/**"
 			],
 			"linter": {
 				"enabled": false

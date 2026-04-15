@@ -1,5 +1,5 @@
-import { KyselyPqsEngine } from "../query/pqs-engine.js";
-import type { Contract, NexusServerPlugin, PqsFindOptions, Prettify } from "../types/client.js";
+import { KyselyPqsEngine } from "../query/pqs-engine";
+import type { Contract, NexusServerPlugin, PqsFindOptions, Prettify } from "../types/client";
 
 export interface PqsDatabasePluginOptions {
 	/** Target Postgres connection string (e.g., postgres://user:pass@localhost:5432) */

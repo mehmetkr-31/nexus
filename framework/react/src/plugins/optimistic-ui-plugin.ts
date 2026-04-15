@@ -1,6 +1,6 @@
 import type { ActiveContract, NexusTemplateIdentifier, TemplateId } from "@nexus-framework/core";
 import { toStableTemplateId } from "@nexus-framework/core";
-import type { NexusClientPlugin } from "./tanstack-query.ts";
+import type { NexusClientPlugin } from "./tanstack-query";
 
 export interface OptimisticUpdateConfig<T = unknown> {
 	templateId: NexusTemplateIdentifier;

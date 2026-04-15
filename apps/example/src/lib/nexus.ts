@@ -6,30 +6,34 @@
  */
 import { provisionSandboxUser } from "@nexus-framework/core";
 import { cookies } from "next/headers";
-import { nexus } from "./nexus-server";
-
-export const CANTON_API_URL = process.env.CANTON_API_URL ?? "http://localhost:7575";
-export const SANDBOX_USER_ID = process.env.SANDBOX_USER_ID ?? "alice";
-export const IOU_TEMPLATE_ID = "nexus-example:Iou:Iou";
+import { CANTON_API_URL, SANDBOX_USER_ID } from "./constants";
+import { nexus, sessionManager } from "./nexus-server";
 
 const SANDBOX_SECRET = process.env.SANDBOX_SECRET ?? "secret";
 
 /**
  * Resolves the current server session (client + partyId).
- * Auto-provisions the sandbox user if they don't exist yet.
+ * Checks the 'nexus_session' cookie provided by the Middleware.
  *
  * Returns the unified NexusClient from the nexus server instance,
  * scoped to the resolved partyId.
  */
 export async function resolveServerSession() {
-	// Touch cookies() to opt this into dynamic rendering in Next.js
-	await cookies();
+	const cookieStore = await cookies();
+	const sessionCookie = cookieStore.get("nexus_session");
 
-	const client = nexus.client;
+	if (sessionCookie?.value) {
+		const session = await sessionManager.getSession(sessionCookie.value);
+		if (session) {
+			return { client: nexus.client, partyId: session.partyId };
+		}
+	}
 
+	// Fallback/Legacy: Provisioning without session cookie (e.g. if middleware skipped)
+	// This ensures Server Components still work even if no cookie was set yet.
 	try {
-		const partyId = await client.auth.partyId.resolvePartyId(SANDBOX_USER_ID);
-		return { client, partyId };
+		const partyId = await nexus.client.auth.partyId.resolvePartyId(SANDBOX_USER_ID);
+		return { client: nexus.client, partyId: partyId };
 	} catch (err: unknown) {
 		const msg = String((err as { message?: string })?.message ?? err);
 		const isNotFound =
@@ -39,12 +43,12 @@ export async function resolveServerSession() {
 
 		if (!isNotFound) throw err;
 
-		console.log(`[Nexus] Provisioning sandbox user "${SANDBOX_USER_ID}"...`);
+		console.log(`[Nexus] Fallback Provisioning for "${SANDBOX_USER_ID}"...`);
 		const partyId = await provisionSandboxUser({
 			ledgerApiUrl: CANTON_API_URL,
 			userId: SANDBOX_USER_ID,
 			secret: SANDBOX_SECRET,
 		});
-		return { client, partyId };
+		return { client: nexus.client, partyId };
 	}
 }

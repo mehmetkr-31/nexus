@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { CantonClient } from "../client/canton-client.ts";
-import { ContractQuery } from "./contract-query.ts";
+import { CantonClient } from "../client/canton-client";
+import { ContractQuery } from "./contract-query";
 
 function makeContractPage(
 	contracts: Array<{ contractId: string; payload?: Record<string, unknown> }>,

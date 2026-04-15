@@ -1,5 +1,5 @@
-import type { NexusPlugin } from "../types/plugin.ts";
-import { PackageResolver } from "./package-resolver.ts";
+import type { NexusPlugin } from "../types/plugin";
+import { PackageResolver } from "./package-resolver";
 
 /**
  * Extension added to the Nexus client by the `packageDiscoveryPlugin`.

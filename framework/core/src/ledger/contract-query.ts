@@ -1,5 +1,5 @@
-import type { CantonClient } from "../client/canton-client.ts";
-import { DEFAULT_PAGE_SIZE } from "../config.ts";
+import type { CantonClient } from "../client/canton-client";
+import { DEFAULT_PAGE_SIZE } from "../config";
 import type {
 	ActiveContract,
 	ActiveContractsResponse,
@@ -8,9 +8,9 @@ import type {
 	NexusTemplateIdentifier,
 	TemplateDescriptor,
 	TemplateId,
-} from "../types/index.ts";
-import { fetchAllPages } from "../utils/pagination.ts";
-import type { PackageResolver } from "./package-resolver.ts";
+} from "../types/index";
+import { fetchAllPages } from "../utils/pagination";
+import type { PackageResolver } from "./package-resolver";
 
 export interface ContractQueryOptions<_T = unknown> {
 	/** Daml template ID — "packageId:Module:Entity", TemplateId object, TemplateDescriptor, or DamlTemplate */

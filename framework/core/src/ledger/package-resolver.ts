@@ -1,5 +1,5 @@
-import type { CantonClient } from "../client/canton-client.ts";
-import type { TemplateDescriptor } from "../types/index.ts";
+import type { CantonClient } from "../client/canton-client";
+import type { TemplateDescriptor } from "../types/index";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -1,6 +1,6 @@
 import type { Iou } from "@daml.js/nexus-example-0.0.1/lib/Iou";
 import { type NextRequest, NextResponse } from "next/server";
-import { requireNexusContext } from "../../../lib/nexus-server";
+import { nexus } from "@/lib/nexus-server";
 
 /**
  * Bu rota yeni nesil "Server-Side" Canton Client SDK'sını test eder.
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 		// Artık her okuma işlemi "SET LOCAL app.current_user = 'alice'" RLS ayarıyla
 		// sadece mevcut kullanıcının görmeye yetkili olduğu sözleşmeleri güvenle filtreler!
 		// Header'dan (Authorization: Bearer <token>) veya Cookie'den otomatik çeker
-		const userContext = await requireNexusContext(req);
+		const userContext = await nexus.forRequest(req);
 
 		// 2. Kysely PQS Motorunu kullanarak 2 milisaniyede veriyi SQL'den çekiyoruz!
 		// `findMany` metodumuz `myTypes`taki proxy'ler ile ışık hızında çalışır.
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 	try {
 		const payload = await req.json();
 
-		const userContext = await requireNexusContext(req);
+		const userContext = await nexus.forRequest(req);
 
 		// `any` tipinde bir nesneyi doğrudan göndermek artık derleyici tarafından engellendiği için,
 		// gelen isteği ya Zod/Typegen ile doğrulamalı ya da tip dönüşümü yapmalıyız.

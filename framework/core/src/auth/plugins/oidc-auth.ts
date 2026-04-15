@@ -1,7 +1,7 @@
-import type { NexusPlugin } from "../../types/plugin.ts";
-import { decodeJwtHeader, verifyJwt } from "../../utils/jwt.ts";
-import { JwksClient } from "../jwks-client.ts";
-import { JwtManager } from "../jwt-manager.ts";
+import type { NexusPlugin } from "../../types/plugin";
+import { decodeJwtHeader, verifyJwt } from "../../utils/jwt";
+import { JwksClient } from "../jwks-client";
+import { JwtManager } from "../jwt-manager";
 
 // ─── OidcAuthOptions ──────────────────────────────────────────────────────────
 

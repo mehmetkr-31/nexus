@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { sandboxAuth } from "@nexus-framework/core";
-import { createNexusClient } from "../create-nexus-client.ts";
-import { withLedgerAction } from "./server-actions.ts";
+import { createNexusClient } from "../create-nexus-client";
+import { withLedgerAction } from "./server-actions";
 
 function makeMockCanton(submitBody: unknown, status = 200) {
 	return Bun.serve({

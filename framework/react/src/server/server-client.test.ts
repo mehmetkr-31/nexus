@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { generateEncryptionKey, NexusAuthError, SessionManager } from "@nexus-framework/core";
-import { createServerNexusClient, createServerNexusClientFromSession } from "./server-client.ts";
+import { createServerNexusClient, createServerNexusClientFromSession } from "./server-client";
 
 describe("createServerNexusClientFromSession", () => {
 	test("creates a client from a valid session", async () => {

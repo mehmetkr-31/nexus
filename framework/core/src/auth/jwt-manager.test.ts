@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { NexusAuthError } from "../types/index.ts";
-import { JwtManager } from "./jwt-manager.ts";
+import { NexusAuthError } from "../types/index";
+import { JwtManager } from "./jwt-manager";
 
 // ─── Sandbox token tests ───────────────────────────────────────────────────────
 

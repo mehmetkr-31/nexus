@@ -1,4 +1,4 @@
-import type { CantonClient } from "../client/canton-client.ts";
+import type { CantonClient } from "../client/canton-client";
 import type {
 	Command,
 	CreateCommand,
@@ -11,8 +11,8 @@ import type {
 	TemplateDescriptor,
 	TemplateId,
 	TransactionResult,
-} from "../types/index.ts";
-import type { PackageResolver } from "./package-resolver.ts";
+} from "../types/index";
+import type { PackageResolver } from "./package-resolver";
 
 interface BaseTemplate {
 	templateId: string;

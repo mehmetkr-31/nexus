@@ -1,6 +1,6 @@
-import { CantonClient } from "../client/canton-client.js";
-import type { NexusServerPlugin } from "../types/client.js";
-import { toStableTemplateId } from "../utils/template.js";
+import { CantonClient } from "../client/canton-client";
+import type { NexusServerPlugin } from "../types/client";
+import { toStableTemplateId } from "../utils/template";
 
 export interface CantonLedgerPluginOptions {
 	/** Canton JSON Ledger API base URL (e.g., http://localhost:7575) */

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { CantonClient } from "../client/canton-client.ts";
-import { InterfaceQuery } from "./interface-query.ts";
+import { CantonClient } from "../client/canton-client";
+import { InterfaceQuery } from "./interface-query";
 
 describe("InterfaceQuery", () => {
 	function makeInterfacePage(

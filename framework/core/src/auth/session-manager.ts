@@ -1,4 +1,4 @@
-import { NexusAuthError, type NexusSession } from "../types/index.ts";
+import { NexusAuthError, type NexusSession } from "../types/index";
 
 const SESSION_COOKIE_NAME = "nexus_session";
 const DEFAULT_SESSION_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -21,7 +21,7 @@ interface SessionManagerOptions {
 // ─── SessionManager ──────────────────────────────────────────────────────────
 
 export class SessionManager {
-	private readonly cookieName: string;
+	public readonly cookieName: string;
 	private readonly ttlMs: number;
 	private readonly secure: boolean;
 	private readonly domain?: string;
