@@ -12,8 +12,14 @@
 		"./routers/iou": {
 			"default": "./src/routers/iou.ts"
 		},
+		"./schemas/signet": {
+			"default": "./src/schemas/signet.ts"
+		},
 		"./context": {
 			"default": "./src/context.ts"
+		},
+		"./utils/*": {
+			"default": "./src/utils/*.ts"
 		},
 		"./*": {
 			"default": "./src/*.ts"
@@ -29,6 +35,8 @@
 		"@nexus/db": "workspace:*",
 		"@nexus/env": "workspace:*",
 		"@nexus-framework/core": "workspace:*",
+		"@nexus-framework/orpc": "workspace:*",
+		"@nexus-framework/react": "workspace:*",
 		"@orpc/client": "catalog:",
 		"@orpc/openapi": "catalog:",
 		"@orpc/server": "catalog:",

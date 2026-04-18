@@ -13,6 +13,7 @@
 		"@daml.js/nexus-example-0.0.1": "workspace:*",
 		"@nexus/api": "workspace:*",
 		"@nexus-framework/core": "workspace:*",
+		"@nexus-framework/orpc": "workspace:*",
 		"@nexus-framework/react": "workspace:*",
 		"@orpc/server": "catalog:",
 		"@orpc/client": "catalog:",

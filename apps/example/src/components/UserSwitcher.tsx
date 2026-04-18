@@ -1,7 +1,7 @@
 "use client";
 
-import { nexus } from "@/lib/nexus-client";
 import { useState } from "react";
+import { nexus } from "@/lib/nexus-client";
 
 interface UserSwitcherProps {
 	currentUser: string;

@@ -11,3 +11,6 @@ sandbox-options:
   - --port=6865
 script-options:
   - --all
+codegen:
+  js:
+    output-directory: daml.js

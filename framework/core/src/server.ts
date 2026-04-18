@@ -13,7 +13,7 @@ import type {
 	PqsFindOptions,
 } from "./types/client";
 import type { NexusClient } from "./types/index";
-import type { FetchMiddleware, InferNexusClientPlugins, NexusPlugin } from "./types/plugin";
+import type { InferNexusClientPlugins, NexusPlugin } from "./types/plugin";
 
 export * from "./command/ledger-fetch";
 export * from "./plugins/canton-ledger";

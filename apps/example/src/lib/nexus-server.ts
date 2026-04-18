@@ -1,4 +1,4 @@
-import { Iou } from "@daml.js/nexus-example-0.0.1";
+import { Iou, MultisigWallet } from "@daml.js/nexus-example-0.0.1";
 import { SessionManager, sandboxAuth } from "@nexus-framework/core";
 import { createNexusServer } from "@nexus-framework/core/server";
 import { tanstackQueryPlugin } from "@nexus-framework/react/server";
@@ -28,7 +28,13 @@ export const nexus = await createNexusServer({
 	ledgerApiUrl: CANTON_API_URL,
 	pqsUrl: PQS_URL,
 	auth: sandboxAuth({ userId: SANDBOX_USER_ID, secret: SANDBOX_SECRET }),
-	types: { Iou: Iou.Iou },
+	types: {
+		Iou: Iou.Iou,
+		MultisigWallet: MultisigWallet.MultisigWallet,
+		TransactionProposal: MultisigWallet.TransactionProposal,
+		GovernanceProposal: MultisigWallet.GovernanceProposal,
+		PendingWalletUpdate: MultisigWallet.PendingWalletUpdate,
+	},
 	sessionManager,
 	plugins: [tanstackQueryPlugin()],
 });

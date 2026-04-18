@@ -1,5 +1,4 @@
 import { createContext } from "@nexus/api/context";
-import { appRouter } from "@nexus/api/routers/index";
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";
@@ -9,6 +8,7 @@ import { QueryCache, QueryClient } from "@tanstack/react-query";
 import { createIsomorphicFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { toast } from "sonner";
+import { appRouter } from "@/lib/api";
 
 export const queryClient = new QueryClient({
 	queryCache: new QueryCache({
