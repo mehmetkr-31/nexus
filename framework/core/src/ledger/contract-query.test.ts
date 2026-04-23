@@ -118,7 +118,7 @@ describe("ContractQuery", () => {
 	test("fetchContractByKey returns contract matching exact key", async () => {
 		const server = Bun.serve({
 			port: 0,
-			fetch(req) {
+			fetch(_req) {
 				// Simulate /v2/contracts/contract-by-key returning a single contract
 				return Response.json({
 					createdEvent: {

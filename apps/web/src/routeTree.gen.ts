@@ -10,25 +10,34 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AppRouteRouteImport } from './routes/_app/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppDashboardIndexRouteImport } from './routes/_app/dashboard/index'
 import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc/$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AppDashboardComponents_libRouteImport } from './routes/_app/dashboard/components_lib'
+import { Route as AppDashboardUsersIndexRouteImport } from './routes/_app/dashboard/users/index'
+import { Route as AppDashboardSettingsIndexRouteImport } from './routes/_app/dashboard/settings/index'
+import { Route as AppDashboardUsersSettingsRouteImport } from './routes/_app/dashboard/users/settings'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AppRouteRoute = AppRouteRouteImport.update({
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppDashboardIndexRoute = AppDashboardIndexRouteImport.update({
+  id: '/dashboard/',
+  path: '/dashboard/',
+  getParentRoute: () => AppRouteRoute,
 } as any)
 const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
   id: '/api/rpc/$',
@@ -40,40 +49,105 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppDashboardComponents_libRoute =
+  AppDashboardComponents_libRouteImport.update({
+    id: '/dashboard/components_lib',
+    path: '/dashboard/components_lib',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppDashboardUsersIndexRoute = AppDashboardUsersIndexRouteImport.update({
+  id: '/dashboard/users/',
+  path: '/dashboard/users/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppDashboardSettingsIndexRoute =
+  AppDashboardSettingsIndexRouteImport.update({
+    id: '/dashboard/settings/',
+    path: '/dashboard/settings/',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
+const AppDashboardUsersSettingsRoute =
+  AppDashboardUsersSettingsRouteImport.update({
+    id: '/dashboard/users/settings',
+    path: '/dashboard/users/settings',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/dashboard/': typeof AppDashboardIndexRoute
+  '/dashboard/users/settings': typeof AppDashboardUsersSettingsRoute
+  '/dashboard/settings/': typeof AppDashboardSettingsIndexRoute
+  '/dashboard/users/': typeof AppDashboardUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/dashboard': typeof AppDashboardIndexRoute
+  '/dashboard/users/settings': typeof AppDashboardUsersSettingsRoute
+  '/dashboard/settings': typeof AppDashboardSettingsIndexRoute
+  '/dashboard/users': typeof AppDashboardUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
+  '/_app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/dashboard/components_lib': typeof AppDashboardComponents_libRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/rpc/$': typeof ApiRpcSplatRoute
+  '/_app/dashboard/': typeof AppDashboardIndexRoute
+  '/_app/dashboard/users/settings': typeof AppDashboardUsersSettingsRoute
+  '/_app/dashboard/settings/': typeof AppDashboardSettingsIndexRoute
+  '/_app/dashboard/users/': typeof AppDashboardUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login' | '/api/auth/$' | '/api/rpc/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard/components_lib'
+    | '/api/auth/$'
+    | '/api/rpc/$'
+    | '/dashboard/'
+    | '/dashboard/users/settings'
+    | '/dashboard/settings/'
+    | '/dashboard/users/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login' | '/api/auth/$' | '/api/rpc/$'
-  id: '__root__' | '/' | '/dashboard' | '/login' | '/api/auth/$' | '/api/rpc/$'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard/components_lib'
+    | '/api/auth/$'
+    | '/api/rpc/$'
+    | '/dashboard'
+    | '/dashboard/users/settings'
+    | '/dashboard/settings'
+    | '/dashboard/users'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/login'
+    | '/_app/dashboard/components_lib'
+    | '/api/auth/$'
+    | '/api/rpc/$'
+    | '/_app/dashboard/'
+    | '/_app/dashboard/users/settings'
+    | '/_app/dashboard/settings/'
+    | '/_app/dashboard/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
+  AppRouteRoute: typeof AppRouteRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiRpcSplatRoute: typeof ApiRpcSplatRoute
@@ -88,11 +162,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -101,6 +175,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/dashboard/': {
+      id: '/_app/dashboard/'
+      path: '/dashboard'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof AppDashboardIndexRouteImport
+      parentRoute: typeof AppRouteRoute
     }
     '/api/rpc/$': {
       id: '/api/rpc/$'
@@ -116,12 +197,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/dashboard/components_lib': {
+      id: '/_app/dashboard/components_lib'
+      path: '/dashboard/components_lib'
+      fullPath: '/dashboard/components_lib'
+      preLoaderRoute: typeof AppDashboardComponents_libRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/dashboard/users/': {
+      id: '/_app/dashboard/users/'
+      path: '/dashboard/users'
+      fullPath: '/dashboard/users/'
+      preLoaderRoute: typeof AppDashboardUsersIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/dashboard/settings/': {
+      id: '/_app/dashboard/settings/'
+      path: '/dashboard/settings'
+      fullPath: '/dashboard/settings/'
+      preLoaderRoute: typeof AppDashboardSettingsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/_app/dashboard/users/settings': {
+      id: '/_app/dashboard/users/settings'
+      path: '/dashboard/users/settings'
+      fullPath: '/dashboard/users/settings'
+      preLoaderRoute: typeof AppDashboardUsersSettingsRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
+interface AppRouteRouteChildren {
+  AppDashboardComponents_libRoute: typeof AppDashboardComponents_libRoute
+  AppDashboardIndexRoute: typeof AppDashboardIndexRoute
+  AppDashboardUsersSettingsRoute: typeof AppDashboardUsersSettingsRoute
+  AppDashboardSettingsIndexRoute: typeof AppDashboardSettingsIndexRoute
+  AppDashboardUsersIndexRoute: typeof AppDashboardUsersIndexRoute
+}
+
+const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppDashboardComponents_libRoute: AppDashboardComponents_libRoute,
+  AppDashboardIndexRoute: AppDashboardIndexRoute,
+  AppDashboardUsersSettingsRoute: AppDashboardUsersSettingsRoute,
+  AppDashboardSettingsIndexRoute: AppDashboardSettingsIndexRoute,
+  AppDashboardUsersIndexRoute: AppDashboardUsersIndexRoute,
+}
+
+const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(
+  AppRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
+  AppRouteRoute: AppRouteRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiRpcSplatRoute: ApiRpcSplatRoute,
