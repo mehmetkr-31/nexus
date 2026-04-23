@@ -25,7 +25,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "My App",
+				title: "Nexus - Multi-Signature on Canton Network",
+			},
+			{
+				name: "description",
+				content:
+					"Nexus is a Canton-native multi-signature platform for secure treasury approvals, governance and institutional custody workflows.",
 			},
 		],
 		links: [],

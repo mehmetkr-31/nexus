@@ -468,10 +468,10 @@ function RouteComponent() {
 
 	const searchedMembers = searchQuery
 		? filteredMembers.filter(
-				(m) =>
-					m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					m.email.toLowerCase().includes(searchQuery.toLowerCase()),
-			)
+			(m) =>
+				m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				m.email.toLowerCase().includes(searchQuery.toLowerCase()),
+		)
 		: filteredMembers;
 
 	const groupedByOrganization = searchedMembers.reduce(
@@ -503,7 +503,7 @@ function RouteComponent() {
 				</Button>
 			</div>
 
-			<Card>
+			<div>
 				<CardHeader className="pb-4">
 					<div className="flex flex-col gap-4">
 						<div className="relative flex-1">
@@ -560,7 +560,7 @@ function RouteComponent() {
 						</div>
 					)}
 				</CardContent>
-			</Card>
+			</div>
 		</div>
 	);
 }
